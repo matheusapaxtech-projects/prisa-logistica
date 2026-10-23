@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Novo proprietário · NILT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700&family=Overpass+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/nilt.css">
+  <link rel="stylesheet" href="assets/paginas/proprietarios.css">
+</head>
+<body data-pagina="proprietarios">
+<main>
+  <div class="titulo">
+    <div>
+      <nav class="migalha" aria-label="Caminho"><a href="proprietarios.html">Proprietários</a><span class="sep" aria-hidden="true">/</span><h1>Novo proprietário</h1></nav>
+      <p class="sub">Comece pelo tipo e pelo documento. Se a pessoa já estiver no NILT, você só liga o papel de proprietário a ela.</p>
+    </div>
+  </div>
+
+  <form id="form" novalidate>
+    <section class="secao" aria-labelledby="h-tipo">
+      <div class="secao-rotulo">
+        <h2 id="h-tipo">Tipo</h2>
+        <p>Quem está no CRLV ou na ANTT do veículo: uma pessoa ou uma empresa.</p>
+      </div>
+      <div class="tipos" role="radiogroup" aria-labelledby="h-tipo">
+        <label class="tipo-opcao">
+          <input type="radio" name="tipo" value="pf">
+          <span class="cartao"><i data-lucide="user"></i><b>Pessoa física</b><span>CPF. Dono autônomo do caminhão, enquadrado como TAC na ANTT. Pode ser também motorista.</span></span>
+        </label>
+        <label class="tipo-opcao">
+          <input type="radio" name="tipo" value="pj">
+          <span class="cartao"><i data-lucide="building-2"></i><b>Empresa</b><span>CNPJ. Transportadora, cooperativa ou locadora. Os dados vêm da Receita pela consulta do CNPJ.</span></span>
+        </label>
+      </div>
+    </section>
+
+    <section class="secao" id="s-passos" aria-labelledby="h-passos">
+      <div class="secao-rotulo">
+        <h2 id="h-passos">Depois do tipo</h2>
+        <p>O cadastro segue nesta ordem. Cada etapa abre quando a anterior estiver certa.</p>
+      </div>
+      <ol class="passos-previa">
+        <li><b>Documento</b><span>CPF conferido pelos dígitos, ou CNPJ com a consulta na Receita, que preenche razão social, fantasia e endereço.</span></li>
+        <li><b>Dados</b><span>O mínimo para criar: nome, telefone e, para empresa, o que veio da Receita, tudo editável.</span></li>
+        <li><b>ANTT</b><span>RNTRC, enquadramento (TAC só para pessoa física) e validade.</span></li>
+        <li><b>Responsável</b><span>Só para empresa: quem atende pela frota, com telefone e WhatsApp.</span></li>
+        <li><b>Ficha completa</b><span>Endereços, contas bancárias, Pix, documentos e veículos ficam na ficha do proprietário.</span></li>
+      </ol>
+    </section>
+
+    <section class="secao" id="s-doc" aria-labelledby="h-doc" hidden>
+      <div class="secao-rotulo">
+        <h2 id="h-doc">Documento</h2>
+        <p id="doc-explica">O NILT confere os dígitos e procura se já existe.</p>
+      </div>
+      <div class="campos">
+        <div class="campo f5" id="c-cpf" hidden>
+          <label for="cpf">CPF</label>
+          <input id="cpf" data-mascara="cpf" autocomplete="off" placeholder="000.000.000-00">
+          <span class="doc-estado" id="cpf-estado" aria-live="polite"></span>
+        </div>
+        <div class="campo f8" id="c-cnpj" hidden>
+          <label for="cnpj">CNPJ</label>
+          <div class="com-acao">
+            <input id="cnpj" data-mascara="cnpj" autocomplete="off" placeholder="00.000.000/0000-00">
+            <button class="btn" type="button" id="btn-receita"><i data-lucide="search"></i><span>Buscar na Receita</span></button>
+          </div>
+          <span class="doc-estado" id="cnpj-estado" aria-live="polite"></span>
+        </div>
+        <div class="f12 existe" id="existe" aria-live="polite"></div>
+        <p class="f12 demo" id="demo"></p>
+      </div>
+    </section>
+
+    <section class="secao" id="s-dados" aria-labelledby="h-dados" hidden>
+      <div class="secao-rotulo">
+        <h2 id="h-dados">Dados</h2>
+        <p id="dados-explica"></p>
+      </div>
+      <div class="campos" id="dados-pf" hidden>
+        <div class="campo f8"><label for="pf-nome">Nome completo</label><input id="pf-nome" maxlength="110" autocomplete="off"></div>
+        <div class="campo f4"><label for="pf-apelido">Apelido <span class="opcional">(opcional)</span></label><input id="pf-apelido" autocomplete="off"></div>
+        <div class="campo f4"><label for="pf-nasc">Nascimento <span class="opcional">(opcional)</span></label><input id="pf-nasc" type="date"></div>
+        <div class="campo f4"><label for="pf-cel">Celular <span class="opcional">(opcional)</span></label><input id="pf-cel" data-mascara="telefone" autocomplete="off" placeholder="(00) 00000-0000"></div>
+        <div class="campo f4"><span class="rotulo" aria-hidden="true">&nbsp;</span><label class="checar"><input type="checkbox" id="pf-whats" checked>Celular tem WhatsApp</label></div>
+      </div>
+      <div class="campos" id="dados-ligar" hidden></div>
+      <div class="campos" id="dados-pj" hidden>
+        <div class="f12 receita-estado" id="receita-estado"></div>
+        <div class="campo f8"><label for="pj-nome">Razão social</label><input id="pj-nome" maxlength="110" autocomplete="off"></div>
+        <div class="campo f4"><label for="pj-fantasia">Nome fantasia <span class="opcional">(opcional)</span></label><input id="pj-fantasia" autocomplete="off"></div>
+        <div class="campo f4"><label for="pj-fundacao">Fundação</label><input id="pj-fundacao" type="date"></div>
+        <div class="campo f8"><label for="pj-natureza">Natureza jurídica</label><input id="pj-natureza" autocomplete="off"></div>
+        <div class="campo f12"><label for="pj-cnae">Atividade econômica principal (CNAE)</label><input id="pj-cnae" autocomplete="off"></div>
+        <div class="campo f4">
+          <span class="rotulo" id="r-simples">Optante pelo Simples Nacional</span>
+          <div class="opcoes" role="radiogroup" aria-labelledby="r-simples">
+            <label class="opcao"><input type="radio" name="simples" value="sim"><span>Sim</span></label>
+            <label class="opcao"><input type="radio" name="simples" value="nao"><span>Não</span></label>
+          </div>
+        </div>
+        <div class="campo f4"><label for="pj-dt-simples">Data da consulta do Simples <span class="opcional">(opcional)</span></label><input id="pj-dt-simples" type="date"></div>
+        <div class="campo f4"><label for="pj-cep">CEP</label>
+          <div class="com-acao"><input id="pj-cep" data-mascara="cep" autocomplete="off" placeholder="00000-000"><button class="btn" type="button" id="btn-cep" aria-label="Buscar endereço pelo CEP"><i data-lucide="map-pin"></i></button></div>
+        </div>
+        <div class="campo f8"><label for="pj-logradouro">Endereço</label><input id="pj-logradouro" autocomplete="off"></div>
+        <div class="campo f2"><label for="pj-numero">Número</label><input id="pj-numero" autocomplete="off"></div>
+        <div class="campo f4"><label for="pj-compl">Complemento <span class="opcional">(opcional)</span></label><input id="pj-compl" autocomplete="off"></div>
+        <div class="campo f6"><label for="pj-bairro">Bairro</label><input id="pj-bairro" autocomplete="off"></div>
+        <div class="campo f9"><label for="pj-cidade">Cidade</label><input id="pj-cidade" autocomplete="off"></div>
+        <div class="campo f3"><label for="pj-uf">UF</label><select id="pj-uf"></select></div>
+      </div>
+    </section>
+
+    <section class="secao" id="s-antt" aria-labelledby="h-antt" hidden>
+      <div class="secao-rotulo">
+        <h2 id="h-antt">ANTT</h2>
+        <p>Registro do transportador (RNTRC). Sem ele o proprietário fica pendente e o veículo não roda em nome dele.</p>
+      </div>
+      <div class="campos">
+        <div class="campo f4"><label for="rntrc">RNTRC <span class="opcional">(opcional agora)</span></label><input id="rntrc" class="cod" inputmode="numeric" maxlength="9" autocomplete="off" placeholder="9 dígitos"></div>
+        <div class="campo f4"><label for="rntrc-emissao">Emissão <span class="opcional">(opcional)</span></label><input id="rntrc-emissao" type="date"></div>
+        <div class="campo f4"><label for="rntrc-validade">Validade</label><input id="rntrc-validade" type="date"></div>
+        <div class="campo f12">
+          <span class="rotulo" id="r-enq">Enquadramento</span>
+          <div class="opcoes" role="radiogroup" aria-labelledby="r-enq" id="enq">
+            <label class="opcao"><input type="radio" name="enq" value="tac"><span>TAC<em>autônomo</em></span></label>
+            <label class="opcao"><input type="radio" name="enq" value="etc"><span>ETC<em>empresa</em></span></label>
+            <label class="opcao"><input type="radio" name="enq" value="ctc"><span>CTC<em>cooperativa</em></span></label>
+            <label class="opcao"><input type="radio" name="enq" value="etc_equiparado"><span>ETC equiparado</span></label>
+          </div>
+          <span class="ajuda" id="enq-ajuda"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="secao" id="s-resp" aria-labelledby="h-resp" hidden>
+      <div class="secao-rotulo">
+        <h2 id="h-resp">Responsável</h2>
+        <p>Quem fala pela empresa com a operação: quem atende quando o caminhão precisa sair.</p>
+      </div>
+      <div class="campos">
+        <div class="campo f6"><label for="resp-nome">Nome</label><input id="resp-nome" autocomplete="off"></div>
+        <div class="campo f3"><label for="resp-tel">Telefone</label><input id="resp-tel" data-mascara="telefone" autocomplete="off" placeholder="(00) 00000-0000"></div>
+        <div class="campo f3"><span class="rotulo" aria-hidden="true">&nbsp;</span><label class="checar"><input type="checkbox" id="resp-whats" checked>Tem WhatsApp</label></div>
+        <div class="campo f6"><label for="resp-email">E-mail <span class="opcional">(opcional)</span></label><input id="resp-email" type="email" autocomplete="off" placeholder="nome@empresa.com.br"></div>
+      </div>
+    </section>
+
+    <div class="rodape-form" id="rodape" hidden>
+      <span class="resumo" id="resumo" aria-live="polite"></span>
+      <a class="btn" href="proprietarios.html">Cancelar</a>
+      <button class="btn btn-primario" type="submit" id="btn-criar"><i data-lucide="check"></i>Criar proprietário</button>
+    </div>
+  </form>
+</main>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="assets/dados.js"></script>
+<script src="assets/paginas/proprietarios.js"></script>
+<script>
+window.pagina = function (N) {
+  const D = N.dados, f = N.fmt, d = N.desenhar, P = N.prop, so = N.so, $ = (id) => document.getElementById(id);
+  const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+  $('pj-uf').innerHTML = '<option value="">—</option>' + UFS.map((u) => `<option>${u}</option>`).join('');
+
+  const est = { tipo: null, modo: null, pessoaId: null, receita: null };
+  const secoes = ['s-dados', 's-antt', 's-resp'];
+  const icones = () => { N.desenharIcones(); };
+
+  /* ---------- erros de campo (dizem o problema e a correção) ---------- */
+  function erro(inputId, msg) {
+    const c = $(inputId).closest('.campo');
+    let e = c.querySelector('.erro');
+    if (!msg) { c.removeAttribute('data-invalido'); $(inputId).removeAttribute('aria-invalid'); if (e) e.hidden = true; return; }
+    if (!e) { e = document.createElement('span'); e.className = 'erro'; e.id = inputId + '-erro'; c.appendChild(e); $(inputId).setAttribute('aria-describedby', e.id); }
+    e.hidden = false; e.textContent = msg; c.setAttribute('data-invalido', ''); $(inputId).setAttribute('aria-invalid', 'true');
+  }
+  const limparErros = () => document.querySelectorAll('#form [data-invalido]').forEach((c) => { const i = c.querySelector('input,select'); if (i && i.id) erro(i.id, null); });
+
+  function mostrar(ids) { secoes.forEach((s) => { $(s).hidden = !ids.includes(s); }); $('rodape').hidden = !ids.length; atualizarResumo(); }
+
+  /* ---------- tipo ---------- */
+  function escolherTipo(t) {
+    est.tipo = t; est.modo = null; est.pessoaId = null; est.receita = null;
+    $('s-doc').hidden = false; $('s-passos').hidden = true;
+    $('c-cpf').hidden = t !== 'pf'; $('c-cnpj').hidden = t !== 'pj';
+    $('doc-explica').textContent = t === 'pf'
+      ? 'O NILT confere os dígitos do CPF e procura a pessoa: se ela já é motorista, os dados pessoais são aproveitados.'
+      : 'O NILT confere os dígitos do CNPJ e busca razão social, endereço e situação na Receita (BrasilAPI).';
+    $('existe').innerHTML = ''; $('cpf').value = ''; $('cnpj').value = '';
+    $('cpf-estado').innerHTML = ''; $('cnpj-estado').innerHTML = '';
+    erro('cpf', null); erro('cnpj', null);
+    // enquadramento: TAC só para pessoa física (regra do banco: fn_proprietario_tac_so_pf)
+    const tac = document.querySelector('input[name="enq"][value="tac"]');
+    tac.disabled = t === 'pj';
+    document.querySelectorAll('input[name="enq"]').forEach((r) => { r.checked = false; });
+    document.querySelector(`input[name="enq"][value="${t === 'pf' ? 'tac' : 'etc'}"]`).checked = true;
+    $('enq-ajuda').textContent = t === 'pj'
+      ? 'TAC é só para pessoa física: é o transportador autônomo, dono do caminhão. Empresa entra como ETC, CTC (cooperativa) ou ETC equiparado.'
+      : 'Autônomo com caminhão próprio é TAC. Use ETC equiparado só se o certificado da ANTT disser isso.';
+    // demonstração com documentos que já existem nos dados fictícios
+    if (t === 'pf') {
+      const mot = D.motoristas.map((m) => P.pessoa(m.pessoa_id)).find((p) => !P.prop(p.id) && p.situacao_cadastro !== 'cancelado');
+      const dono = D.proprietarios.map((x) => P.pessoa(x.pessoa_id)).find((p) => p.tipo === 'pf');
+      $('demo').innerHTML = `Para experimentar: <button type="button" data-doc="${mot.cpf}">${f.cpf(mot.cpf)}</button> já é motorista (${N.esc(mot.nome)}); <button type="button" data-doc="${dono.cpf}">${f.cpf(dono.cpf)}</button> já é proprietário.`;
+    } else {
+      const emp = D.proprietarios.map((x) => P.pessoa(x.pessoa_id)).find((p) => p.tipo === 'pj');
+      $('demo').innerHTML = `Para experimentar: <button type="button" data-doc="${emp.cnpj}">${f.cnpj(emp.cnpj)}</button> já é proprietário. Para ver a busca na Receita, digite o CNPJ de uma empresa real.`;
+    }
+    mostrar([]);
+    (t === 'pf' ? $('cpf') : $('cnpj')).focus();
+  }
+  document.querySelectorAll('input[name="tipo"]').forEach((r) => r.addEventListener('change', () => escolherTipo(r.value)));
+  $('demo').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-doc]'); if (!b) return;
+    const inp = est.tipo === 'pf' ? $('cpf') : $('cnpj');
+    inp.value = est.tipo === 'pf' ? f.cpf(b.dataset.doc) : f.cnpj(b.dataset.doc);
+    inp.dispatchEvent(new Event('input', { bubbles: true })); inp.focus();
+  });
+
+  /* ---------- CPF ao vivo ---------- */
+  function avisoJaProprietario(p) {
+    return `<div class="aviso aviso-info"><i data-lucide="info"></i><span class="txt"><b>${N.esc(p.nome)}</b> já é proprietário no NILT. Abra a ficha para conferir ou completar os dados.</span>
+      <a class="btn btn-pequeno" href="proprietario.html?id=${p.id}">Abrir ficha</a></div>`;
+  }
+  function checarCpf() {
+    const dig = so($('cpf').value);
+    $('existe').innerHTML = ''; est.modo = null; est.pessoaId = null;
+    if (dig.length < 11) { erro('cpf', null); $('cpf-estado').className = 'doc-estado'; $('cpf-estado').textContent = dig.length ? `${11 - dig.length} ${11 - dig.length === 1 ? 'dígito falta' : 'dígitos faltam'}` : ''; mostrar([]); return; }
+    if (!N.valida.cpf(dig)) { $('cpf-estado').textContent = ''; erro('cpf', 'CPF inválido: os dígitos verificadores não conferem. Confira com o documento.'); mostrar([]); return; }
+    erro('cpf', null);
+    $('cpf-estado').className = 'doc-estado ok'; $('cpf-estado').innerHTML = '<i data-lucide="check"></i>CPF válido';
+    const p = D.pessoas.find((x) => x.cpf === dig);
+    if (p && P.prop(p.id)) { $('existe').innerHTML = avisoJaProprietario(p); mostrar([]); }
+    else if (p) {
+      const papel = P.ehMotorista(p.id) ? 'motorista' : 'pessoa';
+      $('existe').innerHTML = `<div class="aviso aviso-info"><i data-lucide="user-check"></i><span class="txt"><b>${N.esc(p.nome)}</b> já está no NILT como ${papel}. Dados pessoais, contatos e contas são os mesmos: basta ligar o papel de proprietário.</span>
+        <span class="acoes-aviso"><button class="btn btn-pequeno" type="button" id="btn-ligar"><i data-lucide="link-2"></i>Cadastrar também como proprietário</button>
+        <a class="btn btn-texto btn-pequeno" href="motorista.html?id=${p.id}">Ver ficha de motorista</a></span></div>`;
+      $('btn-ligar').addEventListener('click', () => ligar(p));
+      mostrar([]);
+    } else { est.modo = 'nova'; $('dados-pf').hidden = false; $('dados-ligar').hidden = true; $('dados-pj').hidden = true; $('dados-explica').textContent = 'O mínimo para criar. Documentos, endereço e contas ficam na ficha.'; mostrar(['s-dados', 's-antt']); }
+    icones();
+  }
+  function ligar(p) {
+    est.modo = 'ligar'; est.pessoaId = p.id;
+    const tel = D.telefones.find((t) => t.pessoa_id === p.id && t.principal);
+    $('dados-pf').hidden = true; $('dados-pj').hidden = true; $('dados-ligar').hidden = false;
+    $('dados-explica').textContent = 'Vêm da ficha de motorista. Para mudar, edite lá ou na ficha do proprietário depois de criar.';
+    $('dados-ligar').innerHTML = `<dl class="kv f12">
+      <dt>Nome</dt><dd>${N.esc(p.nome)}</dd>
+      <dt>CPF</dt><dd class="cod">${f.cpf(p.cpf)}</dd>
+      <dt>Nascimento</dt><dd>${f.data(p.nascimento)}</dd>
+      <dt>Celular</dt><dd>${tel ? f.telefone(tel.numero) + (tel.whatsapp ? ' · WhatsApp' : '') : '<span class="dash">—</span>'}</dd>
+      <dt>Naturalidade</dt><dd>${p.naturalidade ? N.esc(p.naturalidade) + ' · ' + p.naturalidade_uf : '<span class="dash">—</span>'}</dd></dl>`;
+    $('existe').querySelector('#btn-ligar').disabled = true;
+    $('existe').querySelector('#btn-ligar').innerHTML = '<i data-lucide="check"></i>Ligando como proprietário';
+    mostrar(['s-dados', 's-antt']); N.separarPontos($('dados-ligar')); icones();
+    $('rntrc').focus();
+  }
+  $('cpf').addEventListener('input', checarCpf);
+
+  /* ---------- CNPJ ao vivo + Receita ---------- */
+  function checarCnpj() {
+    const dig = so($('cnpj').value);
+    $('existe').innerHTML = '';
+    if (est.receita && est.receita.cnpj !== dig) { est.receita = null; est.modo = null; mostrar([]); }
+    if (dig.length < 14) { erro('cnpj', null); $('cnpj-estado').className = 'doc-estado'; $('cnpj-estado').textContent = dig.length ? `${14 - dig.length} ${14 - dig.length === 1 ? 'dígito falta' : 'dígitos faltam'}` : ''; return false; }
+    if (!N.valida.cnpj(dig)) { $('cnpj-estado').textContent = ''; erro('cnpj', 'CNPJ inválido: os dígitos verificadores não conferem. Confira com o cartão CNPJ.'); return false; }
+    erro('cnpj', null);
+    const p = D.pessoas.find((x) => x.cnpj === dig);
+    if (p) { $('cnpj-estado').className = 'doc-estado ok'; $('cnpj-estado').innerHTML = '<i data-lucide="check"></i>CNPJ válido'; $('existe').innerHTML = avisoJaProprietario(p); mostrar([]); icones(); return false; }
+    if (!est.modo) {
+      $('cnpj-estado').className = 'doc-estado ok';
+      $('cnpj-estado').innerHTML = '<i data-lucide="check"></i><span>CNPJ válido. Busque na Receita ou <button type="button" class="link-botao" id="btn-mao">preencha à mão</button>.</span>';
+      $('btn-mao').addEventListener('click', () => abrirPj(null));
+      icones();
+    }
+    return true;
+  }
+  $('cnpj').addEventListener('input', checarCnpj);
+  $('cnpj').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); buscarReceita(); } });
+
+  const btnR = $('btn-receita');
+  function carregando(sim) {
+    btnR.disabled = sim; btnR.setAttribute('aria-busy', sim);
+    btnR.innerHTML = sim ? '<i data-lucide="loader-circle" class="gira"></i><span>Buscando…</span>' : '<i data-lucide="search"></i><span>Buscar na Receita</span>';
+    icones();
+  }
+  async function buscarReceita() {
+    const dig = so($('cnpj').value);
+    if (dig.length !== 14) { erro('cnpj', 'Digite os 14 dígitos do CNPJ antes de buscar.'); $('cnpj').focus(); return; }
+    if (!checarCnpj()) return;
+    carregando(true); $('existe').innerHTML = '';
+    try {
+      const r = await N.consultarCnpj(dig);
+      carregando(false);
+      est.receita = { ...r, cnpj: dig, em: new Date().toISOString() };
+      abrirPj(est.receita);
+    } catch (e) {
+      carregando(false);
+      const naoAchou = /não encontrado/i.test(e.message || '');
+      const msg = naoAchou
+        ? 'CNPJ não encontrado na Receita. Confira os dígitos no cartão CNPJ; se estiverem certos, preencha os dados à mão.'
+        : 'A consulta à Receita não respondeu (BrasilAPI fora do ar ou sem internet). Tente de novo em instantes ou preencha os dados à mão.';
+      $('existe').innerHTML = `<div class="aviso aviso-bloqueado" role="alert"><i data-lucide="circle-alert"></i><span class="txt">${msg}</span>
+        <span class="acoes-aviso"><button class="btn btn-pequeno" type="button" id="btn-denovo"><i data-lucide="refresh-cw"></i>Tentar de novo</button>
+        <button class="btn btn-texto btn-pequeno" type="button" id="btn-mao2">Preencher à mão</button></span></div>`;
+      $('btn-denovo').addEventListener('click', buscarReceita);
+      $('btn-mao2').addEventListener('click', () => { $('existe').innerHTML = ''; abrirPj(null); });
+      icones();
+    }
+  }
+  btnR.addEventListener('click', buscarReceita);
+
+  const SIT_RECEITA = (s) => {
+    const t = (s || '').toUpperCase();
+    if (t === 'ATIVA') return d.sinal('normal', 'Ativa na Receita');
+    if (!t) return d.sinalTipo('neutro', 'Situação não informada');
+    return d.sinalTipo('bloqueado', `${t.charAt(0) + t.slice(1).toLowerCase()} na Receita`);
+  };
+  function abrirPj(r) {
+    est.modo = 'pj';
+    $('dados-pf').hidden = true; $('dados-ligar').hidden = true; $('dados-pj').hidden = false;
+    $('dados-explica').textContent = r ? 'Preenchidos pela Receita. Todos podem ser corrigidos antes de criar.' : 'Preencha como está no cartão CNPJ.';
+    const set = (id, v) => { $(id).value = v ?? ''; };
+    if (r) {
+      set('pj-nome', r.nome); set('pj-fantasia', r.nome_fantasia); set('pj-fundacao', r.fundacao);
+      set('pj-natureza', r.natureza_juridica); set('pj-cnae', r.cnae_principal);
+      document.querySelectorAll('input[name="simples"]').forEach((x) => { x.checked = r.optante_simples == null ? false : x.value === (r.optante_simples ? 'sim' : 'nao'); });
+      set('pj-dt-simples', N.HOJE.toISOString().slice(0, 10));
+      const e = r.endereco || {};
+      set('pj-cep', f.cep(e.cep)); set('pj-logradouro', e.logradouro); set('pj-numero', e.numero); set('pj-compl', e.complemento);
+      set('pj-bairro', e.bairro); set('pj-cidade', e.cidade); set('pj-uf', e.uf);
+      const hora = new Date(r.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const inativa = (r.situacao || '').toUpperCase() !== 'ATIVA';
+      $('receita-estado').innerHTML = `${SIT_RECEITA(r.situacao)}<span class="carimbo">Consultado na Receita hoje às ${hora}</span>`
+        + (inativa ? `<div class="aviso aviso-bloqueado" style="flex-basis:100%"><i data-lucide="circle-alert"></i><span>A Receita mostra esta empresa como <b>${N.esc((r.situacao || 'sem situação').toLowerCase())}</b>. Confirme com a empresa antes de cadastrar: o cadastro fica pendente.</span></div>` : '');
+    } else {
+      ['pj-nome','pj-fantasia','pj-fundacao','pj-natureza','pj-cnae','pj-dt-simples','pj-cep','pj-logradouro','pj-numero','pj-compl','pj-bairro','pj-cidade','pj-uf'].forEach((id) => set(id, ''));
+      document.querySelectorAll('input[name="simples"]').forEach((x) => { x.checked = false; });
+      $('receita-estado').innerHTML = `${d.sinalTipo('neutro', 'Sem consulta à Receita')}<span class="carimbo">Dá para buscar depois, na ficha</span>`;
+    }
+    mostrar(['s-dados', 's-antt', 's-resp']); icones();
+    $('pj-nome').focus();
+  }
+
+  // CEP pela BrasilAPI
+  $('btn-cep').addEventListener('click', async () => {
+    const cep = so($('pj-cep').value);
+    if (cep.length !== 8) { erro('pj-cep', 'CEP tem 8 dígitos.'); $('pj-cep').focus(); return; }
+    erro('pj-cep', null);
+    const b = $('btn-cep'); b.disabled = true; b.innerHTML = '<i data-lucide="loader-circle" class="gira"></i>'; icones();
+    try {
+      const r = await N.consultarCep(cep);
+      $('pj-logradouro').value = r.logradouro || ''; $('pj-bairro').value = r.bairro || ''; $('pj-cidade').value = r.cidade || ''; $('pj-uf').value = r.uf || '';
+      $('pj-numero').focus();
+    } catch (e) { erro('pj-cep', 'CEP não encontrado. Confira os dígitos ou preencha o endereço à mão.'); }
+    b.disabled = false; b.innerHTML = '<i data-lucide="map-pin"></i>'; icones();
+  });
+
+  /* ---------- RNTRC e resumo da situação ---------- */
+  $('rntrc').addEventListener('input', () => { $('rntrc').value = so($('rntrc').value).slice(0, 9); if ($('rntrc').closest('[data-invalido]')) validarRntrc(); atualizarResumo(); });
+  ['rntrc-validade'].forEach((id) => $(id).addEventListener('input', atualizarResumo));
+  document.querySelectorAll('input[name="enq"]').forEach((r) => r.addEventListener('change', atualizarResumo));
+  function validarRntrc() {
+    const v = $('rntrc').value;
+    if (v && v.length !== 9) { erro('rntrc', 'O RNTRC tem 9 dígitos. Confira no certificado da ANTT.'); return false; }
+    erro('rntrc', null); return true;
+  }
+  $('rntrc').addEventListener('blur', validarRntrc);
+  function faltas() {
+    const fx = [];
+    if ($('rntrc').value.length !== 9) fx.push('o RNTRC');
+    else if (!$('rntrc-validade').value) fx.push('a validade do RNTRC');
+    if (!document.querySelector('input[name="enq"]:checked')) fx.push('o enquadramento');
+    if (est.modo === 'pj' && est.receita && (est.receita.situacao || '').toUpperCase() !== 'ATIVA') fx.push('a situação ativa na Receita');
+    return fx;
+  }
+  function atualizarResumo() {
+    const fx = faltas();
+    $('resumo').innerHTML = fx.length
+      ? `Situação ao criar ${d.sinal('pendente')} porque falta ${fx.join(' e ')}.`
+      : `Situação ao criar ${d.sinal('normal')} com RNTRC, validade e enquadramento informados.`;
+  }
+
+  // o erro some assim que a pessoa corrige o campo (CPF, CNPJ e RNTRC têm checagem própria)
+  $('form').addEventListener('input', (e) => { const t = e.target; if (t.id && !['cpf', 'cnpj', 'rntrc'].includes(t.id) && t.closest('[data-invalido]')) erro(t.id, null); });
+
+  /* ---------- criar (simulado) ---------- */
+  $('form').addEventListener('submit', (e) => {
+    e.preventDefault(); limparErros();
+    const probs = [];
+    const exigir = (id, msg) => { if (!$(id).value.trim()) { erro(id, msg); probs.push(id); } };
+    if (est.modo === 'nova') {
+      exigir('pf-nome', 'Informe o nome completo, como está no CPF.');
+      const cel = so($('pf-cel').value); if (cel && cel.length < 10) { erro('pf-cel', 'Telefone incompleto: DDD e número, 10 ou 11 dígitos.'); probs.push('pf-cel'); }
+    }
+    if (est.modo === 'pj') {
+      exigir('pj-nome', 'Informe a razão social, como está no cartão CNPJ.');
+      const cep = so($('pj-cep').value); if (cep && cep.length !== 8) { erro('pj-cep', 'CEP tem 8 dígitos.'); probs.push('pj-cep'); }
+      exigir('resp-nome', 'Informe quem responde pela empresa.');
+      const tel = so($('resp-tel').value); if (!tel) { erro('resp-tel', 'Informe o telefone do responsável, com DDD.'); probs.push('resp-tel'); } else if (tel.length < 10) { erro('resp-tel', 'Telefone incompleto: DDD e número, 10 ou 11 dígitos.'); probs.push('resp-tel'); }
+      const em = $('resp-email').value.trim(); if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { erro('resp-email', 'E-mail inválido: confira o endereço (ex.: nome@empresa.com.br).'); probs.push('resp-email'); }
+    }
+    if (!validarRntrc()) probs.push('rntrc');
+    if (probs.length) { N.toast('Corrija os campos marcados em vermelho para criar.', 'circle-alert'); $(probs[0]).focus(); return; }
+
+    const enq = document.querySelector('input[name="enq"]:checked')?.value || null;
+    if (enq === 'tac' && est.tipo === 'pj') { N.toast('TAC é só para pessoa física.', 'circle-alert'); return; }
+    const situacao = faltas().length ? 'pendente' : 'normal';
+    const id = est.modo === 'ligar' ? est.pessoaId : 'p91';
+    const reg = { em: new Date().toISOString(), enderecos: [], telefones: [], emails: [] };
+    if (est.modo === 'nova') {
+      reg.pessoa = { id, tipo: 'pf', nome: $('pf-nome').value.trim(), apelido: $('pf-apelido').value.trim() || null, cpf: so($('cpf').value), situacao_cadastro: situacao, nascimento: $('pf-nasc').value || null };
+      const cel = so($('pf-cel').value);
+      if (cel) reg.telefones.push({ pessoa_id: id, numero: cel, tipo: 'celular', whatsapp: $('pf-whats').checked, principal: true });
+    }
+    if (est.modo === 'pj') {
+      const simples = document.querySelector('input[name="simples"]:checked')?.value;
+      reg.pessoa = { id, tipo: 'pj', nome: $('pj-nome').value.trim(), nome_fantasia: $('pj-fantasia').value.trim() || null, cnpj: so($('cnpj').value), situacao_cadastro: situacao,
+        fundacao: $('pj-fundacao').value || null, natureza_juridica: $('pj-natureza').value.trim() || null, cnae_principal: $('pj-cnae').value.trim() || null,
+        optante_simples: simples ? simples === 'sim' : null, dt_consulta_simples: $('pj-dt-simples').value || null,
+        dt_consulta_brasilapi: est.receita ? est.receita.em : null };
+      if ($('pj-cidade').value.trim()) reg.enderecos.push({ pessoa_id: id, tipo: 'comercial', cep: so($('pj-cep').value), logradouro: $('pj-logradouro').value.trim(), numero: $('pj-numero').value.trim(), complemento: $('pj-compl').value.trim(), bairro: $('pj-bairro').value.trim(), cidade: $('pj-cidade').value.trim(), uf: $('pj-uf').value, principal: true });
+    }
+    reg.proprietario = { pessoa_id: id, rntrc: $('rntrc').value || '', enquadramento_antt: enq, rntrc_emissao: $('rntrc-emissao').value || null, rntrc_validade: $('rntrc-validade').value || null,
+      autoriza_desconto_inss: 'nao', alto_desempenho: false, situacao_cadastro: situacao };
+    if (est.modo === 'pj') Object.assign(reg.proprietario, { responsavel_nome: $('resp-nome').value.trim(), responsavel_telefone: so($('resp-tel').value), responsavel_whatsapp: $('resp-whats').checked, responsavel_email: $('resp-email').value.trim() || null });
+    if (!P.salvarCriado(reg)) { N.toast('Este navegador bloqueou o armazenamento da simulação. Libere os dados do site e tente de novo.', 'circle-alert'); return; }
+    location.href = `proprietario.html?id=${id}&criado=1`;
+  });
+
+  // vindo de outra tela: ?tipo=pf&cpf=...  ou  ?tipo=pj&cnpj=...
+  const pt = N.param('tipo');
+  if (pt === 'pf' || pt === 'pj') {
+    document.querySelector(`input[name="tipo"][value="${pt}"]`).checked = true; escolherTipo(pt);
+    const doc = so(N.param(pt === 'pf' ? 'cpf' : 'cnpj'));
+    if (doc) { const inp = pt === 'pf' ? $('cpf') : $('cnpj'); inp.value = pt === 'pf' ? f.cpf(doc) : f.cnpj(doc); inp.dispatchEvent(new Event('input')); }
+  }
+};
+</script>
+<script src="assets/nilt.js"></script>
+</body>
+</html>

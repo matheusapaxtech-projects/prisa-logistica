@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Conjunto · NILT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700&family=Overpass+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/nilt.css">
+  <link rel="stylesheet" href="assets/paginas/conjuntos.css">
+</head>
+<body data-pagina="conjuntos">
+<main>
+  <div id="vista"></div>
+  <p class="sr-only" aria-live="polite" id="anuncio"></p>
+
+  <dialog class="dialogo" id="dlg-encerrar" aria-labelledby="dlg-enc-tit">
+    <form method="dialog">
+      <div class="dialogo-cab"><h2 id="dlg-enc-tit">Encerrar conjunto</h2></div>
+      <div class="dialogo-corpo" id="dlg-enc-corpo"></div>
+      <div class="dialogo-pe">
+        <button class="btn" value="cancelar">Cancelar</button>
+        <button class="btn btn-perigo" value="ok"><i data-lucide="unlink"></i>Encerrar conjunto</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="dialogo" id="dlg-motorista" aria-labelledby="dlg-mot-tit">
+    <form method="dialog">
+      <div class="dialogo-cab"><h2 id="dlg-mot-tit">Trocar motorista</h2></div>
+      <div class="dialogo-corpo">
+        <p class="muted" id="dlg-mot-sub"></p>
+        <div class="campo">
+          <label for="dlg-mot-sel">Motorista</label>
+          <select id="dlg-mot-sel"></select>
+          <span class="ajuda">Só aparecem motoristas com cadastro normal.</span>
+        </div>
+        <div class="avisos" id="dlg-mot-avisos"></div>
+      </div>
+      <div class="dialogo-pe">
+        <button class="btn" value="cancelar">Cancelar</button>
+        <button class="btn btn-primario" value="ok">Trocar motorista</button>
+      </div>
+    </form>
+  </dialog>
+</main>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="assets/dados.js"></script>
+<script>
+window.pagina = function (N) {
+  const D = N.dados, f = N.fmt, d = N.desenhar, esc = N.esc, V = N.veiculo, P = N.pessoa;
+
+  // conjuntos encerrados extras (fictícios, mesmos campos de conjunto/conjunto_item); repetidos em conjuntos.html
+  [
+    { id: 'ch1', cavalo_id: 'v05', motorista_id: 'p05', inicio: N.dia(-320), fim: N.dia(-150), itens: ['v17'] },
+    { id: 'ch2', cavalo_id: 'v01', motorista_id: 'p01', inicio: N.dia(-180), fim: N.dia(-40), itens: ['v12', 'v13', 'v14'] },
+    { id: 'ch3', cavalo_id: 'v04', motorista_id: 'p02', inicio: N.dia(-60), fim: N.dia(-3), itens: ['v16'] },
+  ].forEach((c) => { if (!D.conjuntosHistorico.some((x) => x.id === c.id)) D.conjuntosHistorico.push(c); });
+
+  /* mensagens exatas de public.validar_conjunto (supabase/migrations/..._conjunto.sql) */
+  const MSG = {
+    cavalo: 'o cavalo do conjunto precisa ser da categoria cavalo',
+    itens: 'itens do conjunto precisam ser carreta ou dolly',
+    dolly: 'dolly não pode ser a primeira nem a última peça',
+    dois: 'dois dollies não podem ficar seguidos',
+    max: 'conjunto aceita no máximo 3 carretas',
+    outro: 'veículo já está em outro conjunto aberto',
+  };
+  const MAX_PECAS = 5; // conjunto_item.posicao between 1 and 5
+
+  const vista = document.getElementById('vista');
+  const nomeConj = (cavId, itens) => [cavId, ...itens].map((id) => V(id).placa).join(' + ');
+  const motorista = (pid) => D.motoristas.find((m) => m.pessoa_id === pid);
+  const curto = (p) => (p ? p.nome_fantasia || p.nome : '—');
+  const tipoTxt = (v) => { const t = v.tipo.toLowerCase().replace(/\bbau\b/, 'baú').replace(' - ', ', '); return t[0].toUpperCase() + t.slice(1); };
+  const eixosDe = (cavId, itens) => [cavId, ...itens].reduce((s, id) => s + V(id).eixos, 0);
+  const achar = (id) => D.conjuntos.find((c) => c.id === id) || D.conjuntosHistorico.find((c) => c.id === id);
+  const outroAberto = (vid, ignorar) => D.conjuntos.find((c) => c.id !== ignorar && (c.cavalo_id === vid || c.itens.includes(vid)));
+  const haDias = (iso) => { const n = -N.diasAte(iso); return n <= 0 ? 'hoje' : n === 1 ? 'há 1 dia' : `há ${n} dias`; };
+  const aviso = (tipo, ic, html) => `<div class="aviso aviso-${tipo}"><i data-lucide="${ic}"></i><div>${html}</div></div>`;
+  const erroMsg = (msg) => `<span class="erro-msg"><i data-lucide="circle-x"></i><span>${msg}</span></span>`;
+  const pronto = (raiz = vista) => { N.aplicarMascaras(raiz); N.desenharIcones(); N.separarPontos(raiz); };
+  const anunciar = (t) => { const a = document.getElementById('anuncio'); a.textContent = ''; setTimeout(() => { a.textContent = t; }, 40); };
+  const irPara = (params) => { const u = new URL(location); u.search = new URLSearchParams(params).toString(); history.replaceState(null, '', u); };
+  const focarTitulo = () => document.getElementById('h1')?.focus();
+  const auditar = (registro_id, resumo) => D.auditoria.unshift({ id: (D.auditoria[0]?.id || 9000) + 1, em: new Date().toISOString(), usuario: N.usuarioAtual.nome, tabela: 'conjunto', registro_id, acao: 'update', resumo });
+  const motoristasNormais = () => D.motoristas.filter((m) => m.situacao_cadastro === 'normal');
+  const opcoesMotorista = (sel) => `<option value="">Sem motorista por enquanto</option>` + motoristasNormais().map((m) =>
+    `<option value="${m.pessoa_id}" ${m.pessoa_id === sel ? 'selected' : ''}>${esc(P(m.pessoa_id).nome)}, CNH ${m.cnh_categoria.toUpperCase()} até ${f.data(m.cnh_validade)}</option>`).join('');
+
+  /* ---------- avisos do motorista (não impedem salvar) ---------- */
+  function avisosMotorista(pid, ignorarConj) {
+    if (!pid) return '';
+    const m = motorista(pid), p = P(pid), out = [];
+    const docs = `<a href="motorista.html?id=${pid}&aba=documentos">Abrir documentos</a>`;
+    const cnh = N.diasAte(m.cnh_validade);
+    if (cnh < 0) out.push(aviso('bloqueado', 'circle-x', `<b>CNH vencida:</b> ${f.dias(cnh)} (${f.data(m.cnh_validade)}). Anexe a CNH renovada antes da primeira carga. ${docs}`));
+    else if (cnh <= 30) out.push(aviso('vencendo', 'triangle-alert', `<b>CNH ${f.dias(cnh)}</b> (${f.data(m.cnh_validade)}). ${docs}`));
+    if (m.situacao_gr === 'sem_consulta' || !m.gr_validade) out.push(aviso('pendente', 'search', '<b>Sem consulta de risco.</b> Peça a consulta à gerenciadora antes de carregar.'));
+    else {
+      const g = N.diasAte(m.gr_validade);
+      if (g < 0 || m.situacao_gr === 'vencido') out.push(aviso('bloqueado', 'circle-x', `<b>Consulta de risco vencida:</b> ${f.dias(g)} (${f.data(m.gr_validade)}). Refaça a consulta antes de carregar.`));
+      else if (g <= 30) out.push(aviso('vencendo', 'triangle-alert', `<b>Consulta de risco ${f.dias(g)}</b> (${f.data(m.gr_validade)}).`));
+    }
+    const outro = D.conjuntos.find((c) => c.id !== ignorarConj && c.motorista_id === pid);
+    if (outro) out.push(aviso('info', 'info', `${esc(p.nome)} já dirige o conjunto <a href="conjunto.html?id=${outro.id}">${nomeConj(outro.cavalo_id, outro.itens)}</a>. Troque o motorista de lá depois de salvar.`));
+    return out.join('');
+  }
+
+  /* ---------- conta da capacidade (mesmos campos de v_conjunto_capacidade) ---------- */
+  function blocoCapacidade(cavId, itens) {
+    const cap = N.capacidadeConjunto({ cavalo_id: cavId, itens });
+    const cav = V(cavId);
+    let alerta = '';
+    if (cap.limite_t == null) alerta = aviso('pendente', 'triangle-alert', `<b>CMT do cavalo não informado.</b> Sem o CMT não dá para conferir o peso. <a href="veiculo.html?id=${cavId}">Completar o CRLV de ${cav.placa}</a>`);
+    else if (cap.excede_cmt) {
+      const passa = +(cap.capacidade_total_t - cap.limite_t).toFixed(1);
+      alerta = aviso('bloqueado', 'circle-alert', `<b>Passa ${f.t(passa)} do CMT.</b> As carretas levam ${f.t(cap.capacidade_total_t)}, mas com estas taras o cavalo ${cav.placa} só traciona ${f.t(cap.limite_t)} de carga. Não carregue acima de ${f.t(cap.limite_t)}.`);
+    } else if (itens.length) alerta = `<p class="conta-formula">Sobram ${f.t(+(cap.limite_t - cap.capacidade_total_t).toFixed(1))} até o limite.</p>`;
+    return `<dl class="conta">
+        <dt>CMT do cavalo ${cav.placa}</dt><dd>${f.t(cap.cmt_t)}</dd>
+        <dt>Tara do cavalo e das peças</dt><dd>− ${f.t(cap.tara_total_t)}</dd>
+        <dt class="soma">Limite de carga</dt><dd class="soma">${f.t(cap.limite_t)}</dd>
+        <dt>Capacidade das carretas</dt><dd>${f.t(cap.capacidade_total_t)}</dd>
+      </dl>
+      <div class="capacidade-larga" style="margin-top:16px">${d.capacidade(cap)}</div>
+      ${alerta ? `<div class="avisos">${alerta}</div>` : ''}`;
+  }
+
+  /* =====================================================================
+     FICHA DO CONJUNTO
+     ===================================================================== */
+  function renderVer(c, focar) {
+    const aberto = !c.fim;
+    const cav = V(c.cavalo_id), itens = c.itens.map(V);
+    const cap = N.capacidadeConjunto(c);
+    const nome = nomeConj(c.cavalo_id, c.itens);
+    const mot = c.motorista_id ? P(c.motorista_id) : null;
+    document.title = `Conjunto ${nome} · NILT`;
+
+    const sinais = (aberto ? d.sinal('ativo', 'Aberto') : d.sinalTipo('neutro', 'Encerrado')) + (aberto && cap.excede_cmt ? d.sinalTipo('bloqueado', 'Acima do CMT') : '');
+    const sub = aberto
+      ? `${eixosDe(c.cavalo_id, c.itens)} eixos · ${itens.length} ${itens.length === 1 ? 'peça' : 'peças'} atrás do cavalo · aberto em ${f.data(c.inicio)}, ${haDias(c.inicio)}`
+      : `${eixosDe(c.cavalo_id, c.itens)} eixos · rodou de ${f.data(c.inicio)} a ${f.data(c.fim)}, ${N.diasAte(c.fim) - N.diasAte(c.inicio)} dias`;
+    const acoes = aberto ? `<div class="acoes">
+        <button class="btn" type="button" id="btn-trocar-mot"><i data-lucide="user-round-pen"></i>Trocar motorista</button>
+        <button class="btn" type="button" id="btn-trocar-pecas"><i data-lucide="arrow-left-right"></i>Trocar peças</button>
+        <button class="btn btn-perigo" type="button" id="btn-encerrar"><i data-lucide="unlink"></i>Encerrar conjunto</button></div>` : '';
+
+    const linhaPeca = (v, pos) => {
+      const dono = P(v.proprietario_documento_id);
+      return `<tr data-href="veiculo.html?id=${v.id}">
+        <td class="some-celular">${pos}</td>
+        <td>${d.placa(v.placa)}<span class="linha2 so-celular">${pos === 'Cavalo' ? 'Cavalo' : 'Posição ' + pos} · ${tipoTxt(v)} · tara ${f.t(v.tara_t)}${v.categoria === 'carreta' ? ' · carga ' + f.t(v.capacidade_carga_t) : ''}</span></td>
+        <td class="some-celular"><b class="id">${tipoTxt(v)}</b><span class="linha2">${esc(v.marca)} ${esc(v.modelo)}${v.arrendado ? ' · arrendado' : ''}</span></td>
+        <td class="some-celular">${esc(curto(dono))}</td>
+        <td class="num some-celular">${f.t(v.tara_t)}</td>
+        <td class="num some-celular">${v.categoria === 'carreta' ? f.t(v.capacidade_carga_t) : pos === 'Cavalo' ? `<span class="muted">CMT</span> ${f.t(v.cmt_t)}` : '<span class="dash">—</span>'}</td></tr>`;
+    };
+
+    // motorista
+    let blocoMot;
+    if (mot) {
+      const m = motorista(mot.id);
+      const tel = D.telefones.find((t) => t.pessoa_id === mot.id && t.principal);
+      const cnhD = N.diasAte(m.cnh_validade);
+      blocoMot = `<div class="pessoa-cab">${d.avatar(mot.nome)}<div><a href="motorista.html?id=${mot.id}"><b>${esc(mot.nome)}</b></a><span class="small">CPF <span class="cod">${f.cpf(mot.cpf)}</span></span></div></div>
+        <dl class="kv">
+          <dt>CNH</dt><dd>Categoria ${m.cnh_categoria.toUpperCase()} · até ${f.data(m.cnh_validade)} <span class="${cnhD < 0 ? 'doc-validade vencido' : cnhD <= 30 ? 'doc-validade vencendo' : 'muted'}">(${f.dias(cnhD)})</span></dd>
+          <dt>Consulta de risco</dt><dd>${d.sinal(m.situacao_gr)}${m.gr_validade ? ` <span class="muted">até ${f.data(m.gr_validade)}</span>` : ''}</dd>
+          <dt>Telefone</dt><dd>${tel ? `<span class="cod">${f.telefone(tel.numero)}</span>${tel.whatsapp ? ' <span class="muted">WhatsApp</span>' : ''}` : '<span class="dash">—</span>'}</dd>
+          <dt>${aberto ? 'No conjunto desde' : 'No conjunto'}</dt><dd>${aberto ? `${f.data(c.inicio)}, ${haDias(c.inicio)}` : `${f.data(c.inicio)} a ${f.data(c.fim)}`}</dd>
+        </dl>
+        ${aberto ? `<div class="avisos">${avisosMotorista(mot.id, c.id)}</div>` : ''}`;
+    } else {
+      blocoMot = `<div class="vazio-bloco">Sem motorista neste conjunto.${aberto ? ' <button class="btn btn-texto" type="button" id="btn-escolher-mot">Escolher motorista</button>' : ''}</div>`;
+    }
+
+    // conjuntos anteriores deste cavalo e histórico de alterações
+    const anteriores = [...D.conjuntos, ...D.conjuntosHistorico].filter((x) => x.cavalo_id === c.cavalo_id && x.id !== c.id).sort((a, b) => (a.inicio < b.inicio ? 1 : -1));
+    const ant = anteriores.length ? `<div class="tempo">${anteriores.map((x) => `<div class="tempo-linha">
+        <span class="quando">${f.data(x.inicio)} a ${x.fim ? f.data(x.fim) : 'hoje'}</span>
+        <span><a href="conjunto.html?id=${x.id}">${nomeConj(x.cavalo_id, x.itens)}</a><span class="muted"> · ${x.motorista_id ? esc(P(x.motorista_id).nome) : 'sem motorista'}${x.fim ? '' : ' · aberto'}</span></span></div>`).join('')}</div>`
+      : '<div class="vazio-bloco">Este é o primeiro conjunto deste cavalo.</div>';
+    const alts = D.auditoria.filter((a) => a.tabela === 'conjunto' && a.registro_id === c.id);
+    const hist = alts.length ? `<div class="tempo">${alts.map((a) => `<div class="tempo-linha"><span class="quando">${f.dataHora(a.em)}</span><span>${esc(a.resumo)}<span class="muted"> · ${esc(a.usuario)}</span></span></div>`).join('')}</div>`
+      : '<div class="vazio-bloco">Nenhuma alteração registrada desde a migração do ATUA.</div>';
+
+    vista.innerHTML = `
+      <div class="titulo">
+        <div>
+          <div class="migalha"><a href="conjuntos.html${aberto ? '' : '?aba=historico'}">Conjuntos</a><span class="sep">/</span><h1 id="h1" tabindex="-1">${nome}</h1>${sinais}</div>
+          <p class="sub">${sub}</p>
+        </div>
+        ${acoes}
+      </div>
+      ${aberto ? '' : `<div class="avisos" style="margin-bottom:24px">${aviso('info', 'info', `<b>Conjunto encerrado em ${f.data(c.fim)}.</b> O cavalo e as peças ficaram livres para outros conjuntos.`)}</div>`}
+      <div class="grade">
+        <section class="bloco c12" aria-labelledby="h-engate">
+          <div class="bloco-cab"><h2 id="h-engate">Engate</h2><span class="dir">posição 1 engata no cavalo</span></div>
+          <div class="bloco-corpo">
+            <div class="previa engate-grande">${d.engate(cav, itens)}</div>
+            <div class="tabela-wrap" style="margin-top:16px">
+              <table class="tabela tabela-fixa">
+                <thead><tr><th class="some-celular" style="width:84px">Posição</th><th style="width:132px">Placa</th><th class="some-celular">Tipo</th><th class="some-celular">Proprietário na ANTT</th><th class="num some-celular">Tara</th><th class="num some-celular">Carga</th></tr></thead>
+                <tbody>${linhaPeca(cav, 'Cavalo')}${itens.map((v, i) => linhaPeca(v, i + 1)).join('')}</tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+        <section class="bloco c7" aria-labelledby="h-cap">
+          <div class="bloco-cab"><h2 id="h-cap">Capacidade</h2><span class="dir">limite = CMT − taras</span></div>
+          <div class="bloco-corpo">${blocoCapacidade(c.cavalo_id, c.itens)}</div>
+        </section>
+        <section class="bloco c5" aria-labelledby="h-mot">
+          <div class="bloco-cab"><h2 id="h-mot">Motorista</h2></div>
+          <div class="bloco-corpo">${blocoMot}</div>
+        </section>
+        <section class="bloco c7" aria-labelledby="h-ant">
+          <div class="bloco-cab"><h2 id="h-ant">Outros conjuntos de ${cav.placa}</h2><span class="dir">${anteriores.length}</span></div>
+          <div class="bloco-corpo">${ant}</div>
+        </section>
+        <section class="bloco c5" aria-labelledby="h-hist">
+          <div class="bloco-cab"><h2 id="h-hist">Histórico de alterações</h2><span class="dir">só administradores veem</span></div>
+          <div class="bloco-corpo">${hist}</div>
+        </section>
+      </div>`;
+    N.linhaClicavel(vista);
+    pronto();
+    if (aberto) {
+      document.getElementById('btn-trocar-pecas').addEventListener('click', () => { irPara({ id: c.id, editar: 1 }); renderMontador(c, true); });
+      document.getElementById('btn-encerrar').addEventListener('click', () => pedirEncerrar(c, () => renderVer(c, true)));
+      const trocar = () => pedirMotorista(c);
+      document.getElementById('btn-trocar-mot').addEventListener('click', trocar);
+      document.getElementById('btn-escolher-mot')?.addEventListener('click', trocar);
+    }
+    if (focar) focarTitulo();
+  }
+
+  /* ---------- diálogo: encerrar (nomeia o conjunto) ---------- */
+  function pedirEncerrar(c, depois) {
+    const dlg = document.getElementById('dlg-encerrar');
+    const nome = nomeConj(c.cavalo_id, c.itens);
+    const mot = c.motorista_id ? P(c.motorista_id).nome : null;
+    document.getElementById('dlg-enc-tit').textContent = `Encerrar o conjunto ${nome}?`;
+    document.getElementById('dlg-enc-corpo').innerHTML = `<p>O conjunto sai dos abertos e vai para o histórico com fim em ${f.data(N.dia(0))}.${mot ? ` ${esc(mot)} deixa de constar como motorista dele.` : ''} O cavalo e as peças ficam livres para montar outro conjunto.</p>
+      <p class="muted">Nada é apagado: o histórico guarda o início, o fim e as peças.</p>`;
+    dlg.returnValue = '';
+    dlg.onclose = () => {
+      if (dlg.returnValue !== 'ok') return;
+      c.fim = N.dia(0);
+      D.conjuntos.splice(D.conjuntos.indexOf(c), 1);
+      D.conjuntosHistorico.unshift(c);
+      auditar(c.id, `Conjunto ${nome} encerrado`);
+      N.toast(`Conjunto ${nome} encerrado`);
+      depois();
+    };
+    dlg.showModal();
+  }
+
+  /* ---------- diálogo: trocar motorista ---------- */
+  function pedirMotorista(c) {
+    const dlg = document.getElementById('dlg-motorista');
+    const sel = document.getElementById('dlg-mot-sel'), box = document.getElementById('dlg-mot-avisos');
+    document.getElementById('dlg-mot-sub').textContent = `Conjunto ${nomeConj(c.cavalo_id, c.itens)}. Quem estiver nele hoje sai ao confirmar.`;
+    sel.innerHTML = opcoesMotorista(c.motorista_id || '');
+    const atual = () => { box.innerHTML = avisosMotorista(sel.value, c.id); N.desenharIcones(); };
+    sel.onchange = atual; atual();
+    dlg.returnValue = '';
+    dlg.onclose = () => {
+      if (dlg.returnValue !== 'ok' || sel.value === (c.motorista_id || '')) return;
+      c.motorista_id = sel.value || null;
+      const quem = c.motorista_id ? P(c.motorista_id).nome : null;
+      auditar(c.id, quem ? `Motorista trocado para ${quem}` : 'Motorista retirado do conjunto');
+      N.toast(quem ? `Motorista do conjunto agora é ${esc(quem)}` : 'Conjunto ficou sem motorista');
+      renderVer(c);
+    };
+    dlg.showModal();
+  }
+
+  /* =====================================================================
+     MONTADOR (?novo=1 ou Trocar peças)
+     ===================================================================== */
+  function renderMontador(c, focar) {
+    const editar = !!c;
+    const st = { conjuntoId: c?.id || null, cavaloId: c?.cavalo_id || null, itens: c ? [...c.itens] : [], motoristaId: c ? c.motorista_id || '' : '' };
+    document.title = `${editar ? 'Trocar peças' : 'Montar conjunto'} · NILT`;
+    const voltar = editar ? `conjunto.html?id=${c.id}` : 'conjuntos.html';
+
+    vista.innerHTML = `
+      <div class="titulo">
+        <div>
+          <div class="migalha"><a href="conjuntos.html">Conjuntos</a><span class="sep">/</span>${editar ? `<a href="${voltar}" id="mig-voltar">${nomeConj(c.cavalo_id, c.itens)}</a><span class="sep">/</span>` : ''}<h1 id="h1" tabindex="-1">${editar ? 'Trocar peças' : 'Montar conjunto'}</h1></div>
+          <p class="sub">Monte na ordem física de engate, do cavalo para trás. As regras do banco são conferidas enquanto você monta.</p>
+        </div>
+      </div>
+      <div class="previa engate-grande" id="previa" style="margin-bottom:8px"></div>
+      <p class="conta-formula" id="previa-legenda" style="margin-bottom:24px"></p>
+      <form class="montador" id="montador" novalidate>
+        <section class="secao" aria-labelledby="s-cav">
+          <div class="secao-rotulo"><h2 id="s-cav">Cavalo</h2><p>A peça que traciona. Só aparecem veículos da categoria cavalo.</p></div>
+          <div id="cavalo-area"></div>
+        </section>
+        <section class="secao" aria-labelledby="s-pecas">
+          <div class="secao-rotulo"><h2 id="s-pecas">Peças em ordem de engate</h2><p>Posição 1 é a carreta que engata no cavalo; depois o dolly; depois a carreta de trás.</p><p>Até 3 carretas e ${MAX_PECAS} peças. Use as setas para mudar a ordem.</p></div>
+          <div>
+            <ol class="pecas" id="pecas" aria-label="Peças em ordem de engate" style="list-style:none;margin:0;padding:0"></ol>
+            <div class="adicionar">
+              <div class="linha-add">
+                <div class="campo" id="campo-add">
+                  <label for="add-placa">Placa da próxima peça</label>
+                  <div class="com-acao"><input id="add-placa" data-mascara="placa" list="placas-pecas" autocomplete="off" placeholder="Ex.: ABC1D23" aria-describedby="ajuda-add"><button class="btn" type="button" id="btn-add"><i data-lucide="plus"></i>Adicionar</button></div>
+                  <span class="erro" id="erro-add" hidden></span>
+                  <span class="ajuda" id="ajuda-add"></span>
+                </div>
+              </div>
+              <div class="livres" id="livres"></div>
+              <datalist id="placas-pecas"></datalist>
+            </div>
+          </div>
+        </section>
+        <section class="secao" aria-labelledby="s-cap">
+          <div class="secao-rotulo"><h2 id="s-cap">Capacidade</h2><p>Limite de carga = CMT do cavalo − taras de todas as peças. Passar do limite é um aviso: dá para salvar.</p></div>
+          <div id="cap-area"></div>
+        </section>
+        <section class="secao" aria-labelledby="s-mot">
+          <div class="secao-rotulo"><h2 id="s-mot">Motorista <span class="opcional">(opcional)</span></h2><p>Só motoristas com cadastro normal. CNH e consulta de risco vencidas aparecem como aviso.</p></div>
+          <div>
+            <div class="campo"><label for="sel-mot">Motorista</label><select id="sel-mot">${opcoesMotorista(st.motoristaId)}</select><span class="ajuda" id="ajuda-mot"></span></div>
+            <div class="avisos" id="mot-avisos" style="margin-top:12px"></div>
+          </div>
+        </section>
+        <div class="barra-salvar" id="barra">
+          <span class="motivo" id="motivo" aria-live="polite"></span>
+          <div class="acoes-barra">
+            <a class="btn btn-texto" href="${voltar}" id="btn-cancelar">Cancelar</a>
+            <button class="btn btn-primario" type="submit" id="salvar" aria-describedby="motivo"><i data-lucide="check"></i>${editar ? 'Salvar peças' : 'Salvar conjunto'}</button>
+          </div>
+        </div>
+      </form>`;
+
+    const $ = (id) => document.getElementById(id);
+
+    /* ----- validação ao vivo: espelha public.validar_conjunto ----- */
+    function validar() {
+      const r = { cavalo: [], itens: st.itens.map(() => []), outroCavalo: null };
+      const cav = st.cavaloId && V(st.cavaloId);
+      if (cav) {
+        if (cav.categoria !== 'cavalo') r.cavalo.push(MSG.cavalo);
+        const o = outroAberto(cav.id, st.conjuntoId);
+        if (o) { r.cavalo.push(MSG.outro); r.outroCavalo = o; }
+      }
+      let carretas = 0;
+      st.itens.forEach((id, i) => {
+        const v = V(id), e = r.itens[i], ult = st.itens.length - 1;
+        if (v.categoria !== 'carreta' && v.categoria !== 'dolly') e.push(MSG.itens);
+        if (v.categoria === 'dolly' && (i === 0 || i === ult)) e.push(MSG.dolly);
+        if (v.categoria === 'dolly' && i > 0 && V(st.itens[i - 1]).categoria === 'dolly') e.push(MSG.dois);
+        if (v.categoria === 'carreta' && ++carretas > 3) e.push(MSG.max);
+        if (outroAberto(id, st.conjuntoId)) e.push(MSG.outro);
+      });
+      return r;
+    }
+
+    function renderPrevia() {
+      const cav = st.cavaloId && V(st.cavaloId);
+      const n = st.itens.length;
+      const vaga = (txt) => `<div class="peca vaga"><div class="peca-corpo">${txt}</div><span class="peca-eixos"></span><span class="peca-placa">&nbsp;</span></div>`;
+      let html;
+      if (!cav) { const g = (cls, rot, eixos, nota) => `<div class="peca ${cls}"><div class="peca-corpo">${rot}</div><span class="peca-eixos" aria-hidden="true">${'<i></i>'.repeat(eixos)}</span><span class="peca-nota">${nota}</span></div>`; const ac = '<span class="acoplamento" aria-hidden="true"></span>'; html = `<div class="engate fantasma" role="img" aria-label="Ordem de engate: cavalo, carreta da posição 1, dolly opcional, carreta da posição 2">${g('cavalo', '1. Cavalo', 3, 'escolha acima')}${ac}${g('carreta', '2. Carreta', 3, 'engata no cavalo')}${ac}${g('dolly', '3. Dolly', 2, 'opcional')}${ac}${g('carreta', '4. Carreta', 3, 'rodotrem')}</div>`; }
+      else {
+        html = d.engate(cav, st.itens.map(V));
+        if (n < MAX_PECAS) html = html.replace(/<\/div>$/, `<span class="acoplamento" aria-hidden="true"></span>${vaga(n ? 'próxima peça' : 'carreta da posição 1')}</div>`);
+      }
+      $('previa').innerHTML = html;
+      $('previa-legenda').textContent = cav ? `${nomeConj(cav.id, st.itens)} · ${eixosDe(cav.id, st.itens)} eixos · ${n} ${n === 1 ? 'peça' : 'peças'} atrás do cavalo` : 'O desenho acompanha a montagem.';
+    }
+
+    function renderCavalo(r) {
+      const area = $('cavalo-area');
+      if (editar) {
+        const cav = V(st.cavaloId);
+        area.innerHTML = `<div class="lista-op"><div class="op-linha" style="cursor:default;grid-template-columns:100px minmax(0,1fr) 96px">
+            ${d.placa(cav.placa)}<span class="desc"><b>${tipoTxt(cav)}</b><span>${esc(cav.marca)} ${esc(cav.modelo)}</span></span>
+            <span class="num">${f.t(cav.cmt_t)}<span>CMT</span></span></div></div>
+          <p class="ajuda" style="margin-top:8px">O cavalo define o conjunto. Para trocar o cavalo, encerre este conjunto e monte outro.</p>`;
+        return;
+      }
+      if (!area.dataset.pronto) {
+        area.dataset.pronto = '1';
+        area.innerHTML = `<div class="campo" style="max-width:280px;margin-bottom:12px"><label for="busca-cav">Buscar placa do cavalo</label>
+            <input id="busca-cav" data-mascara="placa" autocomplete="off" placeholder="Ex.: ABC1D23" aria-describedby="erro-cav"></div>
+          <div class="lista-op" id="lista-cav" role="radiogroup" aria-label="Cavalos"></div>
+          <div id="erro-cav" style="margin-top:12px"></div>`;
+        N.aplicarMascaras(area);
+        $('busca-cav').addEventListener('input', () => atualizar());
+        $('lista-cav').addEventListener('change', (e) => {
+          if (e.target.name !== 'cavalo') return;
+          st.cavaloId = e.target.value;
+          const ult = V(st.cavaloId).ultimo_motorista_id;
+          if (!st.motoristaId && ult && motorista(ult)?.situacao_cadastro === 'normal') {
+            st.motoristaId = ult; $('sel-mot').value = ult; $('ajuda-mot').textContent = 'Último motorista deste cavalo. Troque se for outro.';
+          }
+          anunciar(`Cavalo ${V(st.cavaloId).placa} escolhido`);
+          atualizar();
+        });
+      }
+      const termo = N.valida.normalizarPlaca($('busca-cav').value);
+      const cavalos = D.veiculos.filter((v) => v.categoria === 'cavalo');
+      const vis = cavalos.filter((v) => !termo || v.placa.includes(termo) || v.id === st.cavaloId);
+      $('lista-cav').innerHTML = vis.length ? vis.map((v) => {
+        const o = outroAberto(v.id, null);
+        const estado = o ? `Em conjunto aberto${o.motorista_id ? ' com ' + esc(P(o.motorista_id).nome) : ''}` : v.situacao_operacional === 'parado' ? 'Livre, parado' : 'Livre';
+        return `<label class="op-linha"><input type="radio" name="cavalo" value="${v.id}" ${v.id === st.cavaloId ? 'checked' : ''} aria-label="${v.placa}, ${tipoTxt(v)}">
+          ${d.placa(v.placa)}<span class="desc"><b>${tipoTxt(v)}</b><span>${esc(v.marca)} ${esc(v.modelo)} · ${esc(curto(P(v.proprietario_documento_id)))}</span></span>
+          <span class="num">${f.t(v.cmt_t)}<span>CMT</span></span><span class="estado">${estado}</span></label>`;
+      }).join('') : `<div class="vazio-bloco" style="border:0">Nenhum cavalo com “${esc(termo)}” na placa.</div>`;
+
+      // erros junto do cavalo
+      let html = '';
+      const digitado = termo.length === 7 && D.veiculos.find((v) => v.placa === termo);
+      if (digitado && digitado.categoria !== 'cavalo') html += `<div class="erros-peca">${erroMsg(MSG.cavalo)}</div><p class="ajuda" style="margin-top:4px">${digitado.placa} é ${tipoTxt(digitado).toLowerCase()}. Escolha um veículo da categoria cavalo.</p>`;
+      if (r.cavalo.length) {
+        html += `<div class="erros-peca">${r.cavalo.map(erroMsg).join('')}</div>`;
+        if (r.outroCavalo) {
+          const o = r.outroCavalo, on = nomeConj(o.cavalo_id, o.itens);
+          html += `<div class="aviso aviso-pendente" style="margin-top:8px"><i data-lucide="link-2"></i><div>
+            <b>${V(st.cavaloId).placa} está no conjunto aberto ${on}</b>${o.motorista_id ? `, com ${esc(P(o.motorista_id).nome)}` : ''}, desde ${f.data(o.inicio)}. Encerre aquele conjunto para montar um novo com este cavalo, ou troque as peças dele.
+            <div class="opcoes" style="margin-top:10px"><button class="btn btn-perigo" type="button" id="btn-encerrar-outro"><i data-lucide="unlink"></i>Encerrar ${on}</button>
+            <a class="btn" href="conjunto.html?id=${o.id}&editar=1">Trocar peças dele</a></div></div></div>`;
+        }
+      }
+      $('erro-cav').innerHTML = html;
+      $('btn-encerrar-outro')?.addEventListener('click', () => pedirEncerrar(r.outroCavalo, () => { atualizar(); anunciar('Conjunto anterior encerrado. O cavalo está livre.'); $('busca-cav').focus(); }));
+    }
+
+    function renderPecas(r) {
+      const lista = $('pecas');
+      lista.innerHTML = st.itens.length ? st.itens.map((id, i) => {
+        const v = V(id), e = r.itens[i], n = st.itens.length;
+        const o = outroAberto(id, st.conjuntoId);
+        const extra = o ? `<span class="ajuda">Está em <a href="conjunto.html?id=${o.id}">${nomeConj(o.cavalo_id, o.itens)}</a>.</span>` : '';
+        return `<li class="peca-linha${e.length ? ' com-erro' : ''}">
+          <span class="pos"><span class="sr-only">Posição </span>${i + 1}</span>
+          ${d.placa(v.placa)}
+          <div class="desc"><b>${tipoTxt(v)}</b><span>${esc(v.marca)} ${esc(v.modelo)} · ${esc(curto(P(v.proprietario_documento_id)))}</span>
+            ${e.length ? `<div class="erros-peca">${e.map(erroMsg).join('')}${extra}</div>` : ''}</div>
+          <div class="num">tara <b>${f.t(v.tara_t)}</b>${v.categoria === 'carreta' ? `<br>carga <b>${f.t(v.capacidade_carga_t)}</b>` : ''}</div>
+          <div class="botoes">
+            <button class="btn btn-icone" type="button" data-acao="subir" data-vid="${id}" ${i === 0 ? 'disabled' : ''} aria-label="Subir ${v.placa} para a posição ${i}" title="Subir"><i data-lucide="arrow-up"></i></button>
+            <button class="btn btn-icone" type="button" data-acao="descer" data-vid="${id}" ${i === n - 1 ? 'disabled' : ''} aria-label="Descer ${v.placa} para a posição ${i + 2}" title="Descer"><i data-lucide="arrow-down"></i></button>
+            <button class="btn btn-icone" type="button" data-acao="remover" data-vid="${id}" aria-label="Remover ${v.placa} do conjunto" title="Remover"><i data-lucide="x"></i></button>
+          </div></li>`;
+      }).join('') : '<li class="pecas-vazio">Nenhuma peça ainda. Adicione a carreta que engata no cavalo.</li>';
+      lista.classList.toggle('pecas', !!st.itens.length);
+
+      // ajuda da próxima posição
+      const n = st.itens.length, ult = n ? V(st.itens[n - 1]) : null;
+      $('ajuda-add').textContent = n >= MAX_PECAS ? `O conjunto já tem ${MAX_PECAS} peças, o máximo.`
+        : !n ? 'Posição 1: a carreta que engata no cavalo.'
+        : ult.categoria === 'dolly' ? `Posição ${n + 1}: a carreta que engata no dolly.`
+        : `Posição ${n + 1}: um dolly, para engatar outra carreta atrás.`;
+      $('add-placa').disabled = $('btn-add').disabled = n >= MAX_PECAS;
+
+      // peças livres e lista de placas
+      const pecas = D.veiculos.filter((v) => v.categoria === 'carreta' || v.categoria === 'dolly');
+      const livres = pecas.filter((v) => !st.itens.includes(v.id) && !outroAberto(v.id, st.conjuntoId));
+      $('livres').innerHTML = n >= MAX_PECAS ? '' : livres.length
+        ? `<span class="livres-rot">Livres:</span>${livres.map((v) => `<button class="btn" type="button" data-add="${v.id}" aria-label="Adicionar ${v.placa}, ${tipoTxt(v)}"><i data-lucide="plus"></i><span class="cod">${v.placa}</span>${v.categoria === 'dolly' ? 'dolly' : tipoTxt(v).replace(/^Carreta /, '').replace(/, \d eixos$/, '')}</button>`).join('')}`
+        : '<span class="livres-rot">Nenhuma carreta ou dolly livre: as outras estão em conjuntos abertos.</span>';
+      $('placas-pecas').innerHTML = pecas.filter((v) => !st.itens.includes(v.id)).map((v) => `<option value="${v.placa}">${tipoTxt(v)}${outroAberto(v.id, st.conjuntoId) ? ', em outro conjunto' : ''}</option>`).join('');
+    }
+
+    function renderSalvar(r) {
+      const btn = $('salvar'), mot = $('motivo');
+      const nErros = r.cavalo.length + r.itens.reduce((s, e) => s + e.length, 0);
+      let motivo = '';
+      if (!st.cavaloId) motivo = 'Para salvar, escolha o cavalo.';
+      else if (!st.itens.length && !r.cavalo.length) motivo = 'Para salvar, adicione pelo menos uma carreta.';
+      else if (nErros) {
+        const iCav = r.cavalo.length ? 'no cavalo' : null;
+        const iPos = r.itens.findIndex((e) => e.length);
+        const primeira = r.cavalo[0] || r.itens[iPos][0];
+        motivo = `Salvar desligado: ${nErros === 1 ? '1 problema' : nErros + ' problemas'}. <b>${primeira}</b> (${iCav || 'posição ' + (iPos + 1)}).`;
+      } else {
+        const cap = N.capacidadeConjunto({ cavalo_id: st.cavaloId, itens: st.itens });
+        motivo = cap.excede_cmt ? 'Pronto para salvar, com aviso: passa do CMT do cavalo.' : 'Pronto para salvar.';
+      }
+      btn.disabled = !!(!st.cavaloId || !st.itens.length || nErros);
+      mot.innerHTML = motivo;
+    }
+
+    function renderMot() {
+      $('mot-avisos').innerHTML = avisosMotorista(st.motoristaId, st.conjuntoId);
+    }
+
+    function atualizar() {
+      const r = validar();
+      renderPrevia(); renderCavalo(r); renderPecas(r);
+      $('cap-area').innerHTML = st.cavaloId ? blocoCapacidade(st.cavaloId, st.itens) : '<div class="vazio-bloco">Escolha o cavalo para ver o limite de carga.</div>';
+      renderMot(); renderSalvar(r);
+      pronto();
+    }
+
+    /* ----- adicionar ----- */
+    function adicionar(vid) {
+      const v = V(vid);
+      st.itens.push(vid);
+      anunciar(`${v.placa} adicionada na posição ${st.itens.length}`);
+      atualizar();
+    }
+    function adicionarDigitada() {
+      const inp = $('add-placa'), erro = $('erro-add'), campo = $('campo-add');
+      const pl = N.valida.normalizarPlaca(inp.value);
+      const falha = (msg) => { erro.innerHTML = msg; erro.hidden = false; campo.setAttribute('data-invalido', ''); inp.setAttribute('aria-invalid', 'true'); inp.focus(); };
+      if (!pl) return falha('Digite a placa da carreta ou do dolly.');
+      const v = D.veiculos.find((x) => x.placa === pl);
+      if (!v) return falha(`Nenhum veículo com a placa ${pl}. Confira a placa ou <a href="veiculo-novo.html">cadastre o veículo</a> antes.`);
+      if (v.id === st.cavaloId) return falha(`${pl} é o cavalo deste conjunto.`);
+      const ja = st.itens.indexOf(v.id);
+      if (ja >= 0) return falha(`${pl} já está na posição ${ja + 1}.`);
+      erro.hidden = true; campo.removeAttribute('data-invalido'); inp.removeAttribute('aria-invalid');
+      inp.value = '';
+      adicionar(v.id);
+      $('add-placa').focus();
+    }
+    $('btn-add').addEventListener('click', adicionarDigitada);
+    $('add-placa').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); adicionarDigitada(); } });
+    $('add-placa').addEventListener('input', () => { if ($('campo-add').hasAttribute('data-invalido')) { $('erro-add').hidden = true; $('campo-add').removeAttribute('data-invalido'); } });
+    $('livres').addEventListener('click', (e) => { const b = e.target.closest('[data-add]'); if (!b) return; adicionar(b.dataset.add); ($('livres').querySelector('[data-add]') || $('add-placa')).focus(); });
+
+    /* ----- reordenar e remover (botões, acessíveis por teclado) ----- */
+    $('pecas').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-acao]'); if (!b) return;
+      const vid = b.dataset.vid, acao = b.dataset.acao, i = st.itens.indexOf(vid), placa = V(vid).placa;
+      if (acao === 'remover') {
+        st.itens.splice(i, 1); anunciar(`${placa} removida do conjunto`); atualizar();
+        const prox = $('pecas').querySelectorAll('[data-acao="remover"]')[Math.min(i, st.itens.length - 1)];
+        (prox || $('add-placa')).focus(); return;
+      }
+      const j = acao === 'subir' ? i - 1 : i + 1;
+      if (j < 0 || j >= st.itens.length) return;
+      [st.itens[i], st.itens[j]] = [st.itens[j], st.itens[i]];
+      anunciar(`${placa} agora na posição ${j + 1} de ${st.itens.length}`);
+      atualizar();
+      const mesmo = $('pecas').querySelector(`[data-acao="${acao}"][data-vid="${vid}"]`);
+      (mesmo && !mesmo.disabled ? mesmo : $('pecas').querySelector(`[data-acao="${acao === 'subir' ? 'descer' : 'subir'}"][data-vid="${vid}"]`)).focus();
+    });
+
+    /* ----- motorista ----- */
+    $('sel-mot').addEventListener('change', (e) => { st.motoristaId = e.target.value; $('ajuda-mot').textContent = ''; renderMot(); N.desenharIcones(); });
+
+    /* ----- salvar (simulado) ----- */
+    $('montador').addEventListener('submit', (e) => {
+      e.preventDefault();
+      if ($('salvar').disabled) return;
+      let alvo;
+      if (editar) {
+        alvo = c;
+        alvo.itens = [...st.itens]; alvo.motorista_id = st.motoristaId || null;
+        auditar(alvo.id, `Peças trocadas: ${nomeConj(alvo.cavalo_id, alvo.itens)}`);
+        N.toast(`Peças do conjunto ${nomeConj(alvo.cavalo_id, alvo.itens)} salvas`);
+      } else {
+        const num = Math.max(0, ...[...D.conjuntos, ...D.conjuntosHistorico].map((x) => +x.id.replace(/\D/g, '') || 0)) + 1;
+        alvo = { id: 'c' + String(num).padStart(2, '0'), cavalo_id: st.cavaloId, motorista_id: st.motoristaId || null, inicio: N.dia(0), itens: [...st.itens] };
+        D.conjuntos.push(alvo);
+        auditar(alvo.id, `Conjunto ${nomeConj(alvo.cavalo_id, alvo.itens)} aberto`);
+        N.toast(`Conjunto ${nomeConj(alvo.cavalo_id, alvo.itens)} montado`);
+      }
+      Object.assign(alvo, N.capacidadeConjunto(alvo));
+      irPara({ id: alvo.id });
+      renderVer(alvo, true);
+    });
+
+    if (editar) {
+      const sair = (ev) => { ev.preventDefault(); irPara({ id: c.id }); renderVer(c, true); };
+      $('btn-cancelar').addEventListener('click', sair);
+      $('mig-voltar').addEventListener('click', sair);
+    }
+
+    atualizar();
+    if (focar) focarTitulo();
+  }
+
+  /* ---------- sem conjunto ---------- */
+  function renderNaoAchado(id) {
+    document.title = 'Conjunto · NILT';
+    vista.innerHTML = `<div class="titulo"><div><div class="migalha"><a href="conjuntos.html">Conjuntos</a><span class="sep">/</span><h1 id="h1" tabindex="-1">${id ? 'Conjunto não encontrado' : 'Nenhum conjunto escolhido'}</h1></div></div></div>
+      <div class="vazio-bloco" style="flex-wrap:wrap">${id ? `Não há conjunto com o código ${esc(id)}. Confira o endereço ou abra o conjunto pela lista.` : 'Abra um conjunto pela lista ou monte um novo.'}</div>
+      <div class="opcoes" style="margin-top:16px"><a class="btn" href="conjuntos.html">Ver conjuntos</a><a class="btn btn-primario" href="conjunto.html?novo=1">Montar conjunto</a></div>`;
+  }
+
+  /* ---------- rota ---------- */
+  const id = N.param('id');
+  if (N.param('novo')) renderMontador(null);
+  else if (id) {
+    const c = achar(id);
+    if (!c) renderNaoAchado(id);
+    else if (N.param('editar') && !c.fim) renderMontador(c);
+    else renderVer(c);
+  } else renderNaoAchado(null);
+};
+</script>
+<script src="assets/nilt.js"></script>
+</body>
+</html>

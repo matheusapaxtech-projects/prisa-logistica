@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Novo motorista · NILT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700&family=Overpass+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/nilt.css">
+  <link rel="stylesheet" href="assets/paginas/motoristas.css">
+</head>
+<body data-pagina="motoristas">
+<main class="novo">
+  <div class="titulo">
+    <div>
+      <nav class="migalha" aria-label="Caminho"><a href="motoristas.html">Motoristas</a><span class="sep" aria-hidden="true">/</span><h1>Novo motorista</h1></nav>
+      <p class="sub">Comece pelo CPF. O NILT confere se a pessoa já está cadastrada antes de criar outra.</p>
+    </div>
+  </div>
+
+  <form id="form-novo" novalidate>
+    <section class="secao" aria-labelledby="h-cpf">
+      <div class="secao-rotulo">
+        <h2 id="h-cpf">CPF do motorista</h2>
+        <p>A mesma pessoa pode ser motorista e proprietária. Se o CPF já existir, você abre a ficha ou liga o papel de motorista à pessoa.</p>
+      </div>
+      <div class="campos">
+        <div class="campo f5">
+          <label for="cpf">CPF</label>
+          <div class="com-acao">
+            <input id="cpf" name="cpf" class="cod" data-mascara="cpf" data-valida="cpf" autocomplete="off" placeholder="000.000.000-00" aria-describedby="cpf-ajuda">
+            <button class="btn" type="button" id="btn-verificar"><i data-lucide="search"></i>Verificar</button>
+          </div>
+          <span class="ajuda" id="cpf-ajuda">A conferência acontece sozinha ao completar os 11 dígitos.</span>
+        </div>
+        <p class="exemplos f12" id="exemplos">Experimente com dados fictícios:
+          <button type="button" data-cpf="p01">CPF de quem já é motorista</button> ·
+          <button type="button" data-cpf="p12">CPF de quem só é proprietário</button> ·
+          <button type="button" data-cpf="novo">CPF ainda não cadastrado</button>
+        </p>
+        <div class="f12 resultado" id="resultado" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="secao" id="sec-pessoa" aria-labelledby="h-pessoa">
+      <div class="secao-rotulo">
+        <h2 id="h-pessoa">Dados mínimos da pessoa</h2>
+        <p>O suficiente para criar o cadastro. RG, filiação, endereço e contas você completa depois, na ficha.</p>
+      </div>
+      <div class="campos">
+        <div class="campo f8">
+          <label for="nome">Nome completo</label>
+          <input id="nome" name="nome" maxlength="110" autocomplete="off">
+        </div>
+        <div class="campo f4">
+          <label for="nascimento">Nascimento</label>
+          <input id="nascimento" name="nascimento" type="date">
+        </div>
+        <div class="campo f4">
+          <label for="telefone">Telefone celular</label>
+          <input id="telefone" name="telefone" data-mascara="telefone" placeholder="(00) 00000-0000" autocomplete="off">
+        </div>
+        <div class="campo f4">
+          <span class="rotulo" aria-hidden="true">&nbsp;</span>
+          <label class="marcar" for="whatsapp"><input type="checkbox" id="whatsapp" name="whatsapp" checked>Este número tem WhatsApp</label>
+        </div>
+      </div>
+    </section>
+
+    <section class="secao" id="sec-cnh" aria-labelledby="h-cnh">
+      <div class="secao-rotulo">
+        <h2 id="h-cnh">CNH</h2>
+        <p>Número de registro, categoria e validade, como estão na carteira. Pode anexar a CNH digital já aqui.</p>
+      </div>
+      <div class="campos">
+        <div class="campo f4">
+          <label for="cnh_registro">Número de registro</label>
+          <input id="cnh_registro" name="cnh_registro" class="cod" inputmode="numeric" maxlength="11" autocomplete="off" placeholder="11 dígitos">
+        </div>
+        <div class="campo f4">
+          <label for="cnh_categoria">Categoria</label>
+          <select id="cnh_categoria" name="cnh_categoria"></select>
+        </div>
+        <div class="campo f4">
+          <label for="cnh_validade">Validade</label>
+          <input id="cnh_validade" name="cnh_validade" type="date">
+        </div>
+        <div class="campo f8">
+          <label for="cnh_arquivo">CNH digital <span class="opcional">(opcional)</span></label>
+          <input id="cnh_arquivo" name="cnh_arquivo" type="file" accept="application/pdf,image/jpeg,image/png" aria-describedby="arq-ajuda">
+          <span class="ajuda" id="arq-ajuda">PDF ou foto, até 20 MB. O motorista baixa o PDF no app Carteira Digital de Trânsito.</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="acoes-fim" id="acoes">
+      <span class="muted acoes-nota" id="acoes-nota">Confira o CPF para liberar os campos.</span>
+      <a class="btn" href="motoristas.html">Cancelar</a>
+      <button class="btn btn-primario" type="submit" id="btn-criar"><i data-lucide="check"></i><span>Criar motorista</span></button>
+    </div>
+  </form>
+</main>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="assets/dados.js"></script>
+<script src="assets/paginas/motoristas.js"></script>
+<script>
+window.pagina = function (N) {
+  const D = N.dados, f = N.fmt, d = N.desenhar, M = N.mot;
+  const $ = (id) => document.getElementById(id);
+  const cpfEl = $('cpf'), resultado = $('resultado'), secPessoa = $('sec-pessoa'), secCnh = $('sec-cnh'), acoes = $('acoes');
+  const CPF_NOVO = M.cpf('481937206'); // fictício, ainda não cadastrado
+  let modo = null; // 'novo' | 'ligar' | null
+  let pessoaAchada = null;
+
+  $('cnh_categoria').innerHTML = M.opcoesSelect(M.ROT.cnh_categoria, 'e');
+  mostrar(null);
+
+  // m: null (CPF ainda não conferido: campos à vista, travados) | 'existe' | 'novo' | 'ligar'
+  function mostrar(m) {
+    modo = m === 'existe' ? null : m;
+    secPessoa.hidden = m === 'existe' || m === 'ligar';
+    secCnh.hidden = m === 'existe';
+    acoes.hidden = m === 'existe';
+    const travar = !m;
+    [secPessoa, secCnh].forEach((sec) => sec.querySelectorAll('input,select').forEach((el) => { el.disabled = travar; }));
+    $('btn-criar').disabled = travar;
+    $('acoes-nota').hidden = !travar;
+    $('btn-criar').querySelector('span').textContent = m === 'ligar' ? 'Cadastrar também como motorista' : 'Criar motorista';
+  }
+
+  function verificar(explicito) {
+    const dig = N.so(cpfEl.value);
+    const campo = cpfEl.closest('.campo');
+    if (dig.length < 11) {
+      resultado.innerHTML = ''; mostrar(null);
+      if (explicito) erroCampo(campo, dig.length ? `Faltam ${11 - dig.length} ${11 - dig.length === 1 ? 'dígito' : 'dígitos'} no CPF.` : 'Digite o CPF para conferir.');
+      return;
+    }
+    cpfEl.dispatchEvent(new Event('blur')); // validação compartilhada (nilt.js) marca o campo
+    if (!N.valida.cpf(dig)) { resultado.innerHTML = ''; mostrar(null); return; }
+    const p = D.pessoas.find((x) => x.cpf === dig);
+    pessoaAchada = p || null;
+    if (!p) {
+      resultado.innerHTML = `<div class="aviso aviso-normal"><i data-lucide="circle-check"></i><span><b>CPF válido e ainda não cadastrado.</b> Preencha os dados mínimos abaixo; o resto você completa na ficha.</span></div>`;
+      mostrar('novo');
+      N.desenharIcones();
+      return;
+    }
+    const mot = M.motorista(p.id);
+    const prop = D.proprietarios.find((x) => x.pessoa_id === p.id);
+    if (mot) {
+      const tel = M.telefonePrincipal(p.id);
+      resultado.innerHTML = `<div class="bloco achado-pessoa">${d.avatar(p.nome)}
+        <div><b>${N.esc(p.nome)}</b><span class="sub">Já é motorista · CPF <span class="cod">${f.cpf(p.cpf)}</span>${tel ? ` · ${f.telefone(tel.numero)}` : ''}${prop ? ' · também é proprietário' : ''}</span></div>
+        <div class="acoes-achado">${d.sinal(mot.situacao_cadastro)}<a class="btn btn-primario" href="motorista.html?id=${p.id}"><i data-lucide="arrow-right"></i>Abrir ficha do motorista</a></div>
+      </div>`;
+      mostrar('existe');
+    } else {
+      resultado.innerHTML = `<div class="bloco achado-pessoa">${d.avatar(p.nome)}
+        <div><b>${N.esc(p.nome)}</b><span class="sub">Cadastrado como proprietário${prop && prop.enquadramento_antt ? ` (${prop.enquadramento_antt.toUpperCase()})` : ''}${prop && prop.rntrc ? ` · RNTRC <span class="cod">${prop.rntrc}</span>` : ''} · ainda não é motorista</span></div>
+        <a class="btn" href="proprietario.html?id=${p.id}">Ver proprietário</a>
+      </div>
+      <div class="aviso aviso-info aviso-ligar"><i data-lucide="info"></i><span>É a mesma pessoa: nome, documentos, contatos e contas continuam os mesmos. Para ligar o papel de motorista, falta só a CNH.</span></div>`;
+      mostrar('ligar');
+    }
+    N.separarPontos(resultado); N.desenharIcones();
+  }
+
+  function erroCampo(campo, msg) {
+    campo.setAttribute('data-invalido', '');
+    campo.removeAttribute('data-valido');
+    let e = campo.querySelector('.erro');
+    if (!e) { e = document.createElement('span'); e.className = 'erro'; campo.appendChild(e); }
+    e.hidden = false; e.textContent = msg;
+    const inp = campo.querySelector('input,select'); if (inp) inp.setAttribute('aria-invalid', 'true');
+  }
+  function limparErro(campo) {
+    campo.removeAttribute('data-invalido');
+    const e = campo.querySelector('.erro'); if (e) e.hidden = true;
+    const inp = campo.querySelector('input,select'); if (inp) inp.removeAttribute('aria-invalid');
+  }
+
+  cpfEl.addEventListener('input', () => { if (N.so(cpfEl.value).length === 11) verificar(false); else { resultado.innerHTML = ''; mostrar(null); } });
+  $('btn-verificar').addEventListener('click', () => verificar(true));
+  cpfEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); verificar(true); } });
+  $('exemplos').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-cpf]'); if (!b) return;
+    const v = b.dataset.cpf === 'novo' ? CPF_NOVO : N.pessoa(b.dataset.cpf).cpf;
+    cpfEl.value = f.cpf(v); limparErro(cpfEl.closest('.campo')); verificar(true); cpfEl.focus();
+  });
+  ['nome', 'nascimento', 'telefone', 'cnh_registro', 'cnh_validade'].forEach((id) => $(id).addEventListener('input', () => limparErro($(id).closest('.campo'))));
+  $('cnh_registro').addEventListener('input', (e) => { e.target.value = N.so(e.target.value).slice(0, 11); });
+  $('cnh_validade').addEventListener('change', () => {
+    const campo = $('cnh_validade').closest('.campo'); let aj = campo.querySelector('.ajuda');
+    const v = $('cnh_validade').value;
+    if (v && N.diasAte(v) < 0) { if (!aj) { aj = document.createElement('span'); aj.className = 'ajuda'; campo.appendChild(aj); } aj.textContent = `CNH vencida (${f.dias(N.diasAte(v))}). O cadastro fica pendente até a renovação.`; aj.hidden = false; }
+    else if (aj) aj.hidden = true;
+  });
+
+  $('form-novo').addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!modo) { verificar(true); return; }
+    const erros = [];
+    const exige = (id, ok, msg) => { const c = $(id).closest('.campo'); if (!ok) { erroCampo(c, msg); erros.push($(id)); } else limparErro(c); };
+    if (modo === 'novo') {
+      const nome = $('nome').value.trim();
+      exige('nome', nome.split(/\s+/).length >= 2, 'Informe o nome completo, com sobrenome.');
+      const nasc = $('nascimento').value;
+      const idade = nasc ? (N.HOJE - new Date(nasc + 'T00:00:00')) / 31557600000 : 0;
+      exige('nascimento', nasc && idade >= 18 && idade < 100, nasc ? 'Confira a data: o motorista precisa ter 18 anos ou mais.' : 'Informe a data de nascimento.');
+      const tel = N.so($('telefone').value);
+      exige('telefone', tel.length === 10 || tel.length === 11, 'Informe o telefone com DDD: (43) 99999-0000.');
+    }
+    exige('cnh_registro', N.so($('cnh_registro').value).length === 11, 'O registro da CNH tem 11 dígitos. Confira na carteira.');
+    exige('cnh_validade', !!$('cnh_validade').value, 'Informe a validade da CNH.');
+    if (erros.length) { erros[0].focus(); N.toast('Faltam dados: veja os campos marcados.', 'alert-circle'); return; }
+
+    // simula a criação (no Next.js: insert em pessoa + motorista + pessoa_telefone + arquivo, numa transação)
+    const agora = new Date().toISOString();
+    const id = pessoaAchada ? pessoaAchada.id : 'n' + Date.now().toString(36);
+    const validade = $('cnh_validade').value;
+    const pessoa = pessoaAchada || { id, tipo: 'pf', nome: $('nome').value.trim().replace(/\s+/g, ' '), cpf: N.so(cpfEl.value), nascimento: $('nascimento').value, situacao_cadastro: 'pendente' };
+    const reg = {
+      pessoa,
+      motorista: { pessoa_id: id, cnh_registro: N.so($('cnh_registro').value), cnh_categoria: $('cnh_categoria').value, cnh_validade: validade, situacao_cadastro: 'pendente', situacao_gr: 'sem_consulta' },
+      telefones: modo === 'novo' ? [{ pessoa_id: id, numero: N.so($('telefone').value), tipo: 'celular', whatsapp: $('whatsapp').checked, principal: true }] : [],
+      arquivos: [],
+      auditoria: [{ id: Date.now(), em: agora, usuario: N.usuarioAtual.nome, tabela: 'motorista', registro_id: id, acao: 'insert', resumo: modo === 'ligar' ? 'Pessoa ligada como motorista (já era proprietária)' : 'Motorista cadastrado' }],
+    };
+    const arq = $('cnh_arquivo').files[0];
+    if (arq) reg.arquivos.push({ id: 'a' + Date.now().toString(36), tipo: 'CNH', pessoa_id: id, nome_original: arq.name, tamanho_bytes: arq.size, validade, enviado_em: agora, enviado_por: N.usuarioAtual.nome });
+    if (!M.guardarNovo(reg)) { N.toast('Não foi possível guardar a simulação neste navegador. Tente de novo.', 'alert-circle'); return; }
+    $('btn-criar').disabled = true;
+    N.toast(modo === 'ligar' ? `${N.esc(pessoa.nome)} agora também é motorista. Abrindo a ficha…` : 'Motorista criado como pendente. Abrindo a ficha…');
+    setTimeout(() => { location.href = `motorista.html?id=${id}`; }, 1100);
+  });
+
+  // ?cpf= vem da ficha (pessoa que ainda não é motorista)
+  const pre = N.param('cpf');
+  if (pre && N.so(pre).length === 11) { cpfEl.value = f.cpf(pre); setTimeout(() => verificar(true), 0); }
+};
+</script>
+<script src="assets/nilt.js"></script>
+</body>
+</html>

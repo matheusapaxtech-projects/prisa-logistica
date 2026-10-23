@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pendências · NILT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700&family=Overpass+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/nilt.css">
+  <link rel="stylesheet" href="assets/paginas/conjuntos.css">
+</head>
+<body data-pagina="pendencias">
+<main>
+  <div class="titulo">
+    <div>
+      <h1>Pendências</h1>
+      <p class="sub" id="achado">Carregando pendências…</p>
+    </div>
+  </div>
+
+  <div class="abas" data-abas>
+    <button type="button" data-aba="pendencias">Pendências <span class="n" id="n-pend"></span></button>
+    <button type="button" data-aba="vencimentos">Vencimentos <span class="n" id="n-venc"></span></button>
+    <button type="button" data-aba="documentos">Documentos <span class="n" id="n-docs"></span></button>
+  </div>
+
+  <!-- pendências (v_pendencias_documentos) -->
+  <section data-painel="pendencias" aria-label="Pendências de documentos">
+    <div class="ferramentas">
+      <label class="ctrl"><span class="rotulo-ctrl">Tipo</span>
+        <select id="filtro-tipo" aria-label="Filtrar pendências por tipo">
+          <option value="">Todos os tipos</option>
+          <option value="arquivo_vencido">Documentos vencidos</option>
+          <option value="veiculo_arrendado_sem_contrato">Arrendado sem contrato</option>
+          <option value="conjunto_acima_cmt">Conjunto acima do CMT</option>
+          <option value="motorista_sem_cnh">Motorista sem CNH anexada</option>
+          <option value="motorista_sem_comprovante">Sem comprovante de residência</option>
+        </select>
+      </label>
+      <span class="total" id="total-pend"></span>
+    </div>
+    <div class="grupos" id="grupos"></div>
+  </section>
+
+  <!-- vencimentos (v_vencimentos) -->
+  <section data-painel="vencimentos" aria-label="Vencimentos" hidden>
+    <div class="ferramentas">
+      <label class="ctrl"><span class="rotulo-ctrl">Tipo</span>
+        <select id="venc-tipo" aria-label="Filtrar vencimentos por tipo"><option value="">Todos os tipos</option></select>
+      </label>
+      <div class="segmento" role="group" aria-label="Janela de vencimento" id="venc-janela">
+        <button type="button" data-janela="30" aria-pressed="false">30 dias</button>
+        <button type="button" data-janela="60" aria-pressed="false">60 dias</button>
+        <button type="button" data-janela="90" aria-pressed="true">90 dias</button>
+        <button type="button" data-janela="todos" aria-pressed="false">Todos</button>
+      </div>
+      <span class="total" id="total-venc"></span>
+    </div>
+    <div id="vencimentos"></div>
+  </section>
+
+  <!-- documentos (arquivo) -->
+  <section data-painel="documentos" aria-label="Documentos anexados" hidden>
+    <div class="ferramentas">
+      <div class="busca-lista"><i data-lucide="search"></i><input id="docs-busca" type="search" autocomplete="off" placeholder="Arquivo, nome ou placa" aria-label="Buscar documento por arquivo, nome ou placa"></div>
+      <label class="ctrl"><span class="rotulo-ctrl">Tipo</span><select id="docs-tipo" aria-label="Filtrar documentos por tipo"><option value="">Todos os tipos</option></select></label>
+      <label class="ctrl"><span class="rotulo-ctrl">Conferência</span>
+        <select id="docs-conf" aria-label="Filtrar documentos por conferência">
+          <option value="">Todos</option><option value="sim">Conferidos</option><option value="nao">A conferir</option>
+        </select>
+      </label>
+      <span class="total" id="total-docs"></span>
+    </div>
+    <div class="tabela-wrap">
+      <table class="tabela tabela-fixa">
+        <thead><tr>
+          <th style="width:30%">Documento</th>
+          <th class="some-celular">Dono</th>
+          <th class="num some-celular" style="width:150px">Validade</th>
+          <th class="some-celular" style="width:170px">Conferência</th>
+          <th class="some-celular" style="width:130px">Acesso</th>
+        </tr></thead>
+        <tbody id="docs"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="assets/dados.js"></script>
+<script>
+window.pagina = function (N) {
+  const D = N.dados, f = N.fmt, d = N.desenhar, esc = N.esc, P = N.pessoa, V = N.veiculo;
+  const ehMotorista = (pid) => D.motoristas.some((m) => m.pessoa_id === pid);
+  const fichaDocs = (x) => (x.pessoa_id ? N.linkPessoa(P(x.pessoa_id)) : `veiculo.html?id=${x.veiculo_id}`) + '&aba=documentos';
+  const tipoVeic = (v) => { const t = v.tipo.toLowerCase().replace(/\bbau\b/, 'baú').replace(/ - \d eixos$/, ''); return t[0].toUpperCase() + t.slice(1); };
+  const curto = (p) => (p ? p.nome_fantasia || p.nome : '—');
+  const pl = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+
+  /* objeto da linha: pessoa (avatar) ou placa desenhada */
+  function objeto(x) {
+    if (x.pessoa_id) {
+      const p = P(x.pessoa_id);
+      const papel = [ehMotorista(p.id) && 'motorista', D.proprietarios.some((o) => o.pessoa_id === p.id) && 'proprietário'].filter(Boolean).join(' e ');
+      return `<div class="objeto">${d.avatar(p.nome)}<div class="nome"><a href="${N.linkPessoa(p)}">${esc(p.nome)}</a><span><span class="cod">${f.doc(p)}</span> · ${papel}</span></div></div>`;
+    }
+    const v = V(x.veiculo_id);
+    return `<div class="objeto">${d.placa(v.placa)}<div class="nome"><a href="veiculo.html?id=${v.id}">${esc(v.marca)} ${esc(v.modelo)}</a><span>${tipoVeic(v)}</span></div></div>`;
+  }
+
+  /* ---------- pendências: v_pendencias_documentos + vencimentos já vencidos ----------
+     O banco marca arquivo_vencido pelo arquivo; a tela inicial e o menu contam os vencimentos
+     vencidos do cadastro (CNH, RNTRC...). Juntamos os dois sem repetir: um vencimento com
+     arquivo vencido do mesmo documento vira uma linha só. */
+  const tipoArqDe = { CNH: 'CNH', RNTRC: 'ANTT' };
+  const acaoVencido = { CNH: 'Anexar CNH renovada', RNTRC: 'Anexar RNTRC renovado', 'Consulta de risco': 'Registrar nova consulta', Seguro: 'Anexar apólice renovada', IPVA: 'Anexar CRLV do exercício' };
+  const arqVencidos = D.pendencias.filter((p) => p.tipo_pendencia === 'arquivo_vencido').map((p) => ({ ...p, arquivo: D.arquivos.find((a) => a.id === p.arquivo_id) }));
+  const vencidos = D.vencimentos.filter((v) => v.dias < 0).map((v) => {
+    const arq = arqVencidos.find((a) => a.arquivo.tipo === tipoArqDe[v.tipo] && (a.pessoa_id ? a.pessoa_id === v.pessoa_id : a.veiculo_id === v.veiculo_id));
+    if (arq) arq.usado = true;
+    return { tipo_pendencia: 'arquivo_vencido', pessoa_id: v.pessoa_id, veiculo_id: v.veiculo_id, doc: v.tipo, data: v.data, dias: v.dias, arquivo: arq?.arquivo };
+  });
+  arqVencidos.filter((a) => !a.usado).forEach((a) => vencidos.push({ tipo_pendencia: 'arquivo_vencido', pessoa_id: a.pessoa_id, veiculo_id: a.veiculo_id, doc: a.arquivo.tipo, data: a.arquivo.validade, dias: N.diasAte(a.arquivo.validade), arquivo: a.arquivo }));
+
+  const GRUPOS = [
+    { tipo: 'arquivo_vencido', forma: 'circulo', titulo: 'Documentos vencidos', desc: 'A validade passou. Anexe o documento renovado na ficha.' },
+    { tipo: 'veiculo_arrendado_sem_contrato', forma: 'laranja', titulo: 'Arrendado sem contrato', desc: 'Posse no CRLV diferente do proprietário na ANTT, sem contrato de arrendamento anexado.' },
+    { tipo: 'conjunto_acima_cmt', forma: 'circulo', titulo: 'Conjunto acima do CMT', desc: 'A capacidade das carretas passa do que o cavalo pode puxar. Troque peças ou carregue abaixo do limite.' },
+    { tipo: 'motorista_sem_cnh', forma: 'laranja', titulo: 'Motorista sem CNH anexada', desc: 'A CNH está no cadastro, mas falta o arquivo.' },
+    { tipo: 'motorista_sem_comprovante', forma: 'laranja', titulo: 'Sem comprovante de residência', desc: 'Falta o arquivo do comprovante de residência.' },
+  ];
+  const acimaCmt = D.conjuntos.filter((c) => c.excede_cmt).map((c) => ({ tipo_pendencia: 'conjunto_acima_cmt', veiculo_id: c.cavalo_id, conjunto: c }));
+  const itensDe = (t) => (t === 'arquivo_vencido' ? vencidos : t === 'conjunto_acima_cmt' ? acimaCmt : D.pendencias.filter((p) => p.tipo_pendencia === t));
+  const vazioDe = { arquivo_vencido: 'Nenhum documento vencido.', veiculo_arrendado_sem_contrato: 'Todo veículo arrendado tem contrato anexado.', motorista_sem_cnh: 'Todo motorista tem a CNH anexada.', conjunto_acima_cmt: 'Nenhum conjunto passa do CMT do cavalo.', motorista_sem_comprovante: 'Todo motorista tem comprovante de residência.' };
+
+  function linhaPend(x) {
+    let txt, acao;
+    if (x.tipo_pendencia === 'arquivo_vencido') {
+      txt = `<b class="vencido">${x.doc} ${f.dias(x.dias)}</b><span>Validade ${f.data(x.data)}${x.arquivo ? ` · arquivo ${esc(x.arquivo.nome_original)}` : ' · sem arquivo anexado'}</span>`;
+      acao = acaoVencido[x.doc] || 'Anexar documento renovado';
+    } else if (x.tipo_pendencia === 'veiculo_arrendado_sem_contrato') {
+      const v = V(x.veiculo_id);
+      txt = `<b>Sem contrato de arrendamento</b><span>Posse no CRLV: ${esc(curto(P(v.proprietario_posse_id)))} · ANTT: ${esc(curto(P(v.proprietario_documento_id)))}</span>`;
+      acao = 'Anexar contrato';
+    } else if (x.tipo_pendencia === 'conjunto_acima_cmt') {
+      const c = x.conjunto;
+      txt = `<b class="vencido">Passa ${f.t(+(c.capacidade_total_t - c.limite_t).toFixed(1))} do CMT</b><span>Carretas ${f.t(c.capacidade_total_t)} · limite ${f.t(c.limite_t)} (CMT ${f.t(c.cmt_t)} menos ${f.t(c.tara_total_t)} de tara)</span>`;
+      return `<div class="pend-linha">${objeto(x)}<div class="pend-txt">${txt}</div>
+      <div class="acao"><a class="btn" href="conjunto.html?id=${c.id}"><i data-lucide="link-2"></i>Ver conjunto</a></div></div>`;
+    } else if (x.tipo_pendencia === 'motorista_sem_cnh') {
+      const m = D.motoristas.find((y) => y.pessoa_id === x.pessoa_id);
+      txt = `<b>CNH sem arquivo</b><span>Registro <span class="cod">${m.cnh_registro}</span> · categoria ${m.cnh_categoria.toUpperCase()} · até ${f.data(m.cnh_validade)}</span>`;
+      acao = 'Anexar CNH';
+    } else {
+      const e = D.enderecos.find((y) => y.pessoa_id === x.pessoa_id && y.principal);
+      txt = `<b>Sem comprovante de residência</b><span>${e ? `Endereço: ${esc(e.logradouro)}, ${esc(e.numero)}, ${esc(e.cidade)}/${e.uf}` : 'Nenhum endereço cadastrado ainda'}</span>`;
+      acao = 'Anexar comprovante';
+    }
+    return `<div class="pend-linha">${objeto(x)}<div class="pend-txt">${txt}</div>
+      <div class="acao"><a class="btn" href="${fichaDocs(x)}"><i data-lucide="paperclip"></i>${acao}</a></div></div>`;
+  }
+
+  const sinalGrupo = (g, n) => g.forma === 'circulo'
+    ? `<span class="circulo-proibido${n ? '' : ' vazio'}" aria-hidden="true"><b>${n}</b></span>`
+    : `<span class="losango ${n ? g.forma : 'vazio'}" aria-hidden="true"><b>${n}</b></span>`;
+
+  const selTipo = document.getElementById('filtro-tipo');
+  const totalPend = GRUPOS.reduce((s, g) => s + itensDe(g.tipo).length, 0);
+  function renderPend() {
+    const t = selTipo.value;
+    const vis = GRUPOS.filter((g) => !t || g.tipo === t);
+    const n = vis.reduce((s, g) => s + itensDe(g.tipo).length, 0);
+    document.getElementById('total-pend').textContent = pl(n, 'pendência', 'pendências');
+    const box = document.getElementById('grupos');
+    box.innerHTML = (!t && !totalPend ? '<div class="vazio-bloco">Nenhuma pendência de documentos. Tudo anexado e dentro da validade.</div>' : '') +
+      vis.map((g) => {
+        const itens = itensDe(g.tipo);
+        return `<section class="grupo-pend" aria-labelledby="g-${g.tipo}">
+          <div class="grupo-cab">${sinalGrupo(g, itens.length)}<div><h2 id="g-${g.tipo}">${g.titulo}</h2><p>${g.desc}</p></div><span class="total-grupo">${pl(itens.length, 'item', 'itens')}</span></div>
+          <div class="grupo-corpo">${itens.length ? itens.map(linhaPend).join('') : `<div class="vazio-bloco">${vazioDe[g.tipo]}</div>`}</div></section>`;
+      }).join('');
+    N.separarPontos(box); N.desenharIcones();
+  }
+  const pedido = N.param('tipo');
+  if (GRUPOS.some((g) => g.tipo === pedido)) selTipo.value = pedido;
+  selTipo.addEventListener('change', () => {
+    const u = new URL(location); if (selTipo.value) u.searchParams.set('tipo', selTipo.value); else u.searchParams.delete('tipo');
+    history.replaceState(null, '', u); renderPend();
+  });
+
+  /* ---------- vencimentos como marcos de km ---------- */
+  const selVT = document.getElementById('venc-tipo');
+  [...new Set(D.vencimentos.map((v) => v.tipo))].forEach((t) => selVT.insertAdjacentHTML('beforeend', `<option>${t}</option>`));
+  let janela = '90';
+  const quemVenc = (v) => v.pessoa_id ? `<b>${v.tipo}</b><span>${esc(P(v.pessoa_id).nome)} · ${f.data(v.data)}</span>`
+    : `${d.placa(V(v.veiculo_id).placa)}<span><b>${v.tipo}</b><span>${esc(V(v.veiculo_id).marca)} ${esc(V(v.veiculo_id).modelo)} · ${f.data(v.data)}</span></span>`;
+  function linhaVenc(v, escala) {
+    const venc = v.dias < 0;
+    const href = v.pessoa_id ? N.linkPessoa(P(v.pessoa_id)) + '&aba=documentos' : `veiculo.html?id=${v.veiculo_id}&aba=documentos`;
+    const trilho = d.marco(v, escala).replace('class="trilho"', `class="trilho${v.dias > 30 ? ' longe' : ''}"`);
+    return `<a class="marco" href="${href}"><span class="quem${v.veiculo_id ? ' quem-veic' : ''}">${quemVenc(v)}</span>${trilho}
+      <span class="dias${venc ? ' vencido' : v.dias <= 30 ? ' vencendo' : ''}"><b>${venc ? 'Vencido' : v.dias === 0 ? 'Hoje' : pl(v.dias, 'dia', 'dias')}</b><span>${venc ? f.dias(v.dias) : v.dias === 0 ? 'vence hoje' : 'restantes'}</span></span></a>`;
+  }
+  function renderVenc() {
+    const lim = janela === 'todos' ? Infinity : +janela;
+    const rows = D.vencimentos.filter((v) => (!selVT.value || v.tipo === selVT.value) && v.dias <= lim);
+    const ja = rows.filter((v) => v.dias < 0), vai = rows.filter((v) => v.dias >= 0);
+    const escala = janela === 'todos' ? Math.max(30, ...vai.map((v) => v.dias)) : lim;
+    document.getElementById('total-venc').textContent = `${pl(rows.length, 'vencimento', 'vencimentos')} · ${pl(ja.length, 'vencido', 'vencidos')}`;
+    const janelaTxt = janela === 'todos' ? 'A vencer' : `A vencer em até ${janela} dias`;
+    const box = document.getElementById('vencimentos');
+    box.innerHTML = `<section class="venc-grupo" aria-labelledby="vg-1"><h2 id="vg-1">Vencidos<span class="n">${ja.length}</span></h2>
+        <div class="marcos">${ja.length ? ja.map((v) => linhaVenc(v, escala)).join('') : '<div class="vazio-bloco">Nada vencido' + (selVT.value ? ` em ${selVT.value}` : '') + '.</div>'}</div></section>
+      <section class="venc-grupo" aria-labelledby="vg-2"><h2 id="vg-2">${janelaTxt}<span class="n">${vai.length}</span></h2>
+        <div class="marcos">${vai.length ? vai.map((v) => linhaVenc(v, escala)).join('') : `<div class="vazio-bloco">Nada vence ${janela === 'todos' ? 'daqui para a frente' : `nos próximos ${janela} dias`}${selVT.value ? ` em ${selVT.value}` : ''}.</div>`}</div></section>`;
+    N.separarPontos(box);
+  }
+  selVT.addEventListener('change', renderVenc);
+  document.getElementById('venc-janela').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-janela]'); if (!b) return;
+    janela = b.dataset.janela;
+    document.querySelectorAll('#venc-janela button').forEach((x) => x.setAttribute('aria-pressed', x === b));
+    renderVenc();
+  });
+
+  /* ---------- documentos (arquivo) ---------- */
+  const selDT = document.getElementById('docs-tipo'), selDC = document.getElementById('docs-conf'), inpD = document.getElementById('docs-busca');
+  D.tiposArquivo.filter((t) => D.arquivos.some((a) => a.tipo === t)).forEach((t) => selDT.insertAdjacentHTML('beforeend', `<option>${t}</option>`));
+  const docs = [...D.arquivos].sort((a, b) => (a.validade || '9999') < (b.validade || '9999') ? -1 : 1);
+  const donoTxt = (a) => (a.pessoa_id ? P(a.pessoa_id).nome : V(a.veiculo_id).placa);
+  function renderDocs() {
+    const t = inpD.value.trim().toLowerCase(), pla = N.valida.normalizarPlaca(t);
+    const rows = docs.filter((a) => (!selDT.value || a.tipo === selDT.value)
+      && (!selDC.value || (selDC.value === 'sim') === !!a.validado_em)
+      && (!t || a.nome_original.toLowerCase().includes(t) || donoTxt(a).toLowerCase().includes(t) || (pla.length >= 2 && a.veiculo_id && V(a.veiculo_id).placa.includes(pla))));
+    document.getElementById('total-docs').textContent = pl(rows.length, 'documento', 'documentos');
+    const tb = document.getElementById('docs');
+    if (!rows.length) { tb.innerHTML = `<tr><td colspan="5"><div class="vazio-bloco">${D.arquivos.length ? 'Nenhum documento com essa busca ou filtro.' : 'Nenhum documento anexado ainda.'}</div></td></tr>`; return; }
+    tb.innerHTML = rows.map((a) => {
+      const dias = a.validade ? N.diasAte(a.validade) : null;
+      const cls = dias == null ? '' : dias < 0 ? ' vencido' : dias <= 30 ? ' vencendo' : '';
+      const validade = a.validade ? `<span class="doc-validade${cls}">${f.data(a.validade)}</span><span class="linha2">${f.dias(dias)}</span>` : '<span class="dash">sem validade</span>';
+      const conf = a.validado_em ? `${d.sinal('normal', 'Conferido')}<span class="linha2">${esc(a.validado_por)} · ${f.relativo(a.validado_em)}</span>` : d.sinal('pendente', 'A conferir');
+      const dono = a.pessoa_id ? `<a href="${N.linkPessoa(P(a.pessoa_id))}">${esc(P(a.pessoa_id).nome)}</a>` : d.placa(V(a.veiculo_id).placa);
+      const acesso = a.restrito ? '<span class="acesso"><i data-lucide="lock"></i>Restrito</span><span class="linha2">só admin</span>' : '<span class="muted">Equipe</span>';
+      return `<tr data-href="${fichaDocs(a)}">
+        <td><b class="id">${a.tipo}</b><span class="linha2">${esc(a.nome_original)} · ${f.kb(a.tamanho_bytes)}${a.restrito ? ' · restrito' : ''}</span>
+          <span class="linha2 so-celular">${esc(donoTxt(a))} · ${a.validade ? 'até ' + f.data(a.validade) : 'sem validade'} · ${a.validado_em ? 'conferido' : 'a conferir'}</span></td>
+        <td class="some-celular">${dono}</td>
+        <td class="num some-celular">${validade}</td>
+        <td class="some-celular">${conf}</td>
+        <td class="some-celular">${acesso}</td></tr>`;
+    }).join('');
+    N.linhaClicavel(tb); N.separarPontos(tb); N.desenharIcones();
+  }
+  [selDT, selDC].forEach((s) => s.addEventListener('change', renderDocs)); inpD.addEventListener('input', renderDocs);
+
+  /* ---------- título e contagens ---------- */
+  document.getElementById('n-pend').textContent = totalPend;
+  document.getElementById('n-venc').textContent = D.vencimentos.length;
+  document.getElementById('n-docs').textContent = D.arquivos.length;
+  const arr = itensDe('veiculo_arrendado_sem_contrato').length;
+  const partes = [pl(totalPend, 'pendência', 'pendências')];
+  if (vencidos.length) partes.push(pl(vencidos.length, 'documento vencido', 'documentos vencidos'));
+  if (acimaCmt.length) partes.push(pl(acimaCmt.length, 'conjunto acima do CMT', 'conjuntos acima do CMT'));
+  if (arr) partes.push(pl(arr, 'arrendado sem contrato', 'arrendados sem contrato'));
+  partes.push(`${D.arquivos.filter((a) => !a.validado_em).length} arquivos a conferir`);
+  document.getElementById('achado').textContent = partes.join(' · ');
+
+  renderPend(); renderVenc(); renderDocs();
+};
+</script>
+<script src="assets/nilt.js"></script>
+</body>
+</html>

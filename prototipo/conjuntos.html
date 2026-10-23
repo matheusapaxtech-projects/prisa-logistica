@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Conjuntos · NILT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700&family=Overpass+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/nilt.css">
+  <link rel="stylesheet" href="assets/paginas/conjuntos.css">
+</head>
+<body data-pagina="conjuntos">
+<main>
+  <div class="titulo">
+    <div>
+      <h1>Conjuntos</h1>
+      <p class="sub" id="achado">Carregando conjuntos…</p>
+    </div>
+    <div class="acoes">
+      <a class="btn btn-primario" href="conjunto.html?novo=1"><i data-lucide="link-2"></i>Montar conjunto</a>
+    </div>
+  </div>
+
+  <div class="abas" data-abas>
+    <button type="button" data-aba="abertos">Abertos <span class="n" id="n-abertos"></span></button>
+    <button type="button" data-aba="historico">Histórico <span class="n" id="n-historico"></span></button>
+  </div>
+
+  <section data-painel="abertos" aria-label="Conjuntos abertos">
+    <div class="ferramentas">
+      <div class="busca-lista"><i data-lucide="search"></i><input id="busca-abertos" type="search" autocomplete="off" placeholder="Placa ou motorista" aria-label="Buscar conjunto por placa ou motorista"></div>
+      <label class="ctrl"><span class="rotulo-ctrl">Mostrar</span>
+        <select id="filtro-abertos" aria-label="Filtrar conjuntos abertos">
+          <option value="">Todos</option>
+          <option value="excede">Acima do CMT</option>
+          <option value="rodotrem">Com mais de uma carreta</option>
+          <option value="sem_motorista">Sem motorista</option>
+        </select>
+      </label>
+      <span class="total" id="total-abertos"></span>
+    </div>
+    <div class="tabela-wrap">
+      <table class="tabela tabela-fixa">
+        <thead><tr>
+          <th class="col-engate">Conjunto em ordem de engate</th>
+          <th class="some-celular">Motorista</th>
+          <th class="num some-celular">Eixos</th>
+          <th class="col-cap">Capacidade de carga</th>
+        </tr></thead>
+        <tbody id="lista-abertos"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section data-painel="historico" aria-label="Conjuntos encerrados" hidden>
+    <div class="ferramentas">
+      <div class="busca-lista"><i data-lucide="search"></i><input id="busca-historico" type="search" autocomplete="off" placeholder="Placa ou motorista" aria-label="Buscar conjunto encerrado por placa ou motorista"></div>
+      <span class="total" id="total-historico"></span>
+    </div>
+    <div class="tabela-wrap">
+      <table class="tabela tabela-fixa">
+        <thead><tr>
+          <th class="col-engate">Conjunto em ordem de engate</th>
+          <th class="some-celular">Motorista</th>
+          <th class="num some-celular">Início</th>
+          <th class="num some-celular">Fim</th>
+          <th class="num some-celular">Dias rodando</th>
+        </tr></thead>
+        <tbody id="lista-historico"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="assets/dados.js"></script>
+<script>
+/* a tela inicial linka conjuntos.html?novo=1: o montador mora em conjunto.html */
+if (new URLSearchParams(location.search).get('novo')) location.replace('conjunto.html?novo=1');
+
+window.pagina = function (N) {
+  const D = N.dados, f = N.fmt, d = N.desenhar;
+
+  // conjuntos encerrados extras (fictícios, mesmos campos de conjunto/conjunto_item); repetidos em conjunto.html
+  [
+    { id: 'ch1', cavalo_id: 'v05', motorista_id: 'p05', inicio: N.dia(-320), fim: N.dia(-150), itens: ['v17'] },
+    { id: 'ch2', cavalo_id: 'v01', motorista_id: 'p01', inicio: N.dia(-180), fim: N.dia(-40), itens: ['v12', 'v13', 'v14'] },
+    { id: 'ch3', cavalo_id: 'v04', motorista_id: 'p02', inicio: N.dia(-60), fim: N.dia(-3), itens: ['v16'] },
+  ].forEach((c) => { if (!D.conjuntosHistorico.some((x) => x.id === c.id)) D.conjuntosHistorico.push(c); });
+
+  const nome = (id) => N.pessoa(id)?.nome;
+  const eixos = (c) => N.veiculo(c.cavalo_id).eixos + c.itens.reduce((s, id) => s + N.veiculo(id).eixos, 0);
+  const placas = (c) => [c.cavalo_id, ...c.itens].map((id) => N.veiculo(id).placa);
+  const engate = (c) => d.engate(N.veiculo(c.cavalo_id), c.itens.map(N.veiculo));
+  const diasDesde = (iso) => -N.diasAte(iso);
+  const desdeTxt = (iso) => { const n = diasDesde(iso); return n === 0 ? 'hoje' : n === 1 ? 'há 1 dia' : `há ${n} dias`; };
+  const casa = (c, termo) => {
+    const t = termo.trim().toLowerCase(); if (!t) return true;
+    const pl = N.valida.normalizarPlaca(t);
+    return (pl.length >= 2 && placas(c).some((p) => p.includes(pl))) || (nome(c.motorista_id) || '').toLowerCase().includes(t);
+  };
+
+  const abertos = D.conjuntos;
+  const historico = [...D.conjuntosHistorico].sort((a, b) => (a.fim < b.fim ? 1 : -1));
+  const acima = abertos.filter((c) => c.excede_cmt);
+
+  // título: o total e o achado
+  const partes = [`${abertos.length} ${abertos.length === 1 ? 'aberto' : 'abertos'}`];
+  partes.push(acima.length ? `${acima.length} ${acima.length === 1 ? 'passa' : 'passam'} do CMT do cavalo` : 'nenhum acima do CMT');
+  document.getElementById('achado').textContent = partes.join(' · ');
+  document.getElementById('n-abertos').textContent = abertos.length;
+  document.getElementById('n-historico').textContent = historico.length;
+
+  // ---------- abertos ----------
+  const tbA = document.getElementById('lista-abertos');
+  const inpA = document.getElementById('busca-abertos'), selA = document.getElementById('filtro-abertos');
+  const filtros = { excede: (c) => c.excede_cmt, rodotrem: (c) => c.itens.filter((id) => N.veiculo(id).categoria === 'carreta').length > 1, sem_motorista: (c) => !c.motorista_id };
+  function renderAbertos() {
+    const filtro = filtros[selA.value] || (() => true);
+    const rows = abertos.filter((c) => filtro(c) && casa(c, inpA.value));
+    document.getElementById('total-abertos').textContent = `${rows.length} ${rows.length === 1 ? 'conjunto' : 'conjuntos'}`;
+    if (!rows.length) {
+      const msg = abertos.length ? 'Nenhum conjunto aberto com essa placa, motorista ou filtro.' : 'Nenhum conjunto aberto. Use “Montar conjunto” para engatar o primeiro.';
+      tbA.innerHTML = `<tr><td colspan="4"><div class="vazio-bloco">${msg}</div></td></tr>`; return;
+    }
+    tbA.innerHTML = rows.map((c) => {
+      const mot = nome(c.motorista_id);
+      const motHtml = mot ? N.esc(mot) : '<span class="dash">sem motorista</span>';
+      return `<tr data-href="conjunto.html?id=${c.id}">
+        <td class="col-engate">${engate(c)}
+          <span class="linha2 so-celular">${motHtml} · desde ${f.data(c.inicio)} · ${eixos(c)} eixos</span>
+          <div class="cap-inline">${d.capacidade(c)}</div></td>
+        <td class="some-celular"><a class="id" href="conjunto.html?id=${c.id}">${motHtml}</a><span class="linha2">desde ${f.data(c.inicio)}<span class="some-tablet"> · ${desdeTxt(c.inicio)}</span></span></td>
+        <td class="num some-celular">${eixos(c)}</td>
+        <td class="col-cap">${d.capacidade(c)}</td></tr>`;
+    }).join('');
+    N.linhaClicavel(tbA); N.separarPontos(tbA);
+  }
+
+  // ---------- histórico ----------
+  const tbH = document.getElementById('lista-historico'), inpH = document.getElementById('busca-historico');
+  function renderHistorico() {
+    const rows = historico.filter((c) => casa(c, inpH.value));
+    document.getElementById('total-historico').textContent = `${rows.length} ${rows.length === 1 ? 'encerrado' : 'encerrados'}`;
+    if (!rows.length) {
+      tbH.innerHTML = `<tr><td colspan="5"><div class="vazio-bloco">${historico.length ? 'Nenhum conjunto encerrado com essa placa ou motorista.' : 'Nenhum conjunto encerrado ainda.'}</div></td></tr>`; return;
+    }
+    tbH.innerHTML = rows.map((c) => {
+      const mot = nome(c.motorista_id);
+      const dur = N.diasAte(c.fim) - N.diasAte(c.inicio);
+      return `<tr data-href="conjunto.html?id=${c.id}">
+        <td class="col-engate">${engate(c)}<span class="linha2 so-celular">${mot ? N.esc(mot) : 'sem motorista'} · ${f.data(c.inicio)} a ${f.data(c.fim)} · ${dur} dias</span></td>
+        <td class="some-celular"><a class="id" href="conjunto.html?id=${c.id}">${mot ? N.esc(mot) : '<span class="dash">sem motorista</span>'}</a><span class="linha2">${eixos(c)} eixos</span></td>
+        <td class="num some-celular">${f.data(c.inicio)}</td>
+        <td class="num some-celular">${f.data(c.fim)}</td>
+        <td class="num some-celular">${dur}</td></tr>`;
+    }).join('');
+    N.linhaClicavel(tbH); N.separarPontos(tbH);
+  }
+
+  inpA.addEventListener('input', renderAbertos); selA.addEventListener('change', renderAbertos);
+  inpH.addEventListener('input', renderHistorico);
+  renderAbertos(); renderHistorico();
+};
+</script>
+<script src="assets/nilt.js"></script>
+</body>
+</html>

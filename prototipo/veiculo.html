@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Veículo · NILT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700&family=Overpass+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/nilt.css">
+  <link rel="stylesheet" href="assets/paginas/veiculos.css">
+</head>
+<body data-pagina="veiculos">
+<main id="ficha"></main>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="assets/dados.js"></script>
+<script src="assets/paginas/veiculos.js"></script>
+<script>
+window.pagina = function (N) {
+  const D = N.dados, f = N.fmt, d = N.desenhar, V = N.veic;
+  const main = document.getElementById('ficha');
+  const $ = (id) => document.getElementById(id);
+  const esc = N.esc;
+  const id = N.param('id');
+  const v = id ? N.veiculo(id) : null;
+
+  /* ---------- veículo que não existe ---------- */
+  if (!v) {
+    document.title = 'Veículo não encontrado · NILT';
+    main.innerHTML = `<div class="titulo"><div>
+        <div class="migalha"><a href="veiculos.html">Veículos</a><span class="sep" aria-hidden="true">/</span><h1>Veículo não encontrado</h1></div>
+        <p class="sub">${id ? `Não há veículo com o código “${esc(id)}”.` : 'O endereço não diz qual veículo abrir.'}</p></div></div>
+      <div class="vazio-bloco nao-achou"><i data-lucide="search-x"></i><span>O link pode estar errado ou o veículo foi removido. Procure pela placa na busca do alto (tecla /) ou volte à lista.</span><a class="btn" href="veiculos.html">Ver todos os veículos</a></div>
+      <section class="bloco-sec atalhos"><h2>Veículos que pedem atenção</h2>
+        <div class="tabela-wrap"><table class="tabela"><thead><tr><th scope="col">Placa</th><th scope="col">Veículo</th><th scope="col">O que falta</th></tr></thead><tbody>
+        ${D.veiculos.filter((x) => x.situacao_cadastro === 'pendente' || (x.arrendado && !V.contratoDe(x))).map((x) => `<tr data-href="veiculo.html?id=${x.id}"><td>${d.placa(x.placa)}</td><td>${V.rotuloTipo(x)} · ${esc(V.marca(x))} ${esc(x.modelo)}</td><td>${x.arrendado && !V.contratoDe(x) ? d.sinalTipo('pendente', 'Sem contrato de arrendamento') : d.sinal('pendente', 'Cadastro pendente')}</td></tr>`).join('')}
+        </tbody></table></div></section>`;
+    return;
+  }
+
+  const ehCavalo = v.categoria === 'cavalo', ehDolly = v.categoria === 'dolly', engata = ['cavalo', 'carreta', 'dolly'].includes(v.categoria);
+  const ehAdmin = N.usuarioAtual.papel === 'admin';
+  const tipoRot = V.rotuloTipo(v);
+  const marcaModelo = `${V.marca(v)} ${v.modelo || ''}`.trim();
+  document.title = `${v.placa} · Veículos · NILT`;
+
+  /* ---------- montagem de campos (value no HTML: o "Descartar" volta para ele) ---------- */
+  const campo = (cls, cid, rot, inner, o = {}) => `<div class="campo ${cls}"${o.attrs || ''}><label for="${cid}">${rot}${o.opcional ? ' <span class="opcional">(opcional)</span>' : ''}</label>${inner}${o.ajuda ? `<span class="ajuda"${o.ajudaId ? ` id="${o.ajudaId}"` : ''}>${o.ajuda}</span>` : ''}</div>`;
+  const inp = (cid, val, attrs = '') => `<input id="${cid}" name="${cid}" value="${esc(val ?? '')}" autocomplete="off" ${attrs}>`;
+  const sel = (cid, opts, val, vazio, attrs = '') => `<select id="${cid}" name="${cid}" ${attrs}>${vazio != null ? `<option value="">${vazio}</option>` : ''}${opts.map(([k, r]) => `<option value="${k}"${String(k) === String(val ?? '') ? ' selected' : ''}>${esc(r)}</option>`).join('')}</select>`;
+  const radios = (nome, opts, val, rotulo) => `<div class="campo f12" role="radiogroup" aria-label="${rotulo}"><span class="rotulo">${rotulo}</span><div class="opcoes">${opts.map(([k, r]) => `<label class="opcao"><input type="radio" name="${nome}" value="${k}"${String(k) === String(val ?? '') ? ' checked' : ''}><span>${r}</span></label>`).join('')}</div></div>`;
+  const numero = (cid, val, casas = 1, attrs = '') => inp(cid, V.num(val, casas), `inputmode="decimal" class="num" ${attrs}`);
+  const secao = (sid, titulo, texto, corpo) => `<section class="secao" aria-labelledby="${sid}"><div class="secao-rotulo"><h2 id="${sid}">${titulo}</h2>${texto}</div><div class="campos">${corpo}</div></section>`;
+  const optTipos = () => Object.entries(V.CATEGORIAS).map(([cat, rot]) => `<optgroup label="${rot}">${V.TIPOS.filter((t) => t.categoria === cat).map((t) => `<option value="${t.id}"${t.id === v.tipo_veiculo_id ? ' selected' : ''}>${V.nomeTipoLista(t)}</option>`).join('')}</optgroup>`).join('');
+  const props = D.proprietarios.map((p) => N.pessoa(p.pessoa_id)).sort((a, b) => V.nomeCurto(a).localeCompare(V.nomeCurto(b))).map((p) => [p.id, `${V.nomeCurto(p)} (${f.doc(p)})`]);
+  const nomePessoa = (pid) => N.pessoa(pid)?.nome || '—';
+
+  /* ---------- situação: o que pede atenção neste veículo ---------- */
+  const TIPOS_ARQ_VEICULO = ['CRLV', 'CONTRATO', 'CRV / DUT', 'ANTT', 'FOTO', 'FOTO CONJUNTO', 'OUTROS'];
+  const arquivosDoVeiculo = () => D.arquivos.filter((a) => a.veiculo_id === v.id);
+  function pendencias() {
+    const l = [];
+    if (v.arrendado && !V.contratoDe(v)) l.push(['pendente', 'Sem contrato de arrendamento', 'arquivos']);
+    arquivosDoVeiculo().filter((a) => a.validade && N.diasAte(a.validade) < 0).forEach((a) => l.push(['bloqueado', `${a.tipo} vencido`, 'arquivos']));
+    if (!arquivosDoVeiculo().some((a) => a.tipo === 'CRLV')) l.push(['pendente', 'CRLV não anexado', 'arquivos']);
+    if (v.seguro_validade) { const s = N.diasAte(v.seguro_validade); if (s < 0) l.push(['bloqueado', 'Seguro vencido', 'tag']); else if (s <= 30) l.push(['vencendo', `Seguro ${f.dias(s)}`, 'tag']); }
+    return l;
+  }
+  function sinaisCab() {
+    const s = [d.sinal(v.situacao_cadastro, `Cadastro ${V.SITUACAO_CADASTRO.find((x) => x[0] === v.situacao_cadastro)[1].toLowerCase()}`)];
+    if (v.situacao_operacional !== 'arrendado') s.push(d.sinal(v.situacao_operacional, V.sitOp(v.situacao_operacional)));
+    if (v.arrendado || v.situacao_operacional === 'arrendado') s.push(d.sinal('arrendado'));
+    pendencias().slice(0, 2).forEach(([t, txt]) => s.push(d.sinalTipo(t, txt)));
+    return s.join('');
+  }
+
+  /* ---------- cabeçalho ---------- */
+  const cj = V.conjuntoDe(v);
+  const semContrato = v.arrendado && !V.contratoDe(v);
+  const secundaria = !engata ? '' : cj ? `<a class="btn" href="conjunto.html?id=${cj.conjunto.id}"><i data-lucide="link-2"></i>Ver conjunto</a>`
+    : ehCavalo ? `<a class="btn" href="conjuntos.html?novo=1&amp;cavalo=${v.id}"><i data-lucide="link-2"></i>Montar conjunto</a>` : '';
+  const anos = v.ano_fabricacao ? `${v.ano_fabricacao}/${v.ano_modelo}` : '';
+  const qtdArq = arquivosDoVeiculo().length;
+
+  main.innerHTML = `
+  <div class="titulo cab-veiculo">
+    <div class="cab-id">
+      <div class="migalha"><a href="veiculos.html">Veículos</a><span class="sep" aria-hidden="true">/</span><h1>${d.placa(v.placa, true)}<span class="sr-only"> ${tipoRot}</span></h1></div>
+      <div class="cab-txt">
+        <p class="cab-tipo">${tipoRot} · ${v.eixos} eixos</p>
+        <p class="cab-modelo">${esc(marcaModelo)}${anos ? ' · ' + anos : ''}${v.cor ? ' · ' + esc(v.cor) : ''}</p>
+        <div class="sinais" id="sinais">${sinaisCab()}</div>
+      </div>
+    </div>
+    <div class="acoes">${secundaria}
+      <button class="btn btn-primario" type="button" id="acao-principal"><i data-lucide="${semContrato ? 'file-up' : 'paperclip'}"></i>${semContrato ? 'Anexar contrato' : 'Anexar documento'}</button>
+    </div>
+  </div>
+
+  <div class="abas" data-abas>
+    <button type="button" data-aba="crlv">CRLV</button>
+    <button type="button" data-aba="proprietarios">Proprietários</button>
+    <button type="button" data-aba="caracteristicas">Características</button>
+    <button type="button" data-aba="tag">TAG e seguro</button>
+    <button type="button" data-aba="rastreamento">Rastreamento</button>
+    <button type="button" data-aba="frota">Frota</button>
+    <button type="button" data-aba="arquivos">Documentos<span class="n" id="n-arq">${qtdArq}</span></button>
+    ${engata ? '<button type="button" data-aba="conjunto">Conjunto</button>' : ''}
+    ${ehAdmin ? '<button type="button" data-aba="historico">Histórico</button>' : ''}
+  </div>
+
+  <form data-salvar id="form-ficha" novalidate>
+    <div data-painel="crlv">${painelCrlv()}</div>
+    <div data-painel="proprietarios" hidden>${painelProprietarios()}</div>
+    <div data-painel="caracteristicas" hidden>${painelCaracteristicas()}</div>
+    <div data-painel="tag" hidden>${painelTag()}</div>
+    <div data-painel="rastreamento" hidden>${painelRastreamento()}</div>
+    <div data-painel="frota" hidden>${painelFrota()}</div>
+    <div data-painel="arquivos" hidden>${painelArquivos()}</div>
+    ${engata ? `<div data-painel="conjunto" hidden>${painelConjunto()}</div>` : ''}
+    ${ehAdmin ? `<div data-painel="historico" hidden>${painelHistorico()}</div>` : ''}
+    <div class="barra-salvar" hidden>
+      <span>Alterações não salvas em ${v.placa}</span>
+      <span style="margin-left:auto"></span>
+      <button class="btn btn-texto" type="button" data-descartar>Descartar</button>
+      <button class="btn btn-primario" type="button" data-confirmar>Salvar alterações</button>
+    </div>
+  </form>`;
+
+  /* ---------- aba CRLV ---------- */
+  function painelCrlv() {
+    const crlv = arquivosDoVeiculo().find((a) => a.tipo === 'CRLV');
+    const nota = crlv ? `<p class="small nota-arq"><i data-lucide="file-text"></i><span>Anexado: ${esc(crlv.nome_original)}${crlv.validade ? `, ${N.diasAte(crlv.validade) < 0 ? 'vencido em ' + f.data(crlv.validade) : 'vale até ' + f.data(crlv.validade)}` : ''}</span></p>`
+      : `<p class="small nota-arq falta-arq"><i data-lucide="file-x"></i><span>CRLV ainda não anexado. Anexe na aba Documentos.</span></p>`;
+    return secao('s-crlv', 'Veículo no CRLV', `<p>Na ordem do CRLV digital: primeiro o Renavam e a placa, depois o veículo e o local.</p>${nota}`, `
+        ${campo('f4', 'renavam', 'Renavam', inp('renavam', v.renavam, 'class="cod" inputmode="numeric" maxlength="11"'))}
+        ${campo('f3', 'placa', 'Placa', inp('placa', v.placa, 'class="cod" data-mascara="placa" data-valida="placa" maxlength="8"'))}
+        ${campo('f2', 'exercicio_doc', 'Exercício', inp('exercicio_doc', v.exercicio_doc, 'inputmode="numeric" maxlength="4" class="num"'))}
+        ${campo('f3', 'dt_emissao_crlv', 'Emissão do CRLV', inp('dt_emissao_crlv', v.dt_emissao_crlv, 'type="date"'), { opcional: true })}
+        ${campo('f3', 'ano_fabricacao', 'Ano de fabricação', inp('ano_fabricacao', v.ano_fabricacao, 'inputmode="numeric" maxlength="4" class="num"'))}
+        ${campo('f3', 'ano_modelo', 'Ano do modelo', inp('ano_modelo', v.ano_modelo, 'inputmode="numeric" maxlength="4" class="num"'))}
+        ${campo('f6', 'nr_certificado_doc', 'Nº do certificado (CRV)', inp('nr_certificado_doc', v.nr_certificado_doc, 'class="cod" maxlength="20"'), { opcional: true })}
+        ${campo('f6', 'nr_seguranca_crlv', 'Nº de segurança / CLA', inp('nr_seguranca_crlv', v.nr_seguranca_crlv, 'class="cod"'), { opcional: true })}
+        ${campo('f6', 'nr_registro_crlv', 'Nº de registro do CRLV', inp('nr_registro_crlv', v.nr_registro_crlv, 'class="cod"'), { opcional: true })}
+        ${campo('f4', 'marca_id', 'Marca', sel('marca_id', V.MARCAS.map((m) => [m.id, m.nome]), v.marca_id, 'Escolha a marca'))}
+        ${campo('f8', 'modelo', 'Modelo', inp('modelo', v.modelo))}
+        ${campo('f8', 'tipo_veiculo_id', 'Tipo (espécie e carroceria)', `<select id="tipo_veiculo_id" name="tipo_veiculo_id">${optTipos()}</select>`, { ajuda: `Categoria ${V.CATEGORIAS[v.categoria].toLowerCase()} · ${v.eixos} eixos${ehCavalo ? ' · ' + (v.configuracao_cavalo === 'trucado' ? 'trucado' : 'toco') : ''}. Trocar a categoria muda as abas depois de salvar.` })}
+        ${campo('f4', 'cor', 'Cor', inp('cor', v.cor), { opcional: true })}
+        ${campo('f8', 'chassi', 'Chassi', inp('chassi', v.chassi, 'class="cod" maxlength="25"'))}
+        ${campo('f4', 'uf_emplacamento', 'UF', sel('uf_emplacamento', V.UFS.map((u) => [u, u]), v.uf_emplacamento))}
+        ${campo('f8', 'cidade_emplacamento', 'Cidade de emplacamento', inp('cidade_emplacamento', v.cidade_emplacamento))}
+      `) + secao('s-cad', 'Cadastro', '<p>Fica pendente até a equipe conferir o CRLV anexado. Cancelado não entra em conjunto.</p>', `
+        ${radios('situacao_cadastro', V.SITUACAO_CADASTRO, v.situacao_cadastro, 'Situação do cadastro')}
+        ${campo('f12', 'observacao', 'Observação', `<textarea id="observacao" name="observacao">${esc(v.observacao || '')}</textarea>`, { opcional: true })}
+      `);
+  }
+
+  /* ---------- aba Proprietários ---------- */
+  function cartaoDono(pid, titulo) {
+    const pessoa = N.pessoa(pid), p = V.proprietario(pid);
+    if (!pessoa) return `<div class="dono"><h3>${titulo}</h3><p class="muted">Não informado.</p></div>`;
+    const dias = p?.rntrc_validade ? N.diasAte(p.rntrc_validade) : null;
+    const sinalR = dias == null ? '' : dias < 0 ? d.sinalTipo('bloqueado', 'vencido') : dias <= 30 ? d.sinalTipo('vencendo', f.dias(dias)) : '';
+    return `<div class="dono">
+      <h3>${titulo}</h3>
+      <a class="dono-nome" href="proprietario.html?id=${pid}">${esc(pessoa.nome)}</a>
+      <dl class="kv">
+        <dt>${pessoa.tipo === 'pj' ? 'CNPJ' : 'CPF'}</dt><dd class="cod">${f.doc(pessoa)}</dd>
+        <dt>RNTRC</dt><dd>${p?.rntrc ? `<span class="cod">${p.rntrc}</span> · ${V.ENQUADRAMENTO[p.enquadramento_antt] || ''}` : '<span class="dash">—</span>'}</dd>
+        <dt>Validade</dt><dd class="com-sinal">${p?.rntrc_validade ? f.data(p.rntrc_validade) : '<span class="dash">—</span>'}${sinalR}</dd>
+        <dt>Cadastro</dt><dd>${d.sinal(p?.situacao_cadastro || pessoa.situacao_cadastro)}</dd>
+      </dl></div>`;
+  }
+  function blocoDonos(posse, antt) {
+    const arr = posse !== antt;
+    const contrato = V.contratoDe(v);
+    let arrend = '';
+    if (arr) {
+      arrend = `<div class="arrendamento">
+        <div class="aviso aviso-info"><i data-lucide="info"></i><div><b>Arrendado.</b> A posse no CRLV é de ${esc(V.nomeCurto(N.pessoa(posse)))} e a ANTT está em nome de ${esc(V.nomeCurto(N.pessoa(antt)))}. O NILT marca isso sozinho e exige o contrato de arrendamento. Situação operacional: ${d.sinal(v.situacao_operacional)}</div></div>
+        ${contrato
+          ? `<div class="upload com-arquivo"><i data-lucide="file-check-2"></i><span class="upload-txt"><b>${esc(contrato.nome_original)}</b><span>CONTRATO · ${contrato.validade ? 'vale até ' + f.data(contrato.validade) : 'sem validade'} · restrito: só o administrador abre</span></span><button class="btn btn-texto" type="button" data-ir="arquivos">Ver em Documentos</button></div>`
+          : `<div class="aviso aviso-pendente"><i data-lucide="file-warning"></i><div><b>Falta o contrato de arrendamento.</b> Enquanto ele não for anexado, o veículo aparece em Pendências como arrendado sem contrato.</div><button class="btn" type="button" data-anexar="CONTRATO">Anexar contrato</button></div>`}
+      </div>`;
+    }
+    return `<div class="donos${arr ? ' diferentes' : ''}">
+        ${cartaoDono(posse, 'Posse (CRLV)')}
+        <div class="donos-meio" aria-hidden="true"><i data-lucide="${arr ? 'equal-not' : 'equal'}"></i><span>${arr ? 'diferentes' : 'mesmo dono'}</span></div>
+        ${cartaoDono(antt, 'Documento (ANTT)')}
+      </div>${arrend}`;
+  }
+  function painelProprietarios() {
+    const mots = D.motoristas.map((m) => [m.pessoa_id, nomePessoa(m.pessoa_id)]);
+    return `<div class="bloco-donos" id="bloco-donos">${blocoDonos(v.proprietario_posse_id, v.proprietario_documento_id)}</div>`
+      + secao('s-donos', 'Quem é dono', '<p>A posse é o nome no CRLV. O documento é quem está na ANTT e sai impresso no CT-e. Quando são diferentes, o veículo é arrendado.</p>', `
+        ${campo('f6', 'proprietario_posse_id', 'Proprietário da posse (CRLV)', sel('proprietario_posse_id', props, v.proprietario_posse_id))}
+        ${campo('f6', 'proprietario_documento_id', 'Proprietário do documento (ANTT)', sel('proprietario_documento_id', props, v.proprietario_documento_id))}
+      `) + secao('s-pgto', 'Pagamento e motorista', '<p>Quem recebe os valores do frete deste veículo e quem dirigiu por último.</p>', `
+        ${radios('recebedor_valores', V.RECEBEDOR, v.recebedor_valores, 'Recebedor de valores')}
+        ${campo('f6', 'ultimo_motorista_id', 'Último motorista', sel('ultimo_motorista_id', mots, v.ultimo_motorista_id, 'Nenhum ainda'), { opcional: true })}
+      `);
+  }
+
+  /* ---------- aba Características e capacidade ---------- */
+  function painelCaracteristicas() {
+    const auto = !v.capacidade_informada;
+    const medidas = v.categoria === 'cavalo' || ehDolly ? '' : `${radios('tipo_assoalho', V.ASSOALHO, v.tipo_assoalho, 'Tipo de assoalho')}`;
+    const expl = ehCavalo ? '<p>No cavalo, PBT menos tara é o peso que a quinta roda aguenta. A carga do conjunto é conferida pelo CMT: cavalo, carretas, dolly e carga juntos não passam dele.</p>'
+      : ehDolly ? '<p>O dolly liga duas carretas e não leva carga: a capacidade dele não entra na conta do conjunto, só a tara.</p>'
+      : '<p>Capacidade de carga é o PBT menos a tara. O NILT calcula sozinho; desmarque o cálculo para usar o número do documento do implemento.</p>';
+    return secao('s-med', 'Medidas', medidas ? '<p>Do implemento, em metros. O assoalho diz que carga ele aceita.</p>' : '<p>Do veículo, em metros, como no manual do fabricante.</p>', `
+        ${medidas}
+        ${campo('f4', 'comprimento_m', 'Comprimento (m)', numero('comprimento_m', v.comprimento_m, 2), { opcional: true })}
+        ${campo('f4', 'largura_m', 'Largura (m)', numero('largura_m', v.largura_m, 2), { opcional: true })}
+        ${campo('f4', 'altura_m', 'Altura (m)', numero('altura_m', v.altura_m, 2), { opcional: true })}
+      `) + secao('s-peso', 'Peso e capacidade', expl, `
+        ${campo('f3', 'pbt_t', 'PBT (t)', numero('pbt_t', v.pbt_t))}
+        ${campo('f3', 'tara_t', 'Tara (t)', numero('tara_t', v.tara_t))}
+        <div class="campo f3">
+          <label for="capacidade_carga_t">Capacidade de carga (t)</label>
+          ${numero('capacidade_carga_t', v.capacidade_carga_t, 1, auto ? 'readonly' : '')}
+          <label class="marcar"><input type="checkbox" id="cap_auto" name="cap_auto"${auto ? ' checked' : ''}><span>Calcular pelo PBT e tara</span></label>
+        </div>
+        ${ehCavalo ? campo('f3', 'cmt_t', 'CMT (t)', numero('cmt_t', v.cmt_t), { ajuda: 'Capacidade máxima de tração, do CRLV.' }) : '<div class="f3"></div>'}
+        <p class="f12 cap-expl" id="cap-expl" aria-live="polite"></p>
+        <div class="f12" id="balancas"></div>
+      `);
+  }
+  function regua(escala, segs, fim, rotulo) {
+    if (!escala) return '';
+    const passo = escala > 60 ? 10 : 5;
+    let x = 0;
+    const barras = segs.filter((s) => s.v > 0).map((s) => { const w = s.v / escala * 100; const h = `<i class="seg ${s.cls}" style="left:${x}%;width:${w}%"></i>`; x += w; return h; }).join('');
+    const marcas = []; for (let t = 0; t <= escala + 0.01; t += passo) marcas.push(`<span style="left:${t / escala * 100}%">${t}</span>`);
+    return `<div class="balanca" role="img" aria-label="${rotulo}">
+      <div class="balanca-trilho">${barras}</div>
+      <div class="balanca-regua" aria-hidden="true">${marcas.join('')}</div>
+      <div class="balanca-legenda">${segs.map((s) => `<span><i class="seg-chave ${s.cls}"></i>${s.rot} <b>${f.t(s.v)}</b></span>`).join('')}<span class="fim">${fim}</span></div>
+    </div>`;
+  }
+  function recalcular() {
+    const pbt = V.lerNum($('pbt_t').value), tara = V.lerNum($('tara_t').value);
+    const capEl = $('capacidade_carga_t'), auto = $('cap_auto').checked;
+    const calc = pbt != null && tara != null ? +(pbt - tara).toFixed(1) : null;
+    capEl.readOnly = auto;
+    if (auto) capEl.value = calc == null ? '' : V.num(calc);
+    const cap = V.lerNum(capEl.value);
+    const ex = $('cap-expl');
+    if (pbt == null || tara == null) ex.innerHTML = 'Informe PBT e tara para ver a capacidade.';
+    else if (auto) ex.innerHTML = `Calculada: PBT ${f.t(pbt)} menos tara ${f.t(tara)} dá <b>${f.t(calc)}</b>.`;
+    else ex.innerHTML = cap == null ? 'Informe a capacidade ou volte a calcular.' : `Informada à mão: <b>${f.t(cap)}</b>. Pelo PBT e tara daria ${f.t(calc)}${cap + tara > pbt + 0.05 ? `; <span class="passa">tara mais capacidade passa do PBT em ${f.t(+(cap + tara - pbt).toFixed(1))}</span>` : ''}.`;
+    let html = '';
+    if (pbt != null && tara != null) {
+      const c = cap ?? 0, sobra = Math.max(0, pbt - tara - c), exc = Math.max(0, tara + c - pbt);
+      const segs = [{ v: tara, cls: 'tara', rot: 'Tara' }, { v: Math.min(c, Math.max(0, pbt - tara)), cls: ehDolly ? 'neutra' : 'carga', rot: ehCavalo ? 'Na quinta roda' : 'Capacidade' }];
+      if (sobra > 0.05) segs.push({ v: +sobra.toFixed(1), cls: 'livre', rot: 'Sem uso' });
+      if (exc > 0.05) segs.push({ v: +exc.toFixed(1), cls: 'excede', rot: 'Passa do PBT' });
+      html += regua(Math.max(pbt, tara + c), segs, `PBT <b>${f.t(pbt)}</b>`, `PBT ${f.t(pbt)}: tara ${f.t(tara)} e capacidade ${f.t(c)}`);
+    }
+    if (ehCavalo) {
+      const cmt = V.lerNum($('cmt_t').value);
+      if (cmt != null && tara != null) {
+        const conj = cj && cj.posicao === 0 ? cj.conjunto : null;
+        const taraPecas = conj ? +(conj.tara_total_t - v.tara_t).toFixed(1) : 0;
+        const segs = [{ v: tara, cls: 'tara', rot: 'Tara do cavalo' }];
+        if (conj) segs.push({ v: taraPecas, cls: 'tara-pecas', rot: 'Tara das peças engatadas' });
+        segs.push({ v: +Math.max(0, cmt - tara - taraPecas).toFixed(1), cls: 'carga', rot: conj ? 'Cabe de carga' : 'Sobra para peças e carga' });
+        html += `<h3 class="balanca-tit">CMT ${conj ? 'com o conjunto atual' : 'do cavalo'}</h3>` + regua(cmt, segs, `CMT <b>${f.t(cmt)}</b>`, `CMT ${f.t(cmt)}`);
+      }
+    }
+    $('balancas').innerHTML = html || '<div class="vazio-bloco">Sem PBT e tara não há o que desenhar.</div>';
+    N.separarPontos($('balancas'));
+  }
+
+  /* ---------- aba TAG e seguro ---------- */
+  function marcoSeguro(val) {
+    if (!val) return '<div class="marco-unico"><span class="muted">Sem validade informada.</span></div>';
+    const dias = N.diasAte(val);
+    return `<div class="marco-unico">${d.marco({ dias }, 365)}<span class="dias${dias < 0 ? ' vencido' : ''}"><b>${dias < 0 ? 'Vencido' : dias + (dias === 1 ? ' dia' : ' dias')}</b> ${dias < 0 ? f.dias(dias) : 'restantes · ' + f.data(val)}</span></div>`;
+  }
+  function painelTag() {
+    return secao('s-tag', 'TAG de pedágio', '<p>A TAG vem pela PAMCARD; a operadora define em que praças passa sem parar.</p>', `
+        ${campo('f6', 'tag_numero', 'Número da TAG', inp('tag_numero', v.tag_numero, 'class="cod"'), { opcional: true })}
+        ${campo('f6', 'tag_operadora_id', 'Operadora', sel('tag_operadora_id', V.OPERADORAS_TAG.map((o) => [o.id, o.nome]), v.tag_operadora_id, 'Sem TAG'))}
+      `) + secao('s-seg', 'Seguro', '<p>Seguro do veículo. A validade entra nos vencimentos do início quando faltam 90 dias ou menos.</p>', `
+        ${campo('f6', 'seguradora', 'Seguradora', inp('seguradora', v.seguradora), { opcional: true })}
+        ${campo('f6', 'apolice', 'Apólice', inp('apolice', v.apolice, 'class="cod"'), { opcional: true })}
+        ${campo('f4', 'seguro_validade', 'Validade', inp('seguro_validade', v.seguro_validade, 'type="date"'), { opcional: true })}
+        <div class="f8 marco-campo" id="marco-seguro">${marcoSeguro(v.seguro_validade)}</div>
+      `);
+  }
+
+  /* ---------- aba Rastreamento ---------- */
+  function painelRastreamento() {
+    return secao('s-ras', 'Rastreador', '<p>Equipamento instalado no veículo, para a gerenciadora de risco localizar.</p>', `
+        ${campo('f6', 'rastreador_empresa', 'Empresa', inp('rastreador_empresa', v.rastreador_empresa), { opcional: true })}
+        ${campo('f6', 'rastreador_modelo', 'Modelo', inp('rastreador_modelo', v.rastreador_modelo), { opcional: true })}
+        ${campo('f6', 'rastreador_numero', 'Número do rastreador', inp('rastreador_numero', v.rastreador_numero, 'class="cod"'), { opcional: true })}
+        <div class="f6"></div>
+        ${radios('rastreamento_tipo', [['', 'Sem rastreamento'], ...V.RASTREAMENTO], v.rastreamento_tipo || '', 'Tipo de rastreamento')}
+        ${campo('f12', 'rastreador_observacao', 'Observação da rastreadora', `<textarea id="rastreador_observacao" name="rastreador_observacao">${esc(v.rastreador_observacao || '')}</textarea>`, { opcional: true })}
+      `) + secao('s-pgr', 'PGR', '<p>Plano de gerenciamento de risco. Com a SM automática, a solicitação de monitoramento abre sozinha na Trafegus quando a viagem começar (fase de operação).</p>', `
+        ${radios('pgr_sm_automatica', [['true', 'SM automática na Trafegus'], ['false', 'SM aberta à mão']], v.pgr_sm_automatica == null ? '' : String(v.pgr_sm_automatica), 'PGR: solicitação de monitoramento')}
+      `);
+  }
+
+  /* ---------- aba Frota (dados de veículo próprio, EV-010) ---------- */
+  function painelFrota() {
+    return secao('s-fro', 'Na frota', '<p>Número interno e unidade que responde pelo veículo.</p>', `
+        ${campo('f3', 'nr_frota', 'Nº da frota', inp('nr_frota', v.nr_frota, 'class="cod"'), { opcional: true })}
+        ${campo('f5', 'unidade_operacional_id', 'Unidade operacional', sel('unidade_operacional_id', V.UNIDADES.map((u) => [u.id, u.nome]), v.unidade_operacional_id, 'Escolha a unidade'))}
+        ${campo('f4', 'centro_custo_id', 'Centro de custo', sel('centro_custo_id', [], null, 'Definido na fase 2', 'disabled'), { ajuda: 'A lista de centros de custo chega com o financeiro.' })}
+      `) + secao('s-op', 'Situação operacional', '<p>O que o veículo está fazendo hoje. Arrendado vem marcado quando posse e ANTT são diferentes.</p>', `
+        ${radios('situacao_operacional', V.SITUACAO_OPERACIONAL, v.situacao_operacional, 'Situação operacional')}
+      `) + secao('s-mot', 'Motor e consumo', '<p>Do manual e da ficha de compra. As médias servem para estimar o diesel da viagem.</p>', `
+        ${campo('f3', 'potencia_motor', 'Potência', inp('potencia_motor', v.potencia_motor), { opcional: true })}
+        ${campo('f3', 'hp', 'HP', inp('hp', v.hp, 'inputmode="numeric" class="num"'), { opcional: true })}
+        ${campo('f6', 'nr_motor', 'Nº do motor', inp('nr_motor', v.nr_motor, 'class="cod"'), { opcional: true })}
+        ${campo('f3', 'litros_tanque', 'Tanque (litros)', numero('litros_tanque', v.litros_tanque, 0), { opcional: true })}
+        ${campo('f3', 'media_padrao_carregado', 'Média carregado (km/l)', numero('media_padrao_carregado', v.media_padrao_carregado, 2), { opcional: true })}
+        ${campo('f3', 'media_padrao_vazio', 'Média vazio (km/l)', numero('media_padrao_vazio', v.media_padrao_vazio, 2), { opcional: true })}
+        ${campo('f3', 'km_inicial', 'Km inicial', inp('km_inicial', v.km_inicial != null ? (+v.km_inicial).toLocaleString('pt-BR') : '', 'inputmode="numeric" class="num"'), { opcional: true })}
+      `) + secao('s-cmp', 'Compra e IPVA', '<p>Valores em reais. O IPVA entra nos vencimentos do início.</p>', `
+        ${campo('f3', 'aquisicao', 'Aquisição', inp('aquisicao', v.aquisicao, 'type="date"'), { opcional: true })}
+        ${campo('f3', 'vl_compra', 'Valor de compra (R$)', inp('vl_compra', V.dinheiro(v.vl_compra), 'inputmode="decimal" class="num"'), { opcional: true })}
+        ${campo('f3', 'vl_mercado', 'Valor de mercado (R$)', inp('vl_mercado', V.dinheiro(v.vl_mercado), 'inputmode="decimal" class="num"'), { opcional: true })}
+        ${campo('f3', 'venc_ipva', 'Vencimento do IPVA', inp('venc_ipva', v.venc_ipva, 'type="date"'), { opcional: true, ajuda: v.venc_ipva ? f.dias(N.diasAte(v.venc_ipva)) : '' })}
+      `);
+  }
+
+  /* ---------- aba Documentos (arquivos do veículo) ---------- */
+  function linhasArquivos() {
+    const arqs = arquivosDoVeiculo().filter((a) => !a.restrito || ehAdmin);
+    const esperados = [['CRLV', 'CRLV do exercício', true], ...(v.arrendado ? [['CONTRATO', 'Contrato de arrendamento', true]] : [])];
+    const faltam = esperados.filter(([t]) => !arqs.some((a) => a.tipo === t));
+    const linhas = arqs.map((a) => {
+      const dias = a.validade ? N.diasAte(a.validade) : null;
+      const val = a.validade ? `${f.data(a.validade)}${dias < 0 ? d.sinalTipo('bloqueado', 'vencido') : dias <= 30 ? d.sinalTipo('vencendo', f.dias(dias)) : ''}` : '<span class="dash">—</span>';
+      return `<tr>
+        <td><span class="arq-nome"><i data-lucide="${/\.(jpe?g|png|heic)$/i.test(a.nome_original) ? 'image' : 'file-text'}"></i><span><b>${esc(a.nome_original)}</b><span class="linha2">${a.tipo}${a.restrito ? ' · <span class="restrito"><i data-lucide="lock"></i>restrito ao administrador</span>' : ''}</span></span></span></td>
+        <td class="com-sinal">${val}</td>
+        <td class="num some-celular">${f.kb(a.tamanho_bytes)}</td>
+        <td class="some-celular">${a.validado_em ? `${esc(a.validado_por)}<span class="linha2">${f.data(a.validado_em.slice(0, 10))}</span>` : '<span class="muted">não conferido</span>'}</td>
+      </tr>`;
+    }).join('');
+    return { faltam, linhas, total: arqs.length };
+  }
+  function tabelaArquivos() {
+    const { faltam, linhas, total } = linhasArquivos();
+    const falta = faltam.map(([t, rot]) => `<div class="vazio-bloco falta-doc"><i data-lucide="file-plus-2"></i><span><b>${rot}</b> ainda não anexado${t === 'CONTRATO' ? ': obrigatório para veículo arrendado' : ''}.</span><button class="btn btn-texto" type="button" data-anexar="${t}">Anexar</button></div>`).join('');
+    return `${falta}${total ? `<div class="tabela-wrap"><table class="tabela tabela-arq"><thead><tr><th scope="col">Arquivo</th><th scope="col">Validade</th><th scope="col" class="num some-celular">Tamanho</th><th scope="col" class="some-celular">Conferido por</th></tr></thead><tbody>${linhas}</tbody></table></div>`
+      : '<div class="vazio-bloco">Nenhum arquivo anexado a este veículo.</div>'}`;
+  }
+  function painelArquivos() {
+    return `<div class="anexar" id="anexar">
+        <div class="campo"><label for="arq_tipo">Tipo do arquivo</label>${sel('arq_tipo', TIPOS_ARQ_VEICULO.map((t) => [t, t]), semContrato ? 'CONTRATO' : 'CRLV')}</div>
+        <div class="campo"><label for="arq_validade">Validade <span class="opcional">(opcional)</span></label><input id="arq_validade" type="date"></div>
+        <div class="campo anexar-arq"><span class="rotulo">Arquivo</span><span class="anexar-linha"><button class="btn" type="button" id="arq_escolher"><i data-lucide="paperclip"></i>Escolher arquivo</button><span class="muted" id="arq_nome">PDF, JPG ou PNG até 20 MB</span></span><input type="file" id="arq_file" class="sr-only" tabindex="-1" accept=".pdf,.jpg,.jpeg,.png,.heic"></div>
+        <button class="btn btn-grande" type="button" id="arq_anexar">Anexar</button>
+        <p class="small muted anexar-nota" id="arq_nota">Contrato fica restrito ao administrador. Toda abertura de arquivo fica registrada.</p>
+      </div>
+      <div id="lista-arquivos">${tabelaArquivos()}</div>`;
+  }
+
+  /* ---------- aba Conjunto ---------- */
+  function painelConjunto() {
+    const hist = V.historicoDe(v);
+    const linhasHist = hist.map((c) => `<tr><td>${f.data(c.inicio)} a ${f.data(c.fim)}</td><td>${[c.cavalo_id, ...c.itens].map((x) => `<span class="cod">${N.veiculo(x).placa}</span>`).join(' + ')}</td><td class="some-celular">${esc(nomePessoa(c.motorista_id))}</td></tr>`).join('');
+    const historico = `<section class="bloco-sec"><h2>Conjuntos anteriores</h2>${hist.length
+      ? `<div class="tabela-wrap"><table class="tabela tabela-hist"><thead><tr><th scope="col">Período</th><th scope="col">Peças, na ordem de engate</th><th scope="col" class="some-celular">Motorista</th></tr></thead><tbody>${linhasHist}</tbody></table></div>`
+      : '<div class="vazio-bloco">Nenhum conjunto anterior registrado.</div>'}</section>`;
+    if (!cj) return `<section class="bloco-sec"><h2>Conjunto atual</h2><div class="vazio-bloco"><span>${ehCavalo ? 'Cavalo livre: nenhum conjunto aberto com ele.' : `${ehDolly ? 'Dolly livre' : 'Carreta livre'}: não está engatado em nenhum cavalo.`}</span>${ehCavalo ? `<a class="btn btn-texto" href="conjuntos.html?novo=1&amp;cavalo=${v.id}">Montar conjunto</a>` : ''}</div></section>${historico}`;
+    const c = cj.conjunto, cav = N.veiculo(c.cavalo_id), itens = c.itens.map(N.veiculo);
+    const eixos = cav.eixos + itens.reduce((s, x) => s + x.eixos, 0);
+    const onde = cj.posicao === 0 ? `Puxando ${cj.total} ${cj.total === 1 ? 'peça' : 'peças'}` : `Engatado no cavalo ${cav.placa}, posição ${cj.posicao} de ${cj.total}`;
+    return `<section class="bloco-sec"><h2>Conjunto atual</h2>
+      <div class="conjunto-atual">
+        <div class="conj-desenho" id="conj-desenho">${d.engate(cav, itens)}</div>
+        <div class="conj-dados">
+          <p class="conj-onde"><b>${onde}</b></p>
+          <dl class="kv">
+            <dt>Motorista</dt><dd>${c.motorista_id ? `<a href="motorista.html?id=${c.motorista_id}">${esc(nomePessoa(c.motorista_id))}</a>` : '<span class="dash">—</span>'}</dd>
+            <dt>Desde</dt><dd>${f.data(c.inicio)}</dd>
+            <dt>Eixos</dt><dd>${eixos}</dd>
+            <dt>Tara total</dt><dd>${f.t(c.tara_total_t)}</dd>
+          </dl>
+          ${d.capacidade(c)}
+          <a class="btn" href="conjunto.html?id=${c.id}">Abrir o conjunto</a>
+        </div>
+      </div></section>${historico}`;
+  }
+
+  /* ---------- aba Histórico (só admin) ---------- */
+  function painelHistorico() {
+    const idsArq = arquivosDoVeiculo().map((a) => a.id);
+    const idsConj = [...D.conjuntos, ...D.conjuntosHistorico].filter((c) => c.cavalo_id === v.id || c.itens.includes(v.id)).map((c) => c.id);
+    const ev = D.auditoria.filter((a) => (a.tabela === 'veiculo' && a.registro_id === v.id) || (a.tabela === 'arquivo' && idsArq.includes(a.registro_id)) || (a.tabela === 'conjunto' && idsConj.includes(a.registro_id)))
+      .sort((a, b) => b.em.localeCompare(a.em));
+    const ACAO = { insert: 'Cadastro', update: 'Alteração', delete: 'Exclusão', visualizacao: 'Abriu arquivo' };
+    const rotAcao = (a) => a.tabela === 'conjunto' ? 'Conjunto' : a.tabela === 'arquivo' && a.acao === 'insert' ? 'Anexo' : ACAO[a.acao] || a.acao;
+    return `<section class="bloco-sec"><h2>Histórico de alterações</h2><p class="muted sub-sec">Toda alteração e toda abertura de documento deste veículo, de quem fez e quando. Só o administrador vê.</p>
+      ${ev.length ? `<ol class="linha-tempo">${ev.map((a) => `<li><span class="lt-quando"><b>${f.relativo(a.em)}</b><span>${f.dataHora(a.em)}</span></span><span class="lt-marca${a.acao === 'visualizacao' ? ' ver' : ''}" aria-hidden="true"></span><span class="lt-txt"><b>${rotAcao(a)}</b> · ${esc(a.resumo)}<span class="linha2">${esc(a.usuario)}</span></span></li>`).join('')}</ol>`
+        : '<div class="vazio-bloco">Nenhuma alteração registrada desde o cadastro.</div>'}</section>`;
+  }
+
+  /* ---------- comportamento ---------- */
+  // no desenho do conjunto, marca a peça que é este veículo
+  document.querySelectorAll('#conj-desenho .peca').forEach((p) => {
+    if (p.querySelector('.peca-placa')?.textContent === v.placa) { p.classList.add('atual'); p.insertAdjacentHTML('beforeend', '<span class="sr-only">(este veículo)</span>'); }
+  });
+  const form = $('form-ficha');
+  form.addEventListener('submit', (e) => e.preventDefault());
+  form.addEventListener('reset', () => setTimeout(() => { recalcular(); atualizarDonos(); $('marco-seguro').innerHTML = marcoSeguro($('seguro_validade').value); N.desenharIcones(); }));
+
+  ['pbt_t', 'tara_t', 'capacidade_carga_t', 'cmt_t', 'cap_auto'].forEach((k) => $(k)?.addEventListener(k === 'cap_auto' ? 'change' : 'input', recalcular));
+  $('seguro_validade').addEventListener('input', () => { $('marco-seguro').innerHTML = marcoSeguro($('seguro_validade').value); N.separarPontos($('marco-seguro')); });
+
+  function atualizarDonos() {
+    $('bloco-donos').innerHTML = blocoDonos($('proprietario_posse_id').value, $('proprietario_documento_id').value);
+    N.desenharIcones(); N.separarPontos($('bloco-donos'));
+  }
+  $('proprietario_posse_id').addEventListener('change', atualizarDonos);
+  $('proprietario_documento_id').addEventListener('change', atualizarDonos);
+
+  // ir para uma aba e, se for anexar, deixar o tipo pronto
+  const irPara = (aba) => document.querySelector(`.abas [data-aba="${aba}"]`)?.click();
+  function prepararAnexo(tipo) {
+    irPara('arquivos');
+    if (tipo) $('arq_tipo').value = tipo;
+    $('anexar').scrollIntoView({ block: 'nearest' });
+    $('arq_escolher').focus();
+  }
+  main.addEventListener('click', (e) => {
+    const an = e.target.closest('[data-anexar]'); if (an) { prepararAnexo(an.dataset.anexar); return; }
+    const ir = e.target.closest('[data-ir]'); if (ir) irPara(ir.dataset.ir);
+  });
+  $('acao-principal').addEventListener('click', () => prepararAnexo(semContrato ? 'CONTRATO' : null));
+
+  // anexar (simulado): não mexe no "salvar" da ficha, o arquivo entra na hora
+  const anexar = $('anexar');
+  ['input', 'change'].forEach((ev) => anexar.addEventListener(ev, (e) => e.stopPropagation()));
+  let escolhido = null;
+  $('arq_escolher').addEventListener('click', () => $('arq_file').click());
+  $('arq_file').addEventListener('change', (e) => { escolhido = e.target.files[0] || null; $('arq_nome').textContent = escolhido ? `${escolhido.name} · ${f.kb(escolhido.size)}` : 'PDF, JPG ou PNG até 20 MB'; $('arq_nome').classList.toggle('muted', !escolhido); });
+  $('arq_anexar').addEventListener('click', () => {
+    if (!escolhido) { $('arq_nome').textContent = 'Escolha o arquivo antes de anexar.'; $('arq_nome').className = 'erro-texto'; $('arq_escolher').focus(); return; }
+    const tipo = $('arq_tipo').value;
+    const a = { id: 'a' + Date.now().toString(36), tipo, veiculo_id: v.id, nome_original: escolhido.name, tamanho_bytes: escolhido.size, validade: $('arq_validade').value || null, restrito: tipo === 'CONTRATO' };
+    D.arquivos.push(a);
+    D.auditoria.push({ id: Date.now(), em: new Date().toISOString(), usuario: N.usuarioAtual.nome, tabela: 'arquivo', registro_id: a.id, acao: 'insert', resumo: `${tipo} anexado: ${a.nome_original}` });
+    escolhido = null; $('arq_file').value = ''; $('arq_validade').value = ''; $('arq_nome').textContent = 'PDF, JPG ou PNG até 20 MB'; $('arq_nome').className = 'muted';
+    $('lista-arquivos').innerHTML = tabelaArquivos();
+    $('n-arq').textContent = arquivosDoVeiculo().length;
+    $('sinais').innerHTML = sinaisCab();
+    atualizarDonos();
+    if (ehAdmin) document.querySelector('[data-painel="historico"]').innerHTML = painelHistorico();
+    N.separarPontos(main); N.desenharIcones();
+    N.toast(`${tipo} anexado a ${v.placa}`);
+  });
+
+  recalcular();
+  // no celular, a aba aberta fica à vista na faixa de abas
+  setTimeout(() => { const ab = document.querySelector('.abas[data-abas]'), sel = ab?.querySelector('[aria-selected="true"]'); if (ab && sel) ab.scrollLeft = Math.max(0, sel.offsetLeft - ab.offsetLeft - 16); });
+  if (N.param('criado')) {
+    setTimeout(() => N.toast(`Veículo ${v.placa} criado. Complete a ficha com calma.`), 300);
+    const u = new URL(location); u.searchParams.delete('criado'); history.replaceState(null, '', u);
+  }
+};
+</script>
+<script src="assets/nilt.js"></script>
+</body>
+</html>

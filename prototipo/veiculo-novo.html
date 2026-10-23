@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Novo veículo · NILT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700&family=Overpass+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/nilt.css">
+  <link rel="stylesheet" href="assets/paginas/veiculos.css">
+</head>
+<body data-pagina="veiculos">
+<main>
+  <div class="titulo">
+    <div>
+      <nav class="migalha" aria-label="Caminho"><a href="veiculos.html">Veículos</a><span class="sep" aria-hidden="true">/</span><h1>Novo veículo</h1></nav>
+      <p class="sub">Comece pela placa. Depois, o tipo, o CRLV e os proprietários; o resto se completa na ficha.</p>
+    </div>
+  </div>
+
+  <form id="form-novo" class="form-novo" novalidate>
+    <section class="secao" aria-labelledby="s-placa">
+      <div class="secao-rotulo">
+        <h2 id="s-placa">Placa</h2>
+        <p>O NILT confere se a placa já está cadastrada antes de seguir. Placa antiga ou Mercosul, sem traço.</p>
+      </div>
+      <div class="campos">
+        <div class="campo f4" id="campo-placa">
+          <label for="placa">Placa</label>
+          <input id="placa" name="placa" class="entrada-placa" data-mascara="placa" autocomplete="off" spellcheck="false" maxlength="8" placeholder="ABC1D23" aria-describedby="placa-msg">
+          <span class="ajuda" id="placa-msg">ABC1234 (antiga) ou ABC1D23 (Mercosul).</span>
+        </div>
+        <div class="f8 previa-placa" id="previa" aria-hidden="true"></div>
+        <div class="f12" id="existe" hidden></div>
+      </div>
+    </section>
+
+    <fieldset id="resto" class="resto" disabled aria-describedby="trava">
+      <legend class="sr-only">Dados do veículo</legend>
+      <p class="trava" id="trava"><i data-lucide="lock"></i><span>Os campos abaixo abrem quando a placa estiver completa e ainda não cadastrada.</span></p>
+
+      <section class="secao" aria-labelledby="s-tipo">
+        <div class="secao-rotulo">
+          <h2 id="s-tipo">Tipo</h2>
+          <p>O tipo define a categoria e os eixos. Cavalo puxa o conjunto e tem CMT; carreta e dolly engatam num cavalo; truck carrega sozinho.</p>
+        </div>
+        <div class="campos">
+          <div class="campo f6">
+            <label for="tipo_veiculo_id">Tipo do veículo</label>
+            <select id="tipo_veiculo_id" name="tipo_veiculo_id" required></select>
+          </div>
+          <div class="f6 tipo-resumo" id="tipo-resumo" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="secao" aria-labelledby="s-crlv">
+        <div class="secao-rotulo">
+          <h2 id="s-crlv">Dados do CRLV</h2>
+          <p>Copie do documento do veículo. Número de certificado, exercício e emissão ficam na ficha, aba Documento.</p>
+        </div>
+        <div class="campos">
+          <div class="campo f4">
+            <label for="renavam">Renavam</label>
+            <input id="renavam" name="renavam" class="cod" inputmode="numeric" maxlength="11" autocomplete="off" required>
+            <span class="ajuda">11 dígitos.</span>
+          </div>
+          <div class="campo f5">
+            <label for="chassi">Chassi</label>
+            <input id="chassi" name="chassi" class="cod" maxlength="17" autocomplete="off" spellcheck="false" required>
+            <span class="ajuda">17 caracteres, sem I, O ou Q.</span>
+          </div>
+          <div class="campo f3">
+            <label for="cor">Cor <span class="opcional">(opcional)</span></label>
+            <input id="cor" name="cor" autocomplete="off">
+          </div>
+          <div class="campo f4">
+            <label for="marca_id">Marca</label>
+            <select id="marca_id" name="marca_id" required></select>
+          </div>
+          <div class="campo f8">
+            <label for="modelo">Modelo</label>
+            <input id="modelo" name="modelo" autocomplete="off" placeholder="Como está no CRLV, por exemplo R 450 A6x4" required>
+          </div>
+          <div class="campo f3">
+            <label for="ano_fabricacao">Ano de fabricação</label>
+            <input id="ano_fabricacao" name="ano_fabricacao" inputmode="numeric" maxlength="4" autocomplete="off" required>
+          </div>
+          <div class="campo f3">
+            <label for="ano_modelo">Ano do modelo</label>
+            <input id="ano_modelo" name="ano_modelo" inputmode="numeric" maxlength="4" autocomplete="off" required>
+          </div>
+          <div class="campo f2">
+            <label for="uf_emplacamento">UF</label>
+            <select id="uf_emplacamento" name="uf_emplacamento"></select>
+          </div>
+          <div class="campo f4">
+            <label for="cidade_emplacamento">Cidade de emplacamento <span class="opcional">(opcional)</span></label>
+            <input id="cidade_emplacamento" name="cidade_emplacamento" autocomplete="off">
+          </div>
+        </div>
+      </section>
+
+      <section class="secao" aria-labelledby="s-prop">
+        <div class="secao-rotulo">
+          <h2 id="s-prop">Proprietários</h2>
+          <p>Quem está no CRLV (posse) e quem está na ANTT (documento, sai impresso no CT-e). Quando são diferentes, o veículo é arrendado.</p>
+          <p class="small"><a href="proprietario-novo.html">Cadastrar proprietário novo</a></p>
+        </div>
+        <div class="campos">
+          <div class="campo f6">
+            <label for="proprietario_posse_id">Proprietário da posse (CRLV)</label>
+            <select id="proprietario_posse_id" name="proprietario_posse_id" required></select>
+            <span class="ajuda" id="ajuda-posse">Nome que está no CRLV do veículo.</span>
+          </div>
+          <div class="campo f6">
+            <label for="proprietario_documento_id">Proprietário do documento (ANTT)</label>
+            <select id="proprietario_documento_id" name="proprietario_documento_id"></select>
+            <span class="ajuda" id="ajuda-antt">Pessoa ou empresa que consta na ANTT.</span>
+          </div>
+          <div class="f12" id="arrendado" hidden></div>
+        </div>
+      </section>
+    </fieldset>
+
+    <div class="rodape-form">
+      <p class="falta" id="falta" aria-live="polite"></p>
+      <a class="btn btn-texto" href="veiculos.html">Cancelar</a>
+      <button class="btn btn-primario btn-grande" type="submit" id="criar" disabled><i data-lucide="check"></i>Criar veículo</button>
+    </div>
+  </form>
+</main>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="assets/dados.js"></script>
+<script src="assets/paginas/veiculos.js"></script>
+<script>
+window.pagina = function (N) {
+  const D = N.dados, f = N.fmt, d = N.desenhar, V = N.veic;
+  const $ = (id) => document.getElementById(id);
+  const ANO = N.HOJE.getFullYear();
+
+  /* ---------- listas ---------- */
+  $('tipo_veiculo_id').innerHTML = '<option value="">Escolha o tipo</option>' + Object.entries(V.CATEGORIAS).map(([cat, rot]) =>
+    `<optgroup label="${rot}">${V.TIPOS.filter((t) => t.categoria === cat).sort((a, b) => a.nome.localeCompare(b.nome)).map((t) => `<option value="${t.id}">${V.nomeTipoLista(t)}</option>`).join('')}</optgroup>`).join('');
+  $('marca_id').innerHTML = '<option value="">Escolha a marca</option>' + V.MARCAS.map((m) => `<option value="${m.id}">${m.nome}</option>`).join('');
+  $('uf_emplacamento').innerHTML = V.UFS.map((u) => `<option${u === 'PR' ? ' selected' : ''}>${u}</option>`).join('');
+  const props = D.proprietarios.map((p) => ({ p, pessoa: N.pessoa(p.pessoa_id) })).sort((a, b) => V.nomeCurto(a.pessoa).localeCompare(V.nomeCurto(b.pessoa)));
+  const opProp = props.map(({ pessoa }) => `<option value="${pessoa.id}">${N.esc(V.nomeCurto(pessoa))} (${f.doc(pessoa)})</option>`).join('');
+  $('proprietario_posse_id').innerHTML = '<option value="">Escolha quem está no CRLV</option>' + opProp;
+  $('proprietario_documento_id').innerHTML = '<option value="">O mesmo da posse</option>' + opProp;
+
+  /* ---------- placa: máscara, validação ao vivo e placa desenhada ---------- */
+  const inp = $('placa'), campoPlaca = $('campo-placa'), msg = $('placa-msg'), previa = $('previa'), existe = $('existe'), resto = $('resto');
+  const POS = ['letra', 'letra', 'letra', 'número', 'letra ou número', 'número', 'número'];
+  const casa = (c, i) => (i < 3 ? /[A-Z]/ : i === 3 || i > 4 ? /[0-9]/ : /[A-Z0-9]/).test(c);
+  let placaOk = false;
+
+  function desenharPrevia(p) {
+    const merc = p.length >= 5 ? /[A-Z]/.test(p[4]) : true;
+    const falta = 7 - p.length;
+    const corpo = `${N.esc(p)}${'<i class="vaga"></i>'.repeat(Math.max(0, falta))}`;
+    const tipoTxt = p.length < 5 ? 'Placa' : merc ? 'Placa Mercosul' : 'Placa antiga (cinza)';
+    previa.innerHTML = `<span class="placa grande${merc ? '' : ' antiga'}"><b>${corpo}</b></span>
+      <span class="previa-txt"><b>${tipoTxt}</b><span>${falta > 0 ? `faltam ${falta} ${falta === 1 ? 'caractere' : 'caracteres'}` : placaOk ? 'formato válido' : 'confira a placa'}</span></span>`;
+  }
+  function checarPlaca() {
+    const p = N.valida.normalizarPlaca(inp.value).slice(0, 7);
+    if (inp.value !== p) inp.value = p;
+    const errado = [...p].findIndex((c, i) => !casa(c, i));
+    placaOk = p.length === 7 && errado < 0;
+    campoPlaca.toggleAttribute('data-invalido', errado >= 0);
+    campoPlaca.toggleAttribute('data-valido', placaOk);
+    inp.setAttribute('aria-invalid', errado >= 0);
+    msg.className = errado >= 0 ? 'erro' : 'ajuda';
+    if (errado >= 0) msg.textContent = `A ${errado + 1}ª posição precisa ser ${POS[errado]}. Use ABC1234 ou ABC1D23.`;
+    else if (!p) msg.textContent = 'ABC1234 (antiga) ou ABC1D23 (Mercosul).';
+    else if (!placaOk) msg.textContent = `Próximo: ${POS[p.length]}.`;
+    desenharPrevia(p);
+
+    const ja = placaOk ? D.veiculos.find((v) => v.placa === p) : null;
+    if (ja) {
+      const posse = V.nomeCurto(N.pessoa(ja.proprietario_posse_id));
+      existe.hidden = false;
+      existe.innerHTML = `<div class="aviso aviso-info ja-existe"><i data-lucide="info"></i>
+        <div><b>${p} já está cadastrada.</b> ${V.rotuloTipo(ja)} ${N.esc(V.marca(ja))} ${N.esc(ja.modelo)}, de ${N.esc(posse)}, cadastro ${V.SITUACAO_CADASTRO.find((s) => s[0] === ja.situacao_cadastro)[1].toLowerCase()}. Não é preciso cadastrar de novo.</div>
+        <a class="btn" href="veiculo.html?id=${ja.id}">Abrir a ficha</a></div>`;
+      msg.className = 'ajuda'; msg.textContent = 'Placa já cadastrada.';
+      campoPlaca.removeAttribute('data-valido');
+    } else { existe.hidden = true; existe.innerHTML = ''; if (placaOk) msg.textContent = 'Placa nova. Siga com o tipo e os dados do CRLV.'; }
+    resto.disabled = !(placaOk && !ja);
+    N.desenharIcones();
+    atualizarFalta();
+  }
+  inp.addEventListener('input', checarPlaca);
+
+  /* ---------- tipo: categoria e eixos visíveis ---------- */
+  function resumoTipo() {
+    const t = V.tipo($('tipo_veiculo_id').value);
+    $('tipo-resumo').innerHTML = t ? `<dl class="kv">
+        <dt>Categoria</dt><dd>${V.CATEGORIAS[t.categoria]}</dd>
+        <dt>Eixos</dt><dd class="eixos-linha">${t.eixos} ${d.eixos(t.eixos)}</dd>
+        ${t.categoria === 'cavalo' ? `<dt>Configuração</dt><dd>${t.configuracao_cavalo === 'trucado' ? 'Trucado (tração com dois eixos atrás)' : 'Toco (um eixo de tração)'}</dd>` : ''}
+        <dt>Na ficha</dt><dd>${t.categoria === 'cavalo' ? 'informe o CMT para conferir o conjunto' : t.categoria === 'carreta' ? 'PBT e tara dão a capacidade de carga' : t.categoria === 'dolly' ? 'entra entre duas carretas; não leva carga' : 'PBT e tara dão a capacidade de carga'}</dd>
+      </dl>` : '<p class="muted">Escolha o tipo para ver a categoria e os eixos.</p>';
+  }
+  $('tipo_veiculo_id').addEventListener('change', resumoTipo);
+
+  /* ---------- campos do CRLV ---------- */
+  const so = (el, max) => el.addEventListener('input', () => { el.value = N.so(el.value).slice(0, max); });
+  so($('renavam'), 11); so($('ano_fabricacao'), 4); so($('ano_modelo'), 4);
+  $('chassi').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 17); });
+
+  function erroCampo(el, texto) {
+    const campo = el.closest('.campo'); let e = campo.querySelector('.erro');
+    campo.toggleAttribute('data-invalido', !!texto); el.setAttribute('aria-invalid', !!texto);
+    if (!texto) { if (e) e.remove(); campo.querySelector('.ajuda')?.removeAttribute('hidden'); return; }
+    if (!e) { e = document.createElement('span'); e.className = 'erro'; e.id = el.id + '-erro'; campo.appendChild(e); el.setAttribute('aria-describedby', e.id); }
+    e.textContent = texto; campo.querySelector('.ajuda')?.setAttribute('hidden', '');
+  }
+  const regras = {
+    renavam: (v) => !v ? '' : v.length !== 11 ? `Renavam tem 11 dígitos; faltam ${11 - v.length}.` : (() => { const o = D.veiculos.find((x) => x.renavam === v); return o ? `Renavam já cadastrado na placa ${o.placa}. Confira o documento.` : ''; })(),
+    chassi: (v) => !v ? '' : /[IOQ]/.test(v) ? 'Chassi não tem as letras I, O ou Q. Confira se é 1 ou 0.' : v.length !== 17 ? `Chassi tem 17 caracteres; faltam ${17 - v.length}.` : '',
+    ano_fabricacao: (v) => !v ? '' : v.length !== 4 || +v < 1970 || +v > ANO + 1 ? `Use um ano entre 1970 e ${ANO + 1}.` : '',
+    ano_modelo: (v) => { if (!v) return ''; const fab = +$('ano_fabricacao').value; if (v.length !== 4) return 'Use o ano com 4 dígitos.'; if (fab && (+v < fab || +v > fab + 1)) return `O ano do modelo é ${fab} ou ${fab + 1}.`; return ''; },
+  };
+  Object.keys(regras).forEach((k) => {
+    const el = $(k);
+    el.addEventListener('blur', () => erroCampo(el, regras[k](el.value)));
+    el.addEventListener('input', () => { if (el.closest('.campo').hasAttribute('data-invalido')) erroCampo(el, regras[k](el.value)); atualizarFalta(); });
+  });
+
+  /* ---------- proprietários e arrendamento ---------- */
+  let contrato = null;
+  function infoProp(id, antt) {
+    const p = V.proprietario(id); if (!p) return '';
+    if (!p.rntrc) return antt ? `<span class="erro-suave">Sem RNTRC cadastrado: complete na ficha do proprietário, a ANTT exige.</span>` : 'Sem RNTRC; para a posse no CRLV ele não é exigido.';
+    const dias = p.rntrc_validade ? N.diasAte(p.rntrc_validade) : null;
+    return `RNTRC <span class="cod">${p.rntrc}</span> · ${V.ENQUADRAMENTO[p.enquadramento_antt] || '—'}${dias != null ? ` · ${f.dias(dias)}` : ''}`;
+  }
+  function atualizarProps() {
+    const posse = $('proprietario_posse_id').value, antt = $('proprietario_documento_id').value || posse;
+    $('ajuda-posse').innerHTML = posse ? infoProp(posse, posse === antt) : 'Nome que está no CRLV do veículo.';
+    $('ajuda-antt').innerHTML = $('proprietario_documento_id').value ? infoProp(antt, true) : posse ? `O mesmo da posse: ${N.esc(V.nomeCurto(N.pessoa(posse)))}.` : 'Pessoa ou empresa que consta na ANTT.';
+    const arr = posse && antt && posse !== antt;
+    const box = $('arrendado'); box.hidden = !arr;
+    if (arr) {
+      box.innerHTML = `<div class="arrendamento">
+        <div class="aviso aviso-info"><i data-lucide="info"></i><div><b>O veículo será marcado como arrendado.</b> A posse no CRLV é de ${N.esc(V.nomeCurto(N.pessoa(posse)))} e a ANTT está em nome de ${N.esc(V.nomeCurto(N.pessoa(antt)))}. O NILT reconhece isso sozinho e exige o contrato de arrendamento anexado.</div></div>
+        <div class="upload${contrato ? ' com-arquivo' : ''}" id="upload">
+          ${contrato
+            ? `<i data-lucide="file-check-2"></i><span class="upload-txt"><b>${N.esc(contrato.nome)}</b><span>${f.kb(contrato.tamanho)} · CONTRATO · restrito: só o administrador abre</span></span><button class="btn btn-texto" type="button" id="tirar">Tirar</button>`
+            : `<i data-lucide="file-up"></i><span class="upload-txt"><b>Contrato de arrendamento</b><span>PDF, JPG ou PNG até 20 MB. Fica restrito ao administrador.</span></span><button class="btn" type="button" id="escolher"><i data-lucide="paperclip"></i>Escolher arquivo</button>`}
+          <input type="file" id="arquivo-contrato" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" class="sr-only" tabindex="-1">
+        </div>
+        ${contrato ? '' : '<p class="small sem-contrato">Sem o contrato, o veículo é criado mesmo assim e entra em Pendências como arrendado sem contrato.</p>'}
+      </div>`;
+      $('arquivo-contrato').addEventListener('change', (e) => { const a = e.target.files[0]; if (a) { contrato = { nome: a.name, tamanho: a.size }; atualizarProps(); N.toast('Contrato anexado ao cadastro'); } });
+      $('tirar')?.addEventListener('click', () => { contrato = null; atualizarProps(); });
+      $('escolher')?.addEventListener('click', () => $('arquivo-contrato').click());
+      N.desenharIcones(); N.separarPontos(box);
+    }
+    N.separarPontos($('ajuda-posse')); N.separarPontos($('ajuda-antt'));
+    atualizarFalta();
+  }
+  $('proprietario_posse_id').addEventListener('change', atualizarProps);
+  $('proprietario_documento_id').addEventListener('change', atualizarProps);
+
+  /* ---------- o que falta para criar ---------- */
+  const OBRIG = [['tipo_veiculo_id', 'tipo'], ['renavam', 'Renavam'], ['chassi', 'chassi'], ['marca_id', 'marca'], ['modelo', 'modelo'], ['ano_fabricacao', 'ano de fabricação'], ['ano_modelo', 'ano do modelo'], ['proprietario_posse_id', 'proprietário da posse']];
+  function faltando() {
+    if (!placaOk || resto.disabled) return ['uma placa nova e válida'];
+    return OBRIG.filter(([k]) => { const v = $(k).value.trim(); return !v || (regras[k] && regras[k](v)); }).map(([, r]) => r);
+  }
+  function atualizarFalta() {
+    const fl = faltando();
+    $('criar').disabled = fl.length > 0;
+    $('falta').textContent = fl.length ? `Para criar, falta: ${fl.join(', ')}.` : 'Tudo certo para criar. O cadastro nasce pendente até a ficha ser conferida.';
+  }
+  document.getElementById('form-novo').addEventListener('input', atualizarFalta);
+  document.getElementById('form-novo').addEventListener('change', atualizarFalta);
+
+  /* ---------- criar (simulado: guarda nesta janela e abre a ficha) ---------- */
+  document.getElementById('form-novo').addEventListener('submit', (e) => {
+    e.preventDefault();
+    Object.keys(regras).forEach((k) => erroCampo($(k), regras[k]($(k).value)));
+    if (faltando().length) { const prim = OBRIG.find(([k]) => !$(k).value.trim() || (regras[k] && regras[k]($(k).value))); if (prim) $(prim[0]).focus(); return; }
+    const posse = $('proprietario_posse_id').value, antt = $('proprietario_documento_id').value || posse;
+    const marca = V.MARCAS.find((m) => m.id === +$('marca_id').value);
+    const id = 'n' + Date.now().toString(36);
+    const v = {
+      id, placa: inp.value, tipo_veiculo_id: +$('tipo_veiculo_id').value, marca_id: marca.id, marca: marca.nome, modelo: $('modelo').value.trim(),
+      ano_fabricacao: +$('ano_fabricacao').value, ano_modelo: +$('ano_modelo').value, cor: $('cor').value.trim() || null,
+      renavam: $('renavam').value, chassi: $('chassi').value, uf_emplacamento: $('uf_emplacamento').value, cidade_emplacamento: $('cidade_emplacamento').value.trim() || null,
+      proprietario_posse_id: posse, proprietario_documento_id: antt,
+      situacao_operacional: posse !== antt ? 'arrendado' : 'ativo', situacao_cadastro: 'pendente',
+      created_at: new Date().toISOString(), created_by_nome: N.usuarioAtual.nome,
+      _arquivos: contrato && posse !== antt ? [{ id: 'a' + id, tipo: 'CONTRATO', veiculo_id: id, nome_original: contrato.nome, tamanho_bytes: contrato.tamanho, restrito: true }] : [],
+    };
+    if (!V.guardarNovo(v)) { N.toast('Esta janela não guarda dados (modo privado). Abra o protótipo numa janela comum.', 'alert-circle'); return; }
+    location.href = `veiculo.html?id=${id}&criado=1`;
+  });
+
+  // placa vinda da busca ou da lista (?placa=)
+  if (N.param('placa')) inp.value = N.param('placa');
+  checarPlaca(); resumoTipo(); atualizarProps();
+};
+</script>
+<script src="assets/nilt.js"></script>
+</body>
+</html>

@@ -3,3 +3,7 @@ re-atua-mais-frete/
 *.zip
 node_modules/
 .env*
+
+# saídas de inspeção visual (regeráveis)
+.taste-skill/inspect/
+.impeccable/review/

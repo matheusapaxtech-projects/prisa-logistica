@@ -1,0 +1,810 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-23T04:16:12.814Z",
+  "title": "Design System: NILT",
+  "extensions": {
+    "colorMeta": {
+      "frame": {
+        "role": "neutral",
+        "displayName": "Asfalto claro",
+        "canonical": "oklch(95.5% 0.004 157.2)",
+        "tonalRamp": [
+          "#0a0c0a",
+          "#222523",
+          "#3e403f",
+          "#5c5e5d",
+          "#7e817f",
+          "#a2a5a3",
+          "#c8cbc9",
+          "#ecefed"
+        ]
+      },
+      "sheet": {
+        "role": "neutral",
+        "displayName": "Folha",
+        "canonical": "oklch(100.0% 0.000 89.9)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#808080",
+          "#a4a4a4",
+          "#cacaca",
+          "#eeeeee"
+        ]
+      },
+      "raised": {
+        "role": "neutral",
+        "displayName": "Acostamento",
+        "canonical": "oklch(97.4% 0.002 165.1)",
+        "tonalRamp": [
+          "#0a0b0b",
+          "#232424",
+          "#3f403f",
+          "#5c5e5d",
+          "#7f8180",
+          "#a3a5a4",
+          "#c9cbca",
+          "#edefee"
+        ]
+      },
+      "active": {
+        "role": "neutral",
+        "displayName": "Asfalto pisado",
+        "canonical": "oklch(92.3% 0.007 160.1)",
+        "tonalRamp": [
+          "#090c0a",
+          "#212523",
+          "#3d413e",
+          "#5a5f5c",
+          "#7d817f",
+          "#a1a6a3",
+          "#c7ccc9",
+          "#ebf0ed"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Borda",
+        "canonical": "oklch(91.8% 0.006 153.8)",
+        "tonalRamp": [
+          "#090c0a",
+          "#222523",
+          "#3d413e",
+          "#5b5f5c",
+          "#7e817e",
+          "#a2a6a3",
+          "#c8ccc9",
+          "#ecf0ed"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Filete",
+        "canonical": "oklch(95.2% 0.004 157.2)",
+        "tonalRamp": [
+          "#0a0c0a",
+          "#222523",
+          "#3e403f",
+          "#5c5e5d",
+          "#7e817f",
+          "#a2a5a3",
+          "#c8cbc9",
+          "#ecefed"
+        ]
+      },
+      "control": {
+        "role": "neutral",
+        "displayName": "Meio-fio",
+        "canonical": "oklch(83.8% 0.010 155.1)",
+        "tonalRamp": [
+          "#080c09",
+          "#202622",
+          "#3c413d",
+          "#595f5b",
+          "#7c827d",
+          "#a0a7a2",
+          "#c6cdc8",
+          "#e9f1eb"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Tinta",
+        "canonical": "oklch(25.3% 0.011 242.1)",
+        "tonalRamp": [
+          "#070c0f",
+          "#202529",
+          "#3b4145",
+          "#595e63",
+          "#7b8186",
+          "#9fa6ab",
+          "#c5cbd1",
+          "#e9eff5"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Tinta apagada",
+        "canonical": "oklch(46.3% 0.012 164.5)",
+        "tonalRamp": [
+          "#070d0a",
+          "#1f2622",
+          "#3a423e",
+          "#58605c",
+          "#7a837e",
+          "#9ea7a3",
+          "#c4cdc8",
+          "#e8f1ec"
+        ]
+      },
+      "faint": {
+        "role": "neutral",
+        "displayName": "Tinta fraca",
+        "canonical": "oklch(52.4% 0.011 161.1)",
+        "tonalRamp": [
+          "#070d0a",
+          "#202622",
+          "#3b423e",
+          "#59605c",
+          "#7b827e",
+          "#9fa7a2",
+          "#c5cdc8",
+          "#e9f1ec"
+        ]
+      },
+      "verde": {
+        "role": "primary",
+        "displayName": "Verde placa de orientação",
+        "canonical": "oklch(46.5% 0.114 153.7)",
+        "tonalRamp": [
+          "#001300",
+          "#002f0d",
+          "#004e25",
+          "#196f3f",
+          "#429460",
+          "#70b787",
+          "#9ddcb0",
+          "#c7fed7"
+        ]
+      },
+      "verde-forte": {
+        "role": "primary",
+        "displayName": "Verde fundo de placa",
+        "canonical": "oklch(39.6% 0.095 154.2)",
+        "tonalRamp": [
+          "#001201",
+          "#002e12",
+          "#0f4c2b",
+          "#2b6d45",
+          "#4e9166",
+          "#79b58d",
+          "#a5d9b5",
+          "#cdfcdb"
+        ]
+      },
+      "verde-claro": {
+        "role": "primary",
+        "displayName": "Verde claro",
+        "canonical": "oklch(94.5% 0.019 157.9)",
+        "tonalRamp": [
+          "#060d09",
+          "#1d2721",
+          "#38433c",
+          "#556159",
+          "#77847c",
+          "#9ba8a0",
+          "#c1cec6",
+          "#e6f2ea"
+        ]
+      },
+      "verde-tinta": {
+        "role": "primary",
+        "displayName": "Verde tinta",
+        "canonical": "oklch(34.2% 0.078 155.1)",
+        "tonalRamp": [
+          "#001103",
+          "#022c16",
+          "#1c4a2f",
+          "#366a4a",
+          "#598e6c",
+          "#81b292",
+          "#abd7b9",
+          "#d3fadf"
+        ]
+      },
+      "laranja": {
+        "role": "secondary",
+        "displayName": "Laranja de obras",
+        "canonical": "oklch(61.9% 0.178 43.4)",
+        "tonalRamp": [
+          "#2c0000",
+          "#520000",
+          "#7b0d00",
+          "#a62d00",
+          "#d15308",
+          "#f3804e",
+          "#ffac81",
+          "#ffd5ae"
+        ]
+      },
+      "laranja-claro": {
+        "role": "secondary",
+        "displayName": "Laranja claro",
+        "canonical": "oklch(95.1% 0.027 60.4)",
+        "tonalRamp": [
+          "#120903",
+          "#2d2118",
+          "#4b3d32",
+          "#695a4e",
+          "#8d7d70",
+          "#b2a194",
+          "#d7c7bb",
+          "#faece1"
+        ]
+      },
+      "laranja-tinta": {
+        "role": "secondary",
+        "displayName": "Laranja tinta",
+        "canonical": "oklch(43.8% 0.124 44.0)",
+        "tonalRamp": [
+          "#240000",
+          "#470c00",
+          "#6c2700",
+          "#93431b",
+          "#bb653f",
+          "#de8e6b",
+          "#ffb798",
+          "#ffddc1"
+        ]
+      },
+      "amarelo": {
+        "role": "secondary",
+        "displayName": "Amarelo de advertência",
+        "canonical": "oklch(81.1% 0.166 85.0)",
+        "tonalRamp": [
+          "#1e0100",
+          "#3f1800",
+          "#613400",
+          "#865100",
+          "#ac7500",
+          "#ce9c12",
+          "#f0c462",
+          "#ffe997"
+        ]
+      },
+      "amarelo-claro": {
+        "role": "secondary",
+        "displayName": "Amarelo claro",
+        "canonical": "oklch(96.2% 0.053 95.6)",
+        "tonalRamp": [
+          "#100b00",
+          "#2a2409",
+          "#474021",
+          "#675e3a",
+          "#8a805c",
+          "#aea582",
+          "#d3cbab",
+          "#f6efd3"
+        ]
+      },
+      "amarelo-tinta": {
+        "role": "secondary",
+        "displayName": "Amarelo tinta",
+        "canonical": "oklch(40.4% 0.083 86.9)",
+        "tonalRamp": [
+          "#150800",
+          "#312100",
+          "#503d04",
+          "#715a20",
+          "#967d43",
+          "#b9a26e",
+          "#ddc89a",
+          "#ffedc4"
+        ]
+      },
+      "amarelo-borda": {
+        "role": "secondary",
+        "displayName": "Filete do losango amarelo",
+        "canonical": "oklch(70.5% 0.144 84.8)",
+        "tonalRamp": [
+          "#1c0300",
+          "#3c1b00",
+          "#5d3600",
+          "#815400",
+          "#a77700",
+          "#c99d38",
+          "#ecc572",
+          "#ffeaa3"
+        ]
+      },
+      "vermelho": {
+        "role": "secondary",
+        "displayName": "Vermelho de regulamentação",
+        "canonical": "oklch(53.0% 0.207 22.3)",
+        "tonalRamp": [
+          "#310000",
+          "#5a0000",
+          "#850009",
+          "#b30023",
+          "#df3944",
+          "#ff6e6f",
+          "#ff9e9b",
+          "#ffc9c4"
+        ]
+      },
+      "vermelho-claro": {
+        "role": "secondary",
+        "displayName": "Vermelho claro",
+        "canonical": "oklch(93.6% 0.027 9.0)",
+        "tonalRamp": [
+          "#130809",
+          "#2e1f22",
+          "#4d3a3d",
+          "#6c585a",
+          "#8f7a7d",
+          "#b49ea1",
+          "#d9c5c7",
+          "#fce9eb"
+        ]
+      },
+      "vermelho-tinta": {
+        "role": "secondary",
+        "displayName": "Vermelho tinta",
+        "canonical": "oklch(40.5% 0.156 21.8)",
+        "tonalRamp": [
+          "#290000",
+          "#4f0006",
+          "#77111d",
+          "#a12e35",
+          "#cb5356",
+          "#ee7f7e",
+          "#ffaba8",
+          "#ffd3cf"
+        ]
+      },
+      "perigo-borda": {
+        "role": "secondary",
+        "displayName": "Borda de perigo",
+        "canonical": "oklch(81.6% 0.061 8.2)",
+        "tonalRamp": [
+          "#190308",
+          "#38191f",
+          "#59333a",
+          "#7c4f57",
+          "#a17179",
+          "#c4979e",
+          "#e8bec4",
+          "#ffe3e9"
+        ]
+      },
+      "azul": {
+        "role": "tertiary",
+        "displayName": "Azul de serviços",
+        "canonical": "oklch(48.5% 0.133 254.6)",
+        "tonalRamp": [
+          "#00062f",
+          "#002254",
+          "#053f7b",
+          "#215ea4",
+          "#4482cd",
+          "#70a7ec",
+          "#9dceff",
+          "#c6f2ff"
+        ]
+      },
+      "azul-claro": {
+        "role": "tertiary",
+        "displayName": "Azul claro",
+        "canonical": "oklch(94.2% 0.018 250.6)",
+        "tonalRamp": [
+          "#070c12",
+          "#1e252c",
+          "#394149",
+          "#565f68",
+          "#78818b",
+          "#9ca6b0",
+          "#c2ccd6",
+          "#e7f0f9"
+        ]
+      },
+      "azul-tinta": {
+        "role": "tertiary",
+        "displayName": "Azul tinta",
+        "canonical": "oklch(36.9% 0.100 256.0)",
+        "tonalRamp": [
+          "#000927",
+          "#052349",
+          "#1d406d",
+          "#365e94",
+          "#5782bb",
+          "#80a7dc",
+          "#aacdfe",
+          "#d1f1ff"
+        ]
+      },
+      "placa-azul": {
+        "role": "tertiary",
+        "displayName": "Azul da placa Mercosul",
+        "canonical": "oklch(44.2% 0.143 259.2)",
+        "tonalRamp": [
+          "#000332",
+          "#001f57",
+          "#103c80",
+          "#285baa",
+          "#4a7fd3",
+          "#74a5f2",
+          "#9fccff",
+          "#c8f1ff"
+        ]
+      },
+      "neutro-marca": {
+        "role": "neutral",
+        "displayName": "Sinal neutro (marca)",
+        "canonical": "oklch(65.2% 0.012 158.7)",
+        "tonalRamp": [
+          "#070d09",
+          "#1f2622",
+          "#3b423d",
+          "#58605b",
+          "#7b827e",
+          "#9fa7a2",
+          "#c4cdc8",
+          "#e8f1ec"
+        ]
+      },
+      "neutro-tinta": {
+        "role": "neutral",
+        "displayName": "Sinal neutro (texto)",
+        "canonical": "oklch(36.0% 0.012 160.8)",
+        "tonalRamp": [
+          "#070d0a",
+          "#1f2622",
+          "#3b423e",
+          "#58605b",
+          "#7b827e",
+          "#9fa7a2",
+          "#c4cdc8",
+          "#e8f1ec"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Só o nome NILT na placa de entrada do login."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Título de tela de lista e do Início, um por tela."
+      },
+      "headline-ficha": {
+        "displayName": "Headline de ficha",
+        "purpose": "Nome do registro como último elo da migalha."
+      },
+      "title-dialogo": {
+        "displayName": "Título de diálogo",
+        "purpose": "Cabeçalho de diálogo."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Cabeçalho de bloco, rótulo de seção de formulário, grupo."
+      },
+      "kpi": {
+        "displayName": "KPI",
+        "purpose": "Número dentro da placa de quilômetro da ficha."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Texto corrido, células, campos, botões (600)."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Rótulo de campo, acima dele; aba."
+      },
+      "meta": {
+        "displayName": "Meta",
+        "purpose": "Segunda linha de célula, explicações e legendas."
+      },
+      "small": {
+        "displayName": "Small",
+        "purpose": "Cabeçalho de tabela, ajuda e erro de campo."
+      },
+      "sinal": {
+        "displayName": "Sinal",
+        "purpose": "Texto dentro dos sinais de situação."
+      },
+      "codigo": {
+        "displayName": "Código",
+        "purpose": "CPF, CNPJ, RNTRC, Renavam, chassi."
+      },
+      "placa": {
+        "displayName": "Placa",
+        "purpose": "Só dentro da placa desenhada."
+      },
+      "placa-grande": {
+        "displayName": "Placa grande",
+        "purpose": "Placa no cabeçalho da ficha do veículo."
+      }
+    },
+    "shadows": [
+      {
+        "name": "menu",
+        "value": "0 0 0 1px rgba(30,35,39,0.09), 0 12px 32px rgba(30,35,39,0.12)",
+        "purpose": "Resultados da busca global e menu \"Novo cadastro\"."
+      },
+      {
+        "name": "barra",
+        "value": "0 6px 18px rgba(30,35,39,0.16)",
+        "purpose": "Barra de salvar, só com alteração pendente."
+      },
+      {
+        "name": "barra-leve",
+        "value": "0 4px 12px rgba(30,35,39,0.07)",
+        "purpose": "Barra de salvar do montador de conjunto."
+      },
+      {
+        "name": "toast",
+        "value": "0 10px 30px rgba(30,35,39,0.25)",
+        "purpose": "Aviso rápido."
+      },
+      {
+        "name": "dialogo",
+        "value": "0 0 0 1px rgba(30,35,39,0.08), 0 24px 60px rgba(30,35,39,0.22)",
+        "purpose": "Diálogo modal; véu rgba(30,35,39,0.32)."
+      },
+      {
+        "name": "foco-campo",
+        "value": "0 0 0 3px rgba(11,107,58,0.16)",
+        "purpose": "Halo verde do campo em foco."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.23, 1, 0.32, 1)",
+        "purpose": "Curva padrão de toda resposta (clique, menu, diálogo, toast, gaveta)."
+      },
+      {
+        "name": "ease-in-out",
+        "value": "cubic-bezier(0.77, 0, 0.175, 1)",
+        "purpose": "Definida no build; sem uso nas telas atuais."
+      },
+      {
+        "name": "clique",
+        "value": "transform scale(0.97) 160ms ease-out",
+        "purpose": "Retorno de pressão em botão."
+      },
+      {
+        "name": "cor",
+        "value": "120–150ms ease",
+        "purpose": "Hover de botão, menu, linha de tabela, aba, opção."
+      },
+      {
+        "name": "menu-suspenso",
+        "value": "opacity + transform 150ms ease-out",
+        "purpose": "Busca global e menu Novo cadastro."
+      },
+      {
+        "name": "dialogo",
+        "value": "opacity 0→1 + scale 0.97→1, 200ms ease-out",
+        "purpose": "Abertura de diálogo."
+      },
+      {
+        "name": "barra-salvar",
+        "value": "transform + opacity 200ms ease-out",
+        "purpose": "Barra de salvar."
+      },
+      {
+        "name": "toast",
+        "value": "translateY 12px→0 + opacity, 300ms ease-out; some após 3200ms",
+        "purpose": "Aviso rápido."
+      },
+      {
+        "name": "gaveta",
+        "value": "transform 260ms ease-out",
+        "purpose": "Menu lateral abaixo de 1100px."
+      },
+      {
+        "name": "reduzido",
+        "value": "prefers-reduced-motion: duração 0",
+        "purpose": "Zera transições e animações."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "celular",
+        "value": "640px"
+      },
+      {
+        "name": "login-empilhado",
+        "value": "900px"
+      },
+      {
+        "name": "tablet",
+        "value": "1100px"
+      },
+      {
+        "name": "folha-max",
+        "value": "1440px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botão primário",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "A ação principal verde, uma por tela.",
+      "html": "<button class=\"ds-btn-primario\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><path d=\"M12 5v14M5 12h14\"/></svg>Novo cadastro</button>",
+      "css": ".ds-btn-primario { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 32px; padding: 0 14px; border-radius: 6px; font: 600 14px/20px var(--font, \"Overpass\", \"Segoe UI\", system-ui, sans-serif); white-space: nowrap; cursor: pointer; transition: transform 160ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)), background-color 150ms ease, border-color 150ms ease; background: var(--verde, #0b6b3a); border: 1px solid var(--verde, #0b6b3a); color: #fff; } .ds-btn-primario:hover { background: var(--verde-forte, #08552e); border-color: var(--verde-forte, #08552e); } .ds-btn-primario:focus-visible { outline: 2px solid var(--verde, #0b6b3a); outline-offset: 2px; } .ds-btn-primario:active { transform: scale(0.97); }"
+    },
+    {
+      "name": "Botão secundário",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Ação secundária: folha com borda meio-fio.",
+      "html": "<button class=\"ds-btn\">Montar conjunto</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 32px; padding: 0 14px; border-radius: 6px; font: 600 14px/20px var(--font, \"Overpass\", \"Segoe UI\", system-ui, sans-serif); white-space: nowrap; cursor: pointer; transition: transform 160ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)), background-color 150ms ease, border-color 150ms ease; background: var(--sheet, #fff); border: 1px solid var(--control, #c5ccc7); color: var(--ink, #1e2327); } .ds-btn:hover { background: var(--raised, #f5f7f6); } .ds-btn:focus-visible { outline: 2px solid var(--verde, #0b6b3a); outline-offset: 2px; } .ds-btn:active { transform: scale(0.97); }"
+    },
+    {
+      "name": "Botão de texto",
+      "kind": "button",
+      "refersTo": "button-texto",
+      "description": "Ação leve em azul de serviços, sem borda.",
+      "html": "<button class=\"ds-btn-texto\">Ver todas</button>",
+      "css": ".ds-btn-texto { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 32px; padding: 0 14px; border-radius: 6px; font: 600 14px/20px var(--font, \"Overpass\", \"Segoe UI\", system-ui, sans-serif); white-space: nowrap; cursor: pointer; transition: transform 160ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)), background-color 150ms ease, border-color 150ms ease; padding: 0 8px; background: transparent; border: 1px solid transparent; color: var(--azul, #1f5fa8); } .ds-btn-texto:hover { background: var(--azul-claro, #e3edf8); } .ds-btn-texto:focus-visible { outline: 2px solid var(--verde, #0b6b3a); outline-offset: 2px; } .ds-btn-texto:active { transform: scale(0.97); }"
+    },
+    {
+      "name": "Campo",
+      "kind": "input",
+      "refersTo": "campo",
+      "description": "Rótulo acima, campo de 38px, foco verde com halo; erro diz problema e correção.",
+      "html": "<div class=\"ds-campo\"><label for=\"ds-cpf\">CPF</label><input id=\"ds-cpf\" class=\"ds-input\" placeholder=\"000.000.000-00\"><span class=\"ds-ajuda\">Os dígitos são conferidos ao sair do campo.</span></div>",
+      "css": ".ds-campo { display: grid; gap: 8px; width: 280px; font-family: var(--font, \"Overpass\", \"Segoe UI\", system-ui, sans-serif); } .ds-campo label { font-size: 14px; font-weight: 500; line-height: 18px; color: var(--ink, #1e2327); } .ds-input { height: 38px; padding: 0 12px; border: 1px solid var(--border, #e1e5e2); border-radius: 8px; background: #fff; font: 400 14px/20px var(--mono, \"Overpass Mono\", ui-monospace, Consolas, monospace); color: var(--ink, #1e2327); transition: border-color 150ms ease, box-shadow 150ms ease; } .ds-input::placeholder { color: var(--faint, #656c68); } .ds-input:hover { border-color: var(--control, #c5ccc7); } .ds-input:focus { outline: none; border-color: var(--verde, #0b6b3a); box-shadow: 0 0 0 3px rgba(11, 107, 58, 0.16); } .ds-ajuda { font-size: 12px; line-height: 16px; color: var(--muted, #535b57); }"
+    },
+    {
+      "name": "Menu (placa de orientação)",
+      "kind": "nav",
+      "refersTo": "nav-item-atual",
+      "description": "Item atual como placa verde com filete branco; contagem de pendências em pílula.",
+      "html": "<nav class=\"ds-nav\"><a href=\"#\" aria-current=\"page\">Início</a><a href=\"#\">Motoristas</a><a href=\"#\">Pendências<span class=\"ds-contagem\">7</span></a></nav>",
+      "css": ".ds-nav { display: grid; gap: 2px; width: 204px; padding: 12px; background: var(--frame, #eef1ef); font-family: var(--font, \"Overpass\", \"Segoe UI\", system-ui, sans-serif); } .ds-nav a { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: 8px; color: var(--ink, #1e2327); font-size: 14px; text-decoration: none; transition: background-color 150ms ease; } .ds-nav a:hover { background: rgba(30, 35, 39, 0.05); } .ds-nav a:focus-visible { outline: 2px solid var(--verde, #0b6b3a); outline-offset: 2px; } .ds-nav a[aria-current=\"page\"] { background: var(--verde, #0b6b3a); color: #fff; font-weight: 600; border-radius: 6px; outline: 1px solid rgba(255, 255, 255, 0.85); outline-offset: -3px; } .ds-contagem { margin-left: auto; min-width: 20px; height: 18px; padding: 0 6px; border-radius: 9px; background: var(--vermelho, #c8102e); color: #fff; font-size: 11px; font-weight: 600; line-height: 19px; text-align: center; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Sinais de situação",
+      "kind": "chip",
+      "refersTo": "sinal-normal",
+      "description": "Forma + cor de placa: retângulo, losango, círculo vazado, quadrado, ponto.",
+      "html": "<div class=\"ds-sinais\"><span class=\"ds-sinal ds-normal\">Normal</span><span class=\"ds-sinal ds-pendente\">Pendente</span><span class=\"ds-sinal ds-vencendo\">Vence em 18 dias</span><span class=\"ds-sinal ds-bloqueado\">Vencido</span><span class=\"ds-sinal ds-info\">Arrendado</span><span class=\"ds-sinal ds-neutro\">Sem consulta</span></div>",
+      "css": ".ds-sinais { display: flex; flex-wrap: wrap; gap: 8px; } .ds-sinal { display: inline-flex; align-items: center; gap: 7px; height: 22px; padding: 0 8px 0 7px; border-radius: 4px; font: 600 12px/1 var(--font, \"Overpass\", \"Segoe UI\", system-ui, sans-serif); white-space: nowrap; } .ds-sinal::before { content: \"\"; width: 9px; height: 9px; flex: none; box-sizing: border-box; } .ds-normal { background: var(--verde-claro, #e3f1e8); color: var(--verde-tinta, #0a4426); } .ds-normal::before { background: var(--verde, #0b6b3a); border-radius: 2px; } .ds-pendente { background: var(--laranja-claro, #fdebdd); color: var(--laranja-tinta, #873505); } .ds-pendente::before { background: var(--laranja, #d9580d); transform: rotate(45deg) scale(0.82); border-radius: 1px; } .ds-vencendo { background: var(--amarelo-claro, #fdf3cb); color: var(--amarelo-tinta, #5c4500); } .ds-vencendo::before { background: var(--amarelo, #f2b705); transform: rotate(45deg) scale(0.82); border-radius: 1px; box-shadow: 0 0 0 1px #c99700; } .ds-bloqueado { background: var(--vermelho-claro, #fbe3e6); color: var(--vermelho-tinta, #8a0b1f); } .ds-bloqueado::before { width: 10px; height: 10px; border: 2px solid var(--vermelho, #c8102e); border-radius: 50%; } .ds-info { background: var(--azul-claro, #e3edf8); color: var(--azul-tinta, #163f73); } .ds-info::before { background: var(--azul, #1f5fa8); border-radius: 1px; } .ds-neutro { background: var(--active, #e2e7e4); color: #383f3b; } .ds-neutro::before { background: #8a928d; border-radius: 50%; }"
+    },
+    {
+      "name": "Placa do veículo",
+      "kind": "custom",
+      "refersTo": "placa",
+      "description": "Placa Mercosul desenhada; placa antiga cinza sem faixa.",
+      "html": "<div class=\"ds-placas\"><span class=\"ds-placa\"><b>BRA2E19</b></span><span class=\"ds-placa ds-antiga\"><b>KLM4821</b></span></div>",
+      "css": ".ds-placas { display: flex; gap: 12px; } .ds-placa { display: inline-grid; grid-template-rows: 7px auto; min-width: 92px; height: 30px; border: 1.5px solid #1e2327; border-radius: 4px; background: #fff; overflow: hidden; } .ds-placa::before { content: \"BRASIL\"; background: var(--placa-azul, #1a4fa0); color: #fff; font: 700 5px/7px var(--font, \"Overpass\", \"Segoe UI\", system-ui, sans-serif); letter-spacing: 0.24em; text-align: center; } .ds-placa b { font: 600 15px/20px var(--mono, \"Overpass Mono\", ui-monospace, Consolas, monospace); letter-spacing: 0.06em; text-align: center; color: #111; padding: 0 7px; } .ds-antiga { background: #e8eaea; grid-template-rows: 0 auto; border-color: #6b7270; } .ds-antiga::before { content: none; } .ds-antiga b { line-height: 27px; }"
+    },
+    {
+      "name": "Placas de advertência",
+      "kind": "custom",
+      "refersTo": "sinal-pendente",
+      "description": "Contagem de pendências como losango de obras/advertência e círculo de proibição.",
+      "html": "<div class=\"ds-adv\"><span class=\"ds-losango\"><b>2</b></span><span class=\"ds-losango ds-amarelo\"><b>1</b></span><span class=\"ds-circulo\"><b>2</b></span></div>",
+      "css": ".ds-adv { display: flex; align-items: center; gap: 24px; } .ds-losango { width: 40px; height: 40px; margin: 8px; transform: rotate(45deg); border-radius: 5px; display: grid; place-items: center; background: var(--laranja, #d9580d); color: var(--laranja, #d9580d); box-shadow: inset 0 0 0 2px #1e2327, inset 0 0 0 4px currentColor; } .ds-amarelo { background: var(--amarelo, #f2b705); color: var(--amarelo, #f2b705); } .ds-losango b { transform: rotate(-45deg); font: 700 17px/1 var(--font, \"Overpass\", \"Segoe UI\", system-ui, sans-serif); color: #1e2327; font-variant-numeric: tabular-nums; } .ds-circulo { width: 44px; height: 44px; box-sizing: border-box; border-radius: 50%; border: 5px solid var(--vermelho, #c8102e); background: #fff; display: grid; place-items: center; } .ds-circulo b { font: 700 17px/1 var(--font, \"Overpass\", \"Segoe UI\", system-ui, sans-serif); color: #1e2327; }"
+    },
+    {
+      "name": "Marco de quilômetro",
+      "kind": "custom",
+      "refersTo": "bloco",
+      "description": "Vencimento com barra no comprimento exato dos dias restantes.",
+      "html": "<div class=\"ds-marcos\"><div class=\"ds-marco\"><span class=\"ds-quem\"><b>CNH</b><span>Cláudio Bertoli Neto · 10/11/2026</span></span><span class=\"ds-trilho\"><i style=\"width:20%\"></i></span><span class=\"ds-dias\"><b>18 dias</b><span>restantes</span></span></div><div class=\"ds-marco\"><span class=\"ds-quem\"><b>RNTRC</b><span>Rodo Norte Ltda · 11/10/2026</span></span><span class=\"ds-trilho ds-vencido\"><i></i></span><span class=\"ds-dias ds-v\"><b>Vencido</b><span>venceu há 12 dias</span></span></div></div>",
+      "css": ".ds-marcos { display: grid; width: 560px; font-family: var(--font, \"Overpass\", \"Segoe UI\", system-ui, sans-serif); color: var(--ink, #1e2327); } .ds-marco { display: grid; grid-template-columns: minmax(0, 1fr) 150px 128px; gap: 16px; align-items: center; min-height: 52px; padding: 8px 0; border-top: 1px solid var(--rule, #edf0ee); } .ds-marco:first-child { border-top: 0; } .ds-quem b { display: block; font-weight: 600; line-height: 18px; } .ds-quem span { font-size: 13px; line-height: 18px; color: var(--muted, #535b57); } .ds-trilho { position: relative; height: 8px; border-radius: 4px; background: var(--rule, #edf0ee); overflow: hidden; } .ds-trilho i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--amarelo, #f2b705); } .ds-vencido i { width: 4px; background: var(--vermelho, #c8102e); border-radius: 4px 0 0 4px; } .ds-dias { text-align: right; font-variant-numeric: tabular-nums; } .ds-dias b { font-size: 16px; font-weight: 600; } .ds-dias span { display: block; font-size: 13px; color: var(--muted, #535b57); } .ds-v b { color: var(--vermelho-tinta, #8a0b1f); }"
+    },
+    {
+      "name": "Conjunto engatado",
+      "kind": "custom",
+      "refersTo": "placa",
+      "description": "Cavalo + carretas na ordem física, com eixos e placas.",
+      "html": "<div class=\"ds-engate\"><div class=\"ds-peca ds-cavalo\"><div class=\"ds-corpo\">Cavalo trucado</div><span class=\"ds-eixos\"><i></i><i></i><i></i></span><span class=\"ds-pl\">BRA2E19</span></div><span class=\"ds-acopla\"></span><div class=\"ds-peca ds-carreta\"><div class=\"ds-corpo\">Carreta <span>36,6 t</span></div><span class=\"ds-eixos\"><i></i><i></i><i></i></span><span class=\"ds-pl\">BRA7G33</span></div><span class=\"ds-acopla\"></span><div class=\"ds-peca ds-vaga\"><div class=\"ds-corpo\">Vaga</div><span class=\"ds-eixos\"></span><span class=\"ds-pl\">&nbsp;</span></div></div>",
+      "css": ".ds-engate { display: flex; align-items: flex-end; font-family: var(--font, \"Overpass\", \"Segoe UI\", system-ui, sans-serif); } .ds-peca { display: grid; gap: 6px; justify-items: start; } .ds-corpo { height: 34px; border-radius: 4px; border: 1.5px solid #1e2327; display: flex; align-items: center; gap: 8px; padding: 0 8px; background: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; color: #1e2327; } .ds-corpo span { color: var(--muted, #535b57); font-weight: 500; } .ds-cavalo .ds-corpo { background: #1e2327; color: #fff; border-radius: 4px 10px 4px 4px; } .ds-carreta .ds-corpo { min-width: 132px; } .ds-vaga .ds-corpo { min-width: 120px; justify-content: center; border: 1.5px dashed var(--control, #c5ccc7); color: var(--muted, #535b57); font-weight: 500; background: transparent; } .ds-eixos { display: flex; gap: 6px; padding-left: 8px; height: 10px; } .ds-eixos i { width: 10px; height: 10px; border-radius: 50%; background: #1e2327; box-shadow: 0 0 0 2px #fff, 0 0 0 3px #1e2327; } .ds-pl { font: 500 12px/14px var(--mono, \"Overpass Mono\", ui-monospace, Consolas, monospace); color: var(--muted, #535b57); padding-left: 2px; } .ds-acopla { width: 18px; height: 2px; background: #1e2327; margin-bottom: 40px; flex: none; }"
+    },
+    {
+      "name": "Barra de salvar",
+      "kind": "custom",
+      "refersTo": "barra-salvar",
+      "description": "Aparece só com alteração não salva; um modelo de salvar por tela.",
+      "html": "<div class=\"ds-barra\"><span>Alterações não salvas nesta ficha</span><button class=\"ds-b-desc\">Descartar</button><button class=\"ds-b-salvar\">Salvar alterações</button></div>",
+      "css": ".ds-barra { display: flex; align-items: center; gap: 12px; width: 560px; padding: 10px 12px 10px 16px; background: var(--ink, #1e2327); color: #fff; border-radius: 10px; box-shadow: 0 6px 18px rgba(30, 35, 39, 0.16); font: 400 14px/20px var(--font, \"Overpass\", \"Segoe UI\", system-ui, sans-serif); } .ds-barra span { margin-right: auto; } .ds-barra button { height: 32px; padding: 0 14px; border-radius: 6px; border: 1px solid transparent; font: 600 14px/20px var(--font, \"Overpass\", \"Segoe UI\", system-ui, sans-serif); cursor: pointer; transition: transform 160ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)); } .ds-barra button:active { transform: scale(0.97); } .ds-barra button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; } .ds-b-desc { background: transparent; color: #cfe8d9; } .ds-b-desc:hover { background: rgba(255, 255, 255, 0.08); } .ds-b-salvar { background: #fff; color: var(--verde-tinta, #0a4426); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "A rodovia sinalizada",
+    "overview": "O NILT é sinalizado como uma rodovia brasileira. Cada situação de cadastro tem a cor e a forma da placa que a equipe da Prisa já obedece na estrada: retângulo verde de orientação para o que está normal, losango laranja de obras para o que está pendente, losango amarelo de advertência para o que vence, círculo vermelho de regulamentação para o que está bloqueado ou vencido, quadrado azul de serviços para informação. A navegação é placa de orientação (o item atual é uma placa verde com filete branco por dentro), a placa do veículo aparece desenhada como a placa física, o vencimento é um marco de quilômetro com barra no comprimento exato dos dias restantes, e o conjunto é desenhado engatado na ordem física (cavalo, carreta, dolly, carreta).\n\nA estrutura é uma moldura em L tingida de asfalto claro (menu à esquerda e barra superior) com o trabalho numa folha branca recuada 8px, de raio 16, borda de 1px e sem sombra. A densidade é de sistema de operação: corpo de 14px, linhas de tabela de 48px, formulários em grade estrita de 12 colunas, fichas com abas como a equipe já conhece do ATUA. Tudo é plano e quieto; a cor só aparece quando carrega significado, e por isso uma tela calma tem pouca cor e uma tela com problema mostra o problema de longe.\n\nO sistema recusa o painel de TMS de categoria: menu azul-marinho, cartões de KPI com ícone de caminhão, mapa decorativo, gradientes, sombra em coisa parada.",
+    "keyCharacteristics": [
+      "Cor com significado fixo, sempre acompanhada de forma (nunca só cor).",
+      "Moldura em L de asfalto claro + folha branca recuada, plana, sem sombra.",
+      "Uma família tipográfica (Overpass); Overpass Mono só para códigos.",
+      "Objetos do transporte desenhados como são: placa, conjunto engatado, marco de km, placas de advertência.",
+      "Movimento só como resposta: nada entra animado.",
+      "Português do transporte em toda a interface."
+    ],
+    "rules": [
+      {
+        "name": "A Regra do Significado Fixo",
+        "body": "Verde é normal e ação principal; laranja é pendente; amarelo é vencendo; vermelho é bloqueado, vencido e erro; azul é informação. Nenhuma dessas cores é usada para decorar, agrupar ou diferenciar categorias.",
+        "section": "colors"
+      },
+      {
+        "name": "A Regra Forma + Cor",
+        "body": "Toda situação tem forma própria além da cor: retângulo (normal), losango (pendente, vencendo), círculo vazado (bloqueado), quadrado (informação), ponto redondo cinza (neutro). Quem não distingue cor ainda lê a placa.",
+        "section": "colors"
+      },
+      {
+        "name": "A Regra do Amarelo com Tinta Escura",
+        "body": "O amarelo de advertência é sempre fundo ou preenchimento, com tinta #1e2327 ou #5c4500 por cima. Texto amarelo sobre branco não existe.",
+        "section": "colors"
+      },
+      {
+        "name": "A Regra da Exceção do Avatar",
+        "body": "O avatar de iniciais é a única cor fora dos sinais: tom pálido derivado do nome (fundo hsl(h 45% 90%), letra hsl(h 40% 28%)), só identidade, nunca situação.",
+        "section": "colors"
+      },
+      {
+        "name": "A Regra de Uma Família",
+        "body": "Overpass em tudo, pesos 400, 500, 600 e 700. Nenhuma segunda família de texto.",
+        "section": "typography"
+      },
+      {
+        "name": "A Regra do Mono para Código",
+        "body": "Overpass Mono aparece só em identificadores (placa, CPF, CNPJ, RNTRC, Renavam, atalho de teclado). Nunca para números de quantidade, datas ou títulos.",
+        "section": "typography"
+      },
+      {
+        "name": "A Regra dos Números Alinhados",
+        "body": "Toda quantidade, data, contagem e peso usa algarismos tabulares; colunas numéricas encostam à direita.",
+        "section": "typography"
+      },
+      {
+        "name": "A Regra do Ponto com Ar",
+        "body": "O separador \" · \" da Overpass encosta na palavra seguinte; o build o envolve em `.ponto` com margem (0.32em / 0.42em). Todo texto com \" · \" passa por isso.",
+        "section": "typography"
+      },
+      {
+        "name": "A Regra do Plano em Repouso",
+        "body": "Folha, blocos, tabelas, campos e sinais não têm sombra. Se a superfície não vai sumir sozinha, ela não flutua.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** use cada cor de sinal só para o seu significado: verde normal e ação principal, laranja pendente, amarelo vencendo (até 30 dias), vermelho bloqueado/vencido/erro, azul informação.",
+      "**Do** dê sempre forma junto com a cor: retângulo, losango, círculo vazado, quadrado, ponto.",
+      "**Do** use o amarelo só como preenchimento, com tinta escura por cima.",
+      "**Do** mantenha uma ação principal verde por tela; o resto é secundário ou texto.",
+      "**Do** desenhe os objetos do transporte com os helpers (`N.desenhar.placa`, `sinal`, `engate`, `capacidade`, `marco`, `avatar`) em vez de recriá-los.",
+      "**Do** escreva placa, CPF, CNPJ, RNTRC e Renavam em Overpass Mono; todo número em algarismos tabulares, alinhado à direita em tabela.",
+      "**Do** ponha o rótulo acima do campo, marque o opcional e escreva erros que dizem o problema e a correção.",
+      "**Do** mostre a pendência onde se trabalha: sinal na linha, aviso no bloco, placa de advertência no Início.",
+      "**Do** mantenha o quadro no estado vazio, com uma frase; zero é \"0\", ausente é \"—\".",
+      "**Do** use 44px de alvo de toque abaixo de 640px.",
+      "**Do** respeite `prefers-reduced-motion`."
+    ],
+    "donts": [
+      "**Don't** use cor fora do significado fixo (exceção única: o tom pálido do avatar, só identidade).",
+      "**Don't** use gradientes.",
+      "**Don't** ponha sombra em coisa parada; sombra só em menu suspenso, barra de salvar, toast, diálogo e gaveta.",
+      "**Don't** ponha ícone dentro de quadrado colorido.",
+      "**Don't** ponha rótulo pequeno acima de título (eyebrow) nem numere seções (01/02).",
+      "**Don't** use borda lateral colorida para marcar situação.",
+      "**Don't** escreva cabeçalho de tabela em caixa alta nem use listras zebradas.",
+      "**Don't** use emoji; ícones são Lucide, 16px, traço 1.6, um conjunto só.",
+      "**Don't** anime a entrada de conteúdo.",
+      "**Don't** escreva texto amarelo sobre branco.",
+      "**Don't** use Overpass Mono fora de códigos nem uma segunda família de texto.",
+      "**Don't** faça o painel de TMS de categoria: menu azul-marinho, cartão de KPI com ícone de caminhão, mapa decorativo."
+    ]
+  }
+}

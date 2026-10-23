@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Auditoria · NILT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700&family=Overpass+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/nilt.css">
+  <link rel="stylesheet" href="assets/paginas/admin.css">
+</head>
+<body data-pagina="auditoria">
+<main>
+  <div class="titulo">
+    <div>
+      <h1>Auditoria</h1>
+      <p class="sub" id="achado">Carregando o histórico…</p>
+    </div>
+  </div>
+
+  <div id="conteudo">
+    <div class="ferramentas" role="search" aria-label="Filtrar eventos">
+      <label class="filtro"><span class="sr-only">Usuário</span>
+        <select id="f-usuario" aria-label="Usuário"></select></label>
+      <label class="filtro"><span class="sr-only">Tipo de registro</span>
+        <select id="f-tabela" aria-label="Tipo de registro"></select></label>
+      <label class="filtro"><span class="sr-only">Ação</span>
+        <select id="f-acao" aria-label="Ação"></select></label>
+      <span id="f-registro"></span>
+      <button class="btn btn-texto" type="button" id="f-limpar" hidden>Limpar filtros</button>
+      <span class="total" id="total" aria-live="polite"></span>
+    </div>
+    <div class="grade aud-grade">
+      <div class="c8 aud-principal">
+        <div id="linha-do-tempo"></div>
+        <div class="rodape-lista" id="rodape"></div>
+      </div>
+      <aside class="bloco c4 aud-lgpd" aria-labelledby="h-vistos">
+        <div class="bloco-cab"><h2 id="h-vistos">Quem viu documentos</h2><span class="dir" id="vistos-n"></span></div>
+        <div class="bloco-corpo">
+          <p class="muted">A LGPD exige saber quem abriu cada documento pessoal. O NILT registra toda abertura, inclusive a do administrador.</p>
+          <div id="vistos"></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</main>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="assets/dados.js"></script>
+<script>
+window.pagina = function (N) {
+  const D = N.dados, d = N.desenhar;
+  const eu = N.usuarioAtual;
+
+  // Só o administrador vê esta tela (no banco: policy auditoria_select exige tem_papel('admin')).
+  if (eu.papel !== 'admin') {
+    document.getElementById('conteudo').innerHTML = '<div class="vazio-bloco">Só o administrador vê a auditoria.</div>';
+    document.getElementById('achado').textContent = 'Acesso restrito';
+    return;
+  }
+
+  /* Eventos mais antigos da semana (FICTÍCIOS), com os mesmos campos de D.auditoria
+     (tabela auditoria: id, em, tabela, registro_id, acao; usuario e resumo são o que a view
+     v_auditoria entrega já resolvidos a partir de usuario_id e de dados_antes/dados_depois). */
+  const em = (diasAtras, h, m) => { const x = new Date(N.HOJE); x.setDate(x.getDate() - diasAtras); x.setHours(h, m, 0, 0); return x.toISOString(); };
+  const extras = [
+    { id: 9033, em: em(2, 17, 42), usuario: 'Matheus', tabela: 'arquivo', registro_id: 'a15', acao: 'visualizacao', resumo: 'Abriu contrato-arrendamento-rtv6h10.pdf (restrito)' },
+    { id: 9032, em: em(2, 16, 10), usuario: 'Rafaela', tabela: 'arquivo', registro_id: 'a15', acao: 'insert', resumo: 'Anexou contrato de arrendamento, marcado como restrito' },
+    { id: 9031, em: em(2, 11, 25), usuario: 'Carla', tabela: 'pessoa_chave_pix', registro_id: 'p09', acao: 'insert', resumo: 'Chave Pix do tipo CNPJ cadastrada' },
+    { id: 9030, em: em(2, 10, 2), usuario: 'Carla', tabela: 'arquivo', registro_id: 'a12', acao: 'visualizacao', resumo: 'Abriu rntrc-tsc.pdf' },
+    { id: 9029, em: em(3, 15, 30), usuario: 'Denílson', tabela: 'veiculo', registro_id: 'v04', acao: 'update', resumo: 'Posse: Rodo Norte → Ivaí Implementos (arrendado)' },
+    { id: 9028, em: em(3, 15, 12), usuario: 'Denílson', tabela: 'proprietario', registro_id: 'p11', acao: 'insert', resumo: 'Proprietário cadastrado como ETC equiparado' },
+    { id: 9027, em: em(3, 14, 55), usuario: 'Denílson', tabela: 'pessoa', registro_id: 'p11', acao: 'insert', resumo: 'Empresa cadastrada pelo CNPJ' },
+    { id: 9026, em: em(3, 9, 20), usuario: 'Rafaela', tabela: 'arquivo', registro_id: 'a05', acao: 'visualizacao', resumo: 'Abriu cnh-reinaldo.jpg' },
+    { id: 9025, em: em(3, 9, 18), usuario: 'Rafaela', tabela: 'motorista', registro_id: 'p03', acao: 'update', resumo: 'Situação do cadastro: normal → pendente' },
+    { id: 9024, em: em(6, 16, 44), usuario: 'Matheus', tabela: 'arquivo', registro_id: 'a99', acao: 'delete', resumo: 'Apagou cnh-reinaldo-copia.jpg (arquivo repetido)' },
+    { id: 9023, em: em(6, 11, 5), usuario: 'Matheus', tabela: 'pessoa_conta_bancaria', registro_id: 'p01', acao: 'update', resumo: 'Conta Sicredi: dígito da conta corrigido' },
+    { id: 9022, em: em(6, 10, 30), usuario: 'Matheus', tabela: 'perfil_usuario', registro_id: 'u4', acao: 'insert', resumo: 'Acesso dado como Financeiro' },
+    { id: 9021, em: em(6, 10, 5), usuario: 'Henrique', tabela: 'arquivo', registro_id: 'a01', acao: 'visualizacao', resumo: 'Abriu cnh-edson.pdf' },
+    { id: 9020, em: em(6, 8, 47), usuario: 'Rafaela', tabela: 'proprietario', registro_id: 'p08', acao: 'update', resumo: 'RNTRC: validade atualizada' },
+  ];
+  const eventos = [...D.auditoria, ...extras].sort((a, b) => new Date(b.em) - new Date(a.em));
+
+  /* ---------- tradução ---------- */
+  const ACAO = { insert: 'criou', update: 'alterou', delete: 'apagou', visualizacao: 'visualizou documento' };
+  const ACAO_FILTRO = [['insert', 'Criou'], ['update', 'Alterou'], ['delete', 'Apagou'], ['visualizacao', 'Visualizou documento']];
+  // grupo do filtro → tabelas do banco
+  const TIPOS = [
+    ['pessoa', 'Pessoa', ['pessoa']], ['motorista', 'Motorista', ['motorista']], ['proprietario', 'Proprietário', ['proprietario']],
+    ['veiculo', 'Veículo', ['veiculo']], ['conjunto', 'Conjunto', ['conjunto']], ['arquivo', 'Arquivo', ['arquivo']],
+    ['conta', 'Conta bancária e Pix', ['pessoa_conta_bancaria', 'pessoa_chave_pix']], ['perfil', 'Perfil de usuário', ['perfil_usuario']],
+  ];
+  const OBJETO = { pessoa: 'a pessoa', motorista: 'o motorista', proprietario: 'o proprietário', veiculo: 'o veículo', conjunto: 'o conjunto', arquivo: 'o arquivo', pessoa_conta_bancaria: 'a conta bancária', pessoa_chave_pix: 'a chave Pix', perfil_usuario: 'o perfil de usuário' };
+
+  // tipos de arquivo vêm em caixa alta do banco; siglas ficam, palavras viram frase
+  const tipoArquivo = (t) => (/^[A-Z]{2,5}$/.test(t) ? t : t[0] + t.slice(1).toLowerCase());
+  const usuarioPorNome = (nome) => D.usuarios.find((u) => u.nome === nome);
+  const donoArquivo = (a) => (a.pessoa_id ? { href: N.linkPessoa(N.pessoa(a.pessoa_id)) + '&aba=documentos', nome: N.pessoa(a.pessoa_id).nome } : a.veiculo_id ? { href: `veiculo.html?id=${a.veiculo_id}&aba=documentos`, nome: N.veiculo(a.veiculo_id).placa } : null);
+
+  // o registro do evento, como link para a ficha (ou o motivo de não haver link)
+  function registro(ev) {
+    const id = ev.registro_id;
+    const semLink = (txt, por) => `<span class="nome apagado">${N.esc(txt)}</span>${por ? `<span class="de">${por}</span>` : ''}`;
+    switch (ev.tabela) {
+      case 'pessoa': case 'motorista': case 'proprietario': case 'pessoa_conta_bancaria': case 'pessoa_chave_pix': {
+        const p = N.pessoa(id); if (!p) return semLink(id, 'registro não encontrado');
+        const base = ev.tabela === 'motorista' ? `motorista.html?id=${id}` : ev.tabela === 'proprietario' ? `proprietario.html?id=${id}` : N.linkPessoa(p);
+        const aba = ev.tabela.startsWith('pessoa_') ? '&aba=financeiro' : '';
+        return `<a href="${base}${aba}">${N.esc(p.nome)}</a>`;
+      }
+      case 'veiculo': {
+        const v = N.veiculo(id); if (!v) return semLink(id, 'registro não encontrado');
+        return `<a class="placa-link" href="veiculo.html?id=${id}" aria-label="Veículo ${v.placa}">${d.placa(v.placa)}</a>`;
+      }
+      case 'conjunto': {
+        const c = [...D.conjuntos, ...D.conjuntosHistorico].find((x) => x.id === id);
+        if (!c) return semLink('Conjunto encerrado', 'sem ficha aberta');
+        return `<a href="conjunto.html?id=${id}">Conjunto ${N.veiculo(c.cavalo_id).placa}</a>`;
+      }
+      case 'arquivo': {
+        const a = D.arquivos.find((x) => x.id === id);
+        if (!a) return semLink(ev.acao === 'delete' ? 'Arquivo apagado' : id, ev.acao === 'delete' ? 'não existe mais' : 'registro não encontrado');
+        const dono = donoArquivo(a);
+        return `<a href="${dono.href}">${N.esc(a.nome_original)}</a><span class="de">de ${N.esc(dono.nome)}${a.restrito ? ' · restrito' : ''}</span>`;
+      }
+      case 'perfil_usuario': {
+        const u = D.usuarios.find((x) => x.user_id === id); if (!u) return semLink(id, 'usuário removido');
+        return `<a href="usuarios.html?editar=${id}">${N.esc(u.nome || u.email)}</a>`;
+      }
+      default: return semLink(id);
+    }
+  }
+
+  /* ---------- filtros (espelhados na URL, para o link do histórico de cada ficha) ---------- */
+  const f = { usuario: N.param('usuario') || '', tipo: N.param('tipo') || '', acao: N.param('acao') || '', registro: N.param('registro') || '' };
+  // a ficha chama auditoria.html?tabela=motorista&registro=p02
+  if (!f.tipo && N.param('tabela')) f.tipo = (TIPOS.find((t) => t[2].includes(N.param('tabela'))) || [''])[0];
+
+  const selUsuario = document.getElementById('f-usuario');
+  const selTipo = document.getElementById('f-tabela');
+  const selAcao = document.getElementById('f-acao');
+  const nomes = [...new Set(eventos.map((e) => e.usuario))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  selUsuario.innerHTML = '<option value="">Todos os usuários</option>' + nomes.map((n) => `<option value="${N.esc(n)}">${N.esc(n)}</option>`).join('');
+  selTipo.innerHTML = '<option value="">Todos os registros</option>' + TIPOS.map(([id, rot]) => `<option value="${id}">${rot}</option>`).join('');
+  selAcao.innerHTML = '<option value="">Todas as ações</option>' + ACAO_FILTRO.map(([id, rot]) => `<option value="${id}">${rot}</option>`).join('');
+  selUsuario.value = f.usuario; selTipo.value = f.tipo; selAcao.value = f.acao;
+
+  const passa = (e) => (!f.usuario || e.usuario === f.usuario)
+    && (!f.tipo || TIPOS.find((t) => t[0] === f.tipo)[2].includes(e.tabela))
+    && (!f.acao || e.acao === f.acao)
+    && (!f.registro || e.registro_id === f.registro);
+
+  function urlFiltros() {
+    const u = new URL(location); ['usuario', 'tipo', 'acao', 'registro', 'tabela'].forEach((k) => u.searchParams.delete(k));
+    Object.entries(f).forEach(([k, v]) => { if (v) u.searchParams.set(k, v); });
+    history.replaceState(null, '', u);
+  }
+
+  /* ---------- dias ---------- */
+  const chaveDia = (iso) => { const x = new Date(iso); return `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`; };
+  function rotuloDia(iso) {
+    const x = new Date(iso); x.setHours(0, 0, 0, 0);
+    const dif = Math.round((N.HOJE - x) / 864e5);
+    if (dif === 0) return 'Hoje';
+    if (dif === 1) return 'Ontem';
+    const s = x.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+    return s[0].toUpperCase() + s.slice(1);
+  }
+  const hora = (iso) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+
+  function evento(e) {
+    const u = usuarioPorNome(e.usuario);
+    const visto = e.acao === 'visualizacao';
+    const verbo = visto ? `<span class="sinal sinal-info">${ACAO[e.acao]}</span>` : `${ACAO[e.acao]} <span class="muted">${OBJETO[e.tabela] || e.tabela}</span>`;
+    return `<li class="evento${visto ? ' visto' : ''}">
+      <time class="hora" datetime="${e.em}">${hora(e.em)}</time>
+      <span class="no" aria-hidden="true"></span>
+      ${d.avatar(e.usuario)}
+      <div class="txt"><p><b>${N.esc(e.usuario)}</b>${u && !u.ativo ? ' <span class="muted">(desativado)</span>' : ''} ${verbo}</p>
+        <p class="resumo">${N.esc(e.resumo)}</p></div>
+      <div class="reg">${registro(e)}</div>
+    </li>`;
+  }
+
+  function render() {
+    const lista = eventos.filter(passa);
+    const vistos = lista.filter((e) => e.acao === 'visualizacao').length;
+    const algum = f.usuario || f.tipo || f.acao || f.registro;
+
+    // achado: o período inteiro, não o filtro
+    const dias = Math.max(1, Math.round((N.HOJE - new Date(new Date(eventos[eventos.length - 1].em).setHours(0, 0, 0, 0))) / 864e5) + 1);
+    const vistosTodos = eventos.filter((e) => e.acao === 'visualizacao').length;
+    document.getElementById('achado').textContent = `${plural(eventos.length, 'evento', 'eventos')} nos últimos ${dias} dias · ${plural(vistosTodos, 'visualização de documento', 'visualizações de documento')}, destacadas porque a LGPD exige registrar quem viu cada documento`;
+
+    document.getElementById('total').textContent = algum
+      ? `${plural(lista.length, 'evento', 'eventos')} de ${eventos.length}${vistos ? ` · ${plural(vistos, 'visualização', 'visualizações')}` : ''}`
+      : plural(lista.length, 'evento', 'eventos');
+    document.getElementById('f-limpar').hidden = !algum;
+
+    const regBox = document.getElementById('f-registro');
+    if (f.registro) {
+      const ex = eventos.find((e) => e.registro_id === f.registro);
+      const nome = ex ? (N.pessoa(f.registro)?.nome || N.veiculo(f.registro)?.placa || D.usuarios.find((u) => u.user_id === f.registro)?.nome || f.registro) : f.registro;
+      regBox.innerHTML = `<span class="filtro-registro">Só ${N.esc(nome)}<button class="btn btn-texto btn-icone" type="button" id="f-sem-registro" aria-label="Mostrar todos os registros"><i data-lucide="x"></i></button></span>`;
+      document.getElementById('f-sem-registro').addEventListener('click', () => { f.registro = ''; urlFiltros(); render(); });
+    } else regBox.innerHTML = '';
+
+    const box = document.getElementById('linha-do-tempo');
+    if (!lista.length) {
+      box.innerHTML = `<div class="vazio-bloco">Nenhum evento com esses filtros. <button class="btn btn-texto" type="button" data-limpar>Limpar filtros</button></div>`;
+      box.querySelector('[data-limpar]').addEventListener('click', limpar);
+    } else {
+      const grupos = [];
+      lista.forEach((e) => { const k = chaveDia(e.em); let g = grupos.find((x) => x.k === k); if (!g) grupos.push(g = { k, em: e.em, itens: [] }); g.itens.push(e); });
+      box.innerHTML = grupos.map((g, i) => {
+        const v = g.itens.filter((e) => e.acao === 'visualizacao').length;
+        return `<section class="dia" aria-labelledby="dia-${i}">
+          <div class="dia-cab"><h2 id="dia-${i}">${rotuloDia(g.em)}</h2><span>${plural(g.itens.length, 'evento', 'eventos')}${v ? ` · ${plural(v, 'visualização', 'visualizações')}` : ''}</span></div>
+          <ol class="eventos">${g.itens.map(evento).join('')}</ol></section>`;
+      }).join('');
+    }
+    // painel LGPD: as visualizações do recorte atual, documento por documento
+    const vis = lista.filter((e) => e.acao === 'visualizacao');
+    document.getElementById('vistos-n').textContent = plural(vis.length, 'abertura', 'aberturas');
+    document.getElementById('vistos').innerHTML = vis.length ? `<ul class="vistos">${vis.map((e) => {
+      const a = D.arquivos.find((x) => x.id === e.registro_id); const dono = a && donoArquivo(a);
+      const quando = `${rotuloDia(e.em).replace(/,.*/, '').toLowerCase()} às ${hora(e.em)}`;
+      return `<li>${d.avatar(e.usuario)}<span class="txt"><span><b>${N.esc(e.usuario)}</b> <span class="muted">${quando}</span></span>
+        ${a ? `<a href="${dono.href}">${N.esc(a.nome_original)}</a><span class="de">${tipoArquivo(a.tipo)} de ${N.esc(dono.nome)}${a.restrito ? ' · restrito' : ''}</span>` : `<span class="de">documento apagado</span>`}</span></li>`;
+    }).join('')}</ul>` : '<div class="vazio-bloco">Nenhuma abertura de documento com esses filtros.</div>';
+
+    document.getElementById('rodape').innerHTML = `<span>${lista.length ? `Mostrando ${lista.length} de ${eventos.length}` : `0 de ${eventos.length}`}</span><span>O banco guarda tudo; nada aqui pode ser editado nem apagado.</span>`;
+    N.separarPontos(document.querySelector('main'));
+    N.desenharIcones();
+  }
+
+  function limpar() { f.usuario = f.tipo = f.acao = f.registro = ''; selUsuario.value = selTipo.value = selAcao.value = ''; urlFiltros(); render(); selUsuario.focus(); }
+  selUsuario.addEventListener('change', () => { f.usuario = selUsuario.value; urlFiltros(); render(); });
+  selTipo.addEventListener('change', () => { f.tipo = selTipo.value; urlFiltros(); render(); });
+  selAcao.addEventListener('change', () => { f.acao = selAcao.value; urlFiltros(); render(); });
+  document.getElementById('f-limpar').addEventListener('click', limpar);
+
+  render();
+};
+</script>
+<script src="assets/nilt.js"></script>
+</body>
+</html>

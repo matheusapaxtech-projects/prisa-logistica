@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Usuários · NILT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700&family=Overpass+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/nilt.css">
+  <link rel="stylesheet" href="assets/paginas/admin.css">
+</head>
+<body data-pagina="usuarios">
+<main>
+  <div class="titulo">
+    <div>
+      <h1>Usuários</h1>
+      <p class="sub" id="achado">Carregando quem tem acesso…</p>
+    </div>
+  </div>
+
+  <div class="aviso aviso-info aviso-topo" role="note">
+    <i data-lucide="info"></i>
+    <div>
+      <p>Pessoas novas são criadas no painel do Supabase, em <span class="caminho">Authentication → Users → Add user</span>. Depois disso elas aparecem aqui como “Sem acesso definido”, e você escolhe o papel.</p>
+    </div>
+  </div>
+
+  <div id="conteudo">
+    <div class="abas" id="abas" role="tablist" aria-label="Filtrar por situação"></div>
+    <div class="ferramentas">
+      <div class="busca-lista">
+        <i data-lucide="search"></i>
+        <input id="busca" type="search" placeholder="Buscar nome ou e-mail" aria-label="Buscar nome ou e-mail" autocomplete="off">
+      </div>
+      <span class="total" id="total" aria-live="polite"></span>
+    </div>
+    <div class="tabela-wrap">
+      <table class="tabela tabela-usuarios">
+        <thead>
+          <tr>
+            <th scope="col">Usuário</th>
+            <th scope="col" class="col-papel some-celular">Papel</th>
+            <th scope="col" class="some-celular">Situação</th>
+            <th scope="col" class="num some-celular">Último acesso</th>
+            <th scope="col" class="col-acao"><span class="sr-only">Ação</span></th>
+          </tr>
+        </thead>
+        <tbody id="linhas"></tbody>
+      </table>
+    </div>
+
+    <section class="papeis-ref" aria-labelledby="h-papeis">
+      <h2 id="h-papeis">O que cada papel pode fazer</h2>
+      <p>A regra vale no banco: mesmo quem tenta por fora da tela não passa do que o papel permite.</p>
+      <dl class="papeis-lista" id="papeis-lista"></dl>
+    </section>
+  </div>
+</main>
+
+<dialog class="dialogo" id="dlg-acesso" aria-labelledby="dlg-titulo">
+  <form id="form-acesso" novalidate>
+    <div class="dialogo-cab">
+      <h2 id="dlg-titulo">Editar acesso</h2>
+      <div class="quem" id="dlg-quem"></div>
+    </div>
+    <div class="dialogo-corpo">
+      <div class="aviso aviso-info" id="dlg-proprio" hidden>
+        <i data-lucide="shield-check"></i>
+        <p>Você não pode tirar o seu próprio acesso de administrador nem se desativar. Se fizesse isso, o NILT poderia ficar sem ninguém para dar acesso às pessoas. Outro administrador pode mudar o seu papel.</p>
+      </div>
+      <div class="campo" id="dlg-campo-nome" hidden>
+        <label for="dlg-nome">Nome que aparece no NILT</label>
+        <input id="dlg-nome" name="nome" type="text" autocomplete="off" maxlength="60">
+        <span class="ajuda">O Supabase guarda só o e-mail. Use o nome pelo qual a equipe chama a pessoa.</span>
+        <span class="erro" id="dlg-nome-erro" hidden><i data-lucide="circle-alert"></i>Digite o nome da pessoa para dar acesso.</span>
+      </div>
+      <fieldset class="papeis" id="dlg-papeis">
+        <legend>Papel</legend>
+      </fieldset>
+      <span class="erro small" id="dlg-papel-erro" hidden style="color:var(--vermelho-tinta)">Escolha um papel para dar acesso.</span>
+      <div class="chave-linha">
+        <div>
+          <label for="dlg-ativo">Acesso ativo</label>
+          <span class="ajuda" id="dlg-ativo-ajuda">Desativado, a pessoa não entra no NILT. O que ela fez continua na auditoria.</span>
+        </div>
+        <input id="dlg-ativo" class="chave" type="checkbox" role="switch" aria-describedby="dlg-ativo-ajuda">
+      </div>
+    </div>
+    <div class="dialogo-pe">
+      <button class="btn" type="button" id="dlg-cancelar">Cancelar</button>
+      <button class="btn btn-primario" type="submit" id="dlg-salvar">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="assets/dados.js"></script>
+<script>
+window.pagina = function (N) {
+  const D = N.dados, f = N.fmt, d = N.desenhar;
+  const eu = N.usuarioAtual;
+
+  // Só o administrador vê esta tela (no Next.js: o layout confere tem_papel('admin') e a RLS de perfil_usuario barra o resto).
+  if (eu.papel !== 'admin') {
+    document.getElementById('conteudo').innerHTML = '<div class="vazio-bloco">Só o administrador vê esta tela. Peça a ele se precisar mudar um acesso.</div>';
+    return;
+  }
+
+  const PAPEIS = [
+    { id: 'admin', rot: 'Administrador', o_que: 'Tudo, inclusive usuários, auditoria, apagar registros e ver documentos restritos.' },
+    { id: 'operacao', rot: 'Operação', o_que: 'Cadastra e edita motoristas, proprietários, veículos, conjuntos e documentos.' },
+    { id: 'financeiro', rot: 'Financeiro', o_que: 'Lê tudo e edita contas bancárias e chaves Pix.' },
+    { id: 'leitura', rot: 'Leitura', o_que: 'Só consulta. Não altera nada.' },
+  ];
+  const rotPapel = (p) => PAPEIS.find((x) => x.id === p)?.rot;
+  const situacao = (u) => (!u.papel ? 'sem_acesso' : u.ativo ? 'ativo' : 'desativado');
+  const nomeDe = (u) => u.nome || u.email.split('@')[0];
+
+  let aba = 'todos', termo = '';
+
+  function contar() {
+    const c = { todos: D.usuarios.length, ativo: 0, desativado: 0, sem_acesso: 0 };
+    D.usuarios.forEach((u) => { c[situacao(u)]++; });
+    return c;
+  }
+
+  function cabecalho() {
+    const c = contar();
+    const partes = [`${c.todos} ${c.todos === 1 ? 'pessoa' : 'pessoas'} com conta`, `${c.ativo} ${c.ativo === 1 ? 'ativa' : 'ativas'}`];
+    if (c.sem_acesso) partes.push(`${c.sem_acesso} esperando papel`);
+    document.getElementById('achado').textContent = partes.join(' · ');
+    const abas = [['todos', 'Todos'], ['ativo', 'Ativos'], ['desativado', 'Desativados'], ['sem_acesso', 'Sem acesso']];
+    document.getElementById('abas').innerHTML = abas.map(([id, rot]) =>
+      `<button type="button" role="tab" data-filtro="${id}" aria-selected="${id === aba}">${rot}<span class="n">${c[id]}</span></button>`).join('');
+    document.getElementById('papeis-lista').innerHTML = PAPEIS.map((p) => {
+      const n = D.usuarios.filter((u) => u.papel === p.id && u.ativo).length;
+      return `<div><dt>${p.rot}<span>${n} ${n === 1 ? 'ativo' : 'ativos'}</span></dt><dd>${p.o_que}</dd></div>`;
+    }).join('');
+  }
+
+  function linhas() {
+    const t = termo.trim().toLowerCase();
+    // quem espera papel vem primeiro: é a única linha que pede uma ação
+    const ordem = { sem_acesso: 0, ativo: 1, desativado: 2 };
+    const lista = D.usuarios
+      .filter((u) => aba === 'todos' || situacao(u) === aba)
+      .filter((u) => !t || (u.nome || '').toLowerCase().includes(t) || u.email.toLowerCase().includes(t))
+      .sort((a, b) => ordem[situacao(a)] - ordem[situacao(b)]);
+    const n = lista.length;
+    document.getElementById('total').textContent = `${n} ${n === 1 ? 'usuário' : 'usuários'}`;
+    const tb = document.getElementById('linhas');
+    if (!n) {
+      tb.innerHTML = `<tr><td colspan="5"><div class="vazio-bloco">${t ? `Ninguém com “${N.esc(termo)}” no nome ou no e-mail.` : 'Nenhum usuário nesta situação.'}</div></td></tr>`;
+      return;
+    }
+    tb.innerHTML = lista.map((u) => {
+      const s = situacao(u);
+      const sinal = s === 'sem_acesso' ? d.sinalTipo('pendente', 'Sem acesso definido') : s === 'ativo' ? d.sinal('ativo') : d.sinalTipo('neutro', 'Desativado');
+      const acesso = u.ultimo_acesso ? f.relativo(u.ultimo_acesso) : 'nunca entrou';
+      const avatar = u.nome ? d.avatar(u.nome) : d.avatar('?').replace('class="avatar"', 'class="avatar vazio"');
+      const papelTxt = u.papel ? rotPapel(u.papel) : '<span class="dash">—</span>';
+      const voce = u.user_id === eu.user_id ? '<span class="voce">(você)</span>' : '';
+      const nome = u.nome ? N.esc(u.nome) : '<span class="sem-nome">Nome ainda não informado</span>';
+      const acao = s === 'sem_acesso'
+        ? `<button class="btn" type="button" data-editar="${u.user_id}"><i data-lucide="key-round" class="some-celular-ic"></i>Dar acesso</button>`
+        : `<button class="btn" type="button" data-editar="${u.user_id}" aria-label="Editar acesso de ${N.esc(nomeDe(u))}"><i data-lucide="pencil" class="so-celular-ic"></i><span class="some-celular-txt">Editar</span></button>`;
+      return `<tr data-usuario="${u.user_id}" class="${s === 'desativado' ? 'desligado' : ''}">
+        <td><div class="usuario-cel">${avatar}<div class="txt">
+          <span class="id">${nome}${voce}</span>
+          <span class="linha2">${N.esc(u.email)}${u.papel ? `<span class="papel-sub"> · ${rotPapel(u.papel)}</span>` : ''}</span>
+          <span class="linha3 so-celular">${sinal}<span>${u.papel ? rotPapel(u.papel) + ' · ' : ''}${acesso}</span></span>${s === 'sem_acesso' ? `<button class="btn dar-celular so-celular" type="button" data-editar="${u.user_id}">Dar acesso</button>` : ''}
+        </div></div></td>
+        <td class="papel-col col-papel some-celular">${papelTxt}</td>
+        <td class="some-celular">${sinal}</td>
+        <td class="num nowrap some-celular ${u.ultimo_acesso ? '' : 'muted'}">${acesso}</td>
+        <td class="acao${s === 'sem_acesso' ? ' acao-sem' : ''}">${acao}</td>
+      </tr>`;
+    }).join('');
+    tb.querySelectorAll('tr[data-usuario]').forEach((tr) => {
+      tr.tabIndex = 0;
+      tr.addEventListener('click', (e) => { if (!e.target.closest('button,a')) abrir(tr.dataset.usuario); });
+      tr.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target === tr) abrir(tr.dataset.usuario); });
+    });
+    tb.querySelectorAll('[data-editar]').forEach((b) => b.addEventListener('click', () => abrir(b.dataset.editar)));
+  }
+
+  function render() { cabecalho(); linhas(); N.separarPontos(document.querySelector('main')); N.desenharIcones(); }
+
+  document.getElementById('abas').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-filtro]'); if (!b) return;
+    aba = b.dataset.filtro; render();
+    document.querySelector(`[data-filtro="${aba}"]`).focus();
+  });
+  document.getElementById('busca').addEventListener('input', (e) => { termo = e.target.value; linhas(); N.separarPontos(document.getElementById('linhas')); N.desenharIcones(); });
+
+  /* ---------- diálogo: papel e ativo ---------- */
+  const dlg = document.getElementById('dlg-acesso');
+  const form = document.getElementById('form-acesso');
+  const campoNome = document.getElementById('dlg-campo-nome');
+  const inpNome = document.getElementById('dlg-nome');
+  const chave = document.getElementById('dlg-ativo');
+  let editando = null, quemAbriu = null;
+
+  function abrir(id) {
+    const u = D.usuarios.find((x) => x.user_id === id); if (!u) return;
+    editando = u; quemAbriu = document.activeElement;
+    const proprio = u.user_id === eu.user_id;
+    const novo = !u.papel;
+    document.getElementById('dlg-titulo').textContent = novo ? 'Dar acesso ao NILT' : `Acesso de ${u.nome}`;
+    document.getElementById('dlg-quem').innerHTML = `${u.nome ? d.avatar(u.nome) : d.avatar('?').replace('class="avatar"', 'class="avatar vazio"')}
+      <div><b>${u.nome ? N.esc(u.nome) : 'Conta criada no Supabase'}</b><span class="email">${N.esc(u.email)}</span></div>`;
+    document.getElementById('dlg-proprio').hidden = !proprio;
+    campoNome.hidden = !novo; inpNome.value = u.nome || '';
+    campoNome.removeAttribute('data-invalido'); document.getElementById('dlg-nome-erro').hidden = true;
+    document.getElementById('dlg-papel-erro').hidden = true;
+    document.getElementById('dlg-papeis').innerHTML = '<legend>Papel</legend>' + PAPEIS.map((p) => {
+      const bloqueado = proprio && p.id !== 'admin';
+      return `<label class="papel-opcao"><input type="radio" name="papel" value="${p.id}" ${u.papel === p.id ? 'checked' : ''} ${bloqueado ? 'disabled' : ''}>
+        <span><b>${p.rot}</b><span class="o-que">${p.o_que}</span></span></label>`;
+    }).join('');
+    chave.checked = novo ? true : u.ativo; chave.disabled = proprio;
+    document.getElementById('dlg-salvar').textContent = novo ? 'Dar acesso' : 'Salvar';
+    N.desenharIcones();
+    dlg.showModal();
+    (novo ? inpNome : (form.querySelector('input[name="papel"]:checked:not(:disabled)') || document.getElementById('dlg-cancelar'))).focus();
+  }
+  function fechar() { dlg.close(); }
+  dlg.addEventListener('close', () => { if (quemAbriu && document.contains(quemAbriu)) quemAbriu.focus(); });
+  document.getElementById('dlg-cancelar').addEventListener('click', fechar);
+  dlg.addEventListener('click', (e) => { if (e.target === dlg) fechar(); });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const u = editando; const novo = !u.papel; const proprio = u.user_id === eu.user_id;
+    const papel = form.querySelector('input[name="papel"]:checked')?.value || null;
+    const nome = inpNome.value.trim();
+    let ok = true;
+    if (novo && !nome) { campoNome.setAttribute('data-invalido', ''); document.getElementById('dlg-nome-erro').hidden = false; inpNome.setAttribute('aria-invalid', 'true'); ok = false; }
+    if (!papel) { document.getElementById('dlg-papel-erro').hidden = false; ok = false; }
+    if (!ok) { (novo && !nome ? inpNome : form.querySelector('input[name="papel"]')).focus(); return; }
+    // salvaguarda: o próprio admin não sai do papel nem se desativa (o banco confere de novo)
+    if (proprio && (papel !== 'admin' || !chave.checked)) return;
+
+    const antes = { papel: u.papel, ativo: u.ativo };
+    if (novo) u.nome = nome;
+    u.papel = papel; u.ativo = chave.checked;
+    const mudou = [];
+    if (antes.papel !== u.papel) mudou.push(novo ? `acesso dado como ${rotPapel(u.papel)}` : `papel: ${rotPapel(antes.papel)} → ${rotPapel(u.papel)}`);
+    if (!novo && antes.ativo !== u.ativo) mudou.push(u.ativo ? 'usuário reativado' : 'usuário desativado');
+    if (mudou.length) {
+      // a trigger de auditoria do banco grava isto sozinha; aqui só espelhamos
+      D.auditoria.unshift({ id: Math.max(...D.auditoria.map((a) => a.id)) + 1, em: new Date().toISOString(), usuario: eu.nome, tabela: 'perfil_usuario', registro_id: u.user_id, acao: novo ? 'insert' : 'update', resumo: mudou.join('; ').replace(/^./, (c) => c.toUpperCase()) });
+    }
+    fechar();
+    render();
+    if (!mudou.length) N.toast('Nada mudou no acesso.', 'info');
+    else if (novo) N.toast(`${N.esc(u.nome)} agora entra no NILT como ${rotPapel(u.papel)}.`);
+    else N.toast(`Acesso de ${N.esc(u.nome)} atualizado: ${mudou.join(', ')}.`);
+  });
+
+  render();
+  const pedido = N.param('editar');
+  if (pedido) abrir(pedido);
+};
+</script>
+<script src="assets/nilt.js"></script>
+</body>
+</html>

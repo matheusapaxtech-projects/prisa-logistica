@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Proprietário · NILT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700&family=Overpass+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/nilt.css">
+  <link rel="stylesheet" href="assets/paginas/proprietarios.css">
+</head>
+<body data-pagina="proprietarios">
+<main id="ficha"></main>
+
+<dialog class="dialogo" id="dlg-doc" aria-labelledby="dlg-doc-t">
+  <form method="dialog" id="form-doc" novalidate>
+    <div class="dialogo-cab"><h2 id="dlg-doc-t">Anexar documento</h2></div>
+    <div class="dialogo-corpo">
+      <div class="campos">
+        <div class="campo f6"><label for="doc-tipo">Tipo</label><select id="doc-tipo"></select></div>
+        <div class="campo f6"><label for="doc-validade">Validade <span class="opcional">(opcional)</span></label><input id="doc-validade" type="date"></div>
+        <div class="campo f12"><label for="doc-arquivo">Arquivo</label><input id="doc-arquivo" type="file" accept=".pdf,.jpg,.jpeg,.png" style="padding-top:8px"><span class="ajuda">PDF, JPG ou PNG. O arquivo fica no armazenamento privado do NILT.</span></div>
+        <div class="campo f6"><label for="doc-numero">Número do documento <span class="opcional">(opcional)</span></label><input id="doc-numero" autocomplete="off"></div>
+        <div class="campo f6"><span class="rotulo" aria-hidden="true">&nbsp;</span><label class="checar"><input type="checkbox" id="doc-restrito">Restrito: só administradores veem</label></div>
+      </div>
+    </div>
+    <div class="dialogo-pe">
+      <button class="btn" type="button" value="cancelar" id="doc-cancelar">Cancelar</button>
+      <button class="btn btn-primario" type="submit" id="doc-salvar"><i data-lucide="upload"></i>Anexar</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="assets/dados.js"></script>
+<script src="assets/paginas/proprietarios.js"></script>
+<script>
+window.pagina = function (N) {
+  const D = N.dados, f = N.fmt, d = N.desenhar, P = N.prop, so = N.so, esc = N.esc;
+  const $ = (id) => document.getElementById(id);
+  const main = $('ficha');
+  const id = N.param('id');
+  const pe = id ? P.pessoa(id) : null;
+  const pr = id ? P.prop(id) : null;
+
+  /* ---------- id inexistente ou pessoa sem o papel ---------- */
+  if (!pe || !pr) {
+    document.title = 'Proprietário não encontrado · NILT';
+    const outro = pe && !pr;
+    main.innerHTML = `<div class="titulo"><div>
+        <nav class="migalha" aria-label="Caminho"><a href="proprietarios.html">Proprietários</a><span class="sep" aria-hidden="true">/</span><h1>${outro ? esc(pe.nome) : 'Proprietário não encontrado'}</h1></nav></div></div>
+      <div class="nao-achou">
+        <div class="vazio-bloco">${outro
+          ? `${esc(pe.nome)} está no NILT${P.ehMotorista(pe.id) ? ' como motorista' : ''}, mas ainda não é proprietário de veículo.`
+          : id ? `Não há proprietário com o código “${esc(id)}”. O link pode estar incompleto ou o cadastro foi excluído.` : 'O link não diz qual proprietário abrir.'}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${outro ? `<a class="btn btn-primario" href="proprietario-novo.html?tipo=${pe.tipo}&${pe.tipo === 'pf' ? 'cpf=' + pe.cpf : 'cnpj=' + pe.cnpj}"><i data-lucide="link-2"></i>Cadastrar como proprietário</a>
+            ${P.ehMotorista(pe.id) ? `<a class="btn" href="motorista.html?id=${pe.id}">Abrir ficha de motorista</a>` : ''}`
+          : `<a class="btn btn-primario" href="proprietarios.html"><i data-lucide="arrow-left"></i>Voltar para proprietários</a><a class="btn" href="proprietario-novo.html">Novo proprietário</a>`}
+        </div></div>`;
+    return;
+  }
+
+  const pj = pe.tipo === 'pj';
+  const admin = N.usuarioAtual.papel === 'admin';
+  const docDono = pe.cpf || pe.cnpj;
+  document.title = `${pe.nome_fantasia || pe.nome} · Proprietários · NILT`;
+
+  /* ---------- peças de formulário ---------- */
+  const opc = ' <span class="opcional">(opcional)</span>';
+  const opt = (pares, v) => pares.map(([val, r]) => `<option value="${val}"${String(val) === String(v ?? '') ? ' selected' : ''}>${r}</option>`).join('');
+  const inp = (nm, v, a = '') => `<input id="${nm}" name="${nm}" value="${esc(v ?? '')}" autocomplete="off" ${a}>`;
+  const sel = (nm, pares, v, a = '') => `<select id="${nm}" name="${nm}" ${a}>${opt(pares, v)}</select>`;
+  const campo = (cls, nm, rot, dentro, extra = '') => `<div class="campo ${cls}"><label for="${nm}">${rot}</label>${dentro}${extra}</div>`;
+  const grupo = (cls, gid, rot, dentro, extra = '') => `<div class="campo ${cls}"><span class="rotulo" id="${gid}">${rot}</span>${dentro}${extra}</div>`;
+  const radios = (nm, pares, v, gid) => `<div class="opcoes" role="radiogroup" aria-labelledby="${gid}">${pares.map(([val, r, dis]) => `<label class="opcao"><input type="radio" name="${nm}" value="${val}"${val === v ? ' checked' : ''}${dis ? ' disabled' : ''}><span>${r}</span></label>`).join('')}</div>`;
+  const checar = (nm, rot, on, cls = 'f4') => `<div class="campo ${cls}"><span class="rotulo" aria-hidden="true">&nbsp;</span><label class="checar"><input type="checkbox" id="${nm}" name="${nm}"${on ? ' checked' : ''}>${rot}</label></div>`;
+  const secao = (sid, titulo, texto, campos, depois = '') => `<section class="secao" aria-labelledby="${sid}"><div class="secao-rotulo"><h2 id="${sid}">${titulo}</h2>${texto ? `<p>${texto}</p>` : ''}</div><div>${campos ? `<div class="campos">${campos}</div>` : ''}${depois}</div></section>`;
+  const simNao = (b) => (b === true ? 'sim' : b === false ? 'nao' : null);
+  const SN = [['sim', 'Sim'], ['nao', 'Não']];
+  const UF = [['', '—'], ...['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map((u) => [u, u])];
+  const moeda = (n) => (n == null || n === '' ? '' : Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  const pct = (n) => (n == null || n === '' ? '' : Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 2 }));
+  const lerNum = (s) => { const t = String(s || '').replace(/\s|R\$|%/g, '').replace(/\./g, '').replace(',', '.'); return t === '' || isNaN(+t) ? null : +t; };
+  const real = (n) => 'R$ ' + Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  /* ---------- cabeçalho ---------- */
+  const r = P.rntrcEstado(pr);
+  const vs = P.veiculosDe(pe.id);
+  const meusArquivos = D.arquivos.filter((a) => a.pessoa_id === pe.id);
+  const contas = D.contas.filter((c) => c.pessoa_id === pe.id);
+  const contaTerceiro = contas.filter((c) => !c.titular_confere);
+  const sinaisCab = [d.sinal(pr.situacao_cadastro)];
+  if (r.estado === 'vencido') sinaisCab.push(d.sinal('vencido', `RNTRC ${f.dias(r.dias)}`));
+  else if (r.estado === 'vencendo') sinaisCab.push(d.sinal('vencendo', `RNTRC ${f.dias(r.dias)}`));
+  else if (r.estado === 'sem') sinaisCab.push(d.sinal('pendente', 'Sem RNTRC'));
+  if (vs.arrendados.length) sinaisCab.push(d.sinal('arrendado', `${vs.arrendados.length} ${vs.arrendados.length === 1 ? 'veículo arrendado' : 'veículos arrendados'}`));
+
+  const docsTab = meusArquivos.filter((a) => admin || !a.restrito).length;
+  const abas = [
+    ['dados', 'Dados'], ['antt', 'ANTT'], ...(pj ? [['responsavel', 'Responsável']] : []), ['pagamento', 'Pagamento'],
+    ['contatos', 'Contatos'], ['contas', 'Contas e Pix', contaTerceiro.length ? '<span class="alerta-aba" aria-hidden="true"></span><span class="sr-only"> (titular não confere)</span>' : ''],
+    ['documentos', 'Documentos', `<span class="n">${docsTab}</span>`], ['veiculos', 'Veículos', `<span class="n">${vs.todos.length}</span>`],
+    ...(admin ? [['historico', 'Histórico']] : []),
+  ];
+
+  main.innerHTML = `
+    ${N.param('criado') ? `<div class="aviso aviso-normal" style="margin-bottom:16px"><i data-lucide="check"></i><span><b>Proprietário criado.</b> Complete a ficha: endereço e contatos, contas para o pagamento do frete e o certificado do RNTRC em Documentos.</span></div>` : ''}
+    <div class="cab-ficha">
+      <div class="ident">
+        <nav class="migalha" aria-label="Caminho"><a href="proprietarios.html">Proprietários</a><span class="sep" aria-hidden="true">/</span><h1>${esc(pe.nome)}</h1></nav>
+        <div class="linha-doc">${[`<span>${pj ? 'CNPJ' : 'CPF'} <span class="cod">${f.doc(pe)}</span></span>`, pj && pe.nome_fantasia ? `<span>${esc(pe.nome_fantasia)}</span>` : '', `<span>${pj ? 'Empresa' : 'Pessoa física'}</span>`, P.ehMotorista(pe.id) ? `<a href="motorista.html?id=${pe.id}">também é motorista</a>` : ''].filter(Boolean).join('')}</div>
+        <div class="sinais">${sinaisCab.join('')}</div>
+      </div>
+      <div class="acoes">
+        <button class="btn" type="button" data-anexar><i data-lucide="paperclip"></i>Anexar documento</button>
+        <a class="btn btn-primario" href="veiculo-novo.html?proprietario=${pe.id}"><i data-lucide="plus"></i>Cadastrar veículo</a>
+      </div>
+    </div>
+    <div class="abas abas-quebra" data-abas aria-label="Partes da ficha">${abas.map(([a, rot, extra]) => `<button type="button" data-aba="${a}" id="aba-${a}">${rot}${extra || ''}</button>`).join('')}</div>
+    <form data-salvar id="form" novalidate>
+      <div data-painel="dados" role="tabpanel" aria-labelledby="aba-dados">${painelDados()}</div>
+      <div data-painel="antt" role="tabpanel" aria-labelledby="aba-antt" hidden>${painelAntt()}</div>
+      ${pj ? `<div data-painel="responsavel" role="tabpanel" aria-labelledby="aba-responsavel" hidden>${painelResp()}</div>` : ''}
+      <div data-painel="pagamento" role="tabpanel" aria-labelledby="aba-pagamento" hidden>${painelPagamento()}</div>
+      <div data-painel="contatos" role="tabpanel" aria-labelledby="aba-contatos" hidden><div id="contatos"></div></div>
+      <div data-painel="contas" role="tabpanel" aria-labelledby="aba-contas" hidden><div id="contas"></div></div>
+    </form>
+    <div data-painel="documentos" role="tabpanel" aria-labelledby="aba-documentos" hidden><div id="documentos"></div></div>
+    <div data-painel="veiculos" role="tabpanel" aria-labelledby="aba-veiculos" hidden>${painelVeiculos()}</div>
+    ${admin ? `<div data-painel="historico" role="tabpanel" aria-labelledby="aba-historico" hidden>${painelHistorico()}</div>` : ''}
+    <div class="barra-salvar" hidden><span style="margin-right:auto">Alterações não salvas nesta ficha</span><button class="btn btn-texto" type="button" data-descartar>Descartar</button><button class="btn btn-primario" type="button" data-confirmar>Salvar alterações</button></div>`;
+
+  /* ---------- Dados ---------- */
+  function painelDados() {
+    const ins = secao('h-insc', 'Inscrições', 'Inscrição estadual e municipal, e a atividade econômica principal.',
+      `${checar('inscricao_estadual_isento', 'Isento de inscrição estadual', pe.inscricao_estadual_isento, 'f4')}
+       ${campo('f4', 'inscricao_estadual', 'Inscrição estadual' + opc, inp('inscricao_estadual', pe.inscricao_estadual, `class="cod"${pe.inscricao_estadual_isento ? ' disabled' : ''}`))}
+       ${campo('f4', 'inscricao_municipal', 'Inscrição municipal' + opc, inp('inscricao_municipal', pe.inscricao_municipal, 'class="cod"'))}
+       ${pj ? '' : campo('f12', 'cnae_principal', 'Atividade econômica principal' + opc, inp('cnae_principal', pe.cnae_principal, 'placeholder="CNAE e descrição"'))}`);
+    if (pj) {
+      const consulta = pe.dt_consulta_brasilapi ? `Consultado na Receita em ${f.dataHora(pe.dt_consulta_brasilapi)}` : 'Ainda sem consulta à Receita';
+      return secao('h-emp', 'Empresa', 'Como está na Receita. A consulta pela BrasilAPI atualiza estes campos; o que você corrigir aqui vale até a próxima consulta.',
+        `<div class="f12 receita-estado" id="receita-estado"><span class="carimbo" id="carimbo">${consulta}</span>
+           <button class="btn btn-pequeno" type="button" id="btn-receita"><i data-lucide="refresh-cw"></i><span>Atualizar pela Receita</span></button></div>
+         <div class="f12" id="receita-msg" aria-live="polite"></div>
+         ${campo('f8', 'nome', 'Razão social', inp('nome', pe.nome, 'maxlength="110"'))}
+         ${campo('f4', 'cnpj', 'CNPJ', inp('cnpj', f.cnpj(pe.cnpj), 'data-mascara="cnpj" data-valida="cnpj" class="cod"'))}
+         ${campo('f8', 'nome_fantasia', 'Nome fantasia' + opc, inp('nome_fantasia', pe.nome_fantasia))}
+         ${campo('f4', 'fundacao', 'Fundação', inp('fundacao', pe.fundacao, 'type="date"'))}
+         ${campo('f12', 'natureza_juridica', 'Natureza jurídica', inp('natureza_juridica', pe.natureza_juridica))}
+         ${campo('f12', 'cnae_principal', 'Atividade econômica principal (CNAE)', inp('cnae_principal', pe.cnae_principal))}
+         ${grupo('f4', 'g-simples', 'Optante pelo Simples Nacional', radios('optante_simples', SN, simNao(pe.optante_simples), 'g-simples'))}
+         ${campo('f4', 'dt_consulta_simples', 'Data da consulta do Simples', inp('dt_consulta_simples', pe.dt_consulta_simples, 'type="date"'))}`) + ins;
+    }
+    const motorista = P.ehMotorista(pe.id);
+    return (motorista ? `<div class="aviso aviso-info" style="margin-bottom:24px"><i data-lucide="info"></i><span>${esc(pe.nome.split(' ')[0])} também é motorista. Dados pessoais, contatos e contas são os mesmos nas duas fichas: o que mudar aqui muda lá.</span></div>` : '')
+      + secao('h-pf', 'Pessoa física', 'Como está no CPF. O CPF é conferido pelos dígitos.',
+        `${campo('f8', 'nome', 'Nome completo', inp('nome', pe.nome, 'maxlength="110"'))}
+         ${campo('f4', 'apelido', 'Apelido' + opc, inp('apelido', pe.apelido))}
+         ${campo('f4', 'cpf', 'CPF', inp('cpf', f.cpf(pe.cpf), 'data-mascara="cpf" data-valida="cpf" class="cod"'))}
+         ${campo('f4', 'situacao_cpf', 'Situação do CPF', sel('situacao_cpf', [['', '—'], ['regular', 'Regular'], ['titular_falecido', 'Titular falecido'], ['suspensa', 'Suspensa'], ['pendente_regularizacao', 'Pendente de regularização'], ['cancelada_multiplicidade', 'Cancelada por multiplicidade'], ['nula', 'Nula'], ['cancelada_oficio', 'Cancelada de ofício']], pe.situacao_cpf))}
+         ${campo('f4', 'dt_consulta_cpf', 'Consulta da situação' + opc, inp('dt_consulta_cpf', pe.dt_consulta_cpf, 'type="date"'))}
+         ${campo('f3', 'nascimento', 'Nascimento', inp('nascimento', pe.nascimento, 'type="date"'))}
+         ${campo('f3', 'sexo', 'Sexo', sel('sexo', [['', '—'], ['masculino', 'Masculino'], ['feminino', 'Feminino']], pe.sexo))}
+         ${campo('f3', 'raca_cor', 'Raça/cor', sel('raca_cor', [['', '—'], ['branca', 'Branca'], ['preta', 'Preta'], ['parda', 'Parda'], ['amarela', 'Amarela'], ['indigena', 'Indígena'], ['nao_informado', 'Não informado']], pe.raca_cor))}
+         ${campo('f3', 'estado_civil', 'Estado civil', sel('estado_civil', [['', '—'], ['solteiro', 'Solteiro(a)'], ['casado', 'Casado(a)'], ['separado', 'Separado(a)'], ['viuvo', 'Viúvo(a)'], ['outro', 'Outro']], pe.estado_civil))}
+         ${campo('f5', 'naturalidade', 'Naturalidade', inp('naturalidade', pe.naturalidade))}
+         ${campo('f3', 'naturalidade_uf', 'UF', sel('naturalidade_uf', UF, pe.naturalidade_uf))}
+         ${campo('f4', 'grau_instrucao', 'Grau de instrução', sel('grau_instrucao', [['', '—'], ['fundamental_incompleto', 'Fundamental incompleto'], ['fundamental_completo', 'Fundamental completo'], ['medio_incompleto', 'Médio incompleto'], ['medio_completo', 'Médio completo'], ['superior_incompleto', 'Superior incompleto'], ['superior_completo', 'Superior completo']], pe.grau_instrucao))}`)
+      + secao('h-rg', 'RG', 'Como está na carteira de identidade.',
+        `${campo('f4', 'rg', 'Número do RG', inp('rg', pe.rg, 'maxlength="20" class="cod"'))}
+         ${campo('f3', 'rg_orgao', 'Órgão expedidor', inp('rg_orgao', pe.rg_orgao))}
+         ${campo('f2', 'rg_uf', 'UF', sel('rg_uf', UF, pe.rg_uf))}
+         ${campo('f3', 'rg_emissao', 'Emissão' + opc, inp('rg_emissao', pe.rg_emissao, 'type="date"'))}`)
+      + secao('h-fil', 'Filiação', '',
+        `${campo('f6', 'pai', 'Pai' + opc, inp('pai', pe.pai, 'maxlength="80"'))}
+         ${campo('f6', 'mae', 'Mãe', inp('mae', pe.mae, 'maxlength="80"'))}`)
+      + secao('h-inss', 'INSS', 'Para o desconto de INSS e Sest/Senat no contrato de frete do autônomo.',
+        `${campo('f4', 'nr_inss', 'Nº do INSS (NIT)' + opc, inp('nr_inss', pe.nr_inss, 'maxlength="11" inputmode="numeric" class="cod"'))}
+         ${campo('f4', 'qualificacao_inss', 'Qualificação', sel('qualificacao_inss', [['', '—'], ['qualificado', 'Qualificado'], ['nao_qualificado', 'Não qualificado'], ['com_pendencia', 'Com pendência']], pe.qualificacao_inss))}
+         ${campo('f4', 'nr_dependentes', 'Dependentes', inp('nr_dependentes', pe.nr_dependentes ?? 0, 'type="number" min="0" max="99" class="num"'))}
+         ${grupo('f12', 'g-desc', 'Autoriza desconto', radios('autoriza_desconto_inss', [['nao', 'Não'], ['inss_sest_senat', 'Sim, INSS e Sest/Senat'], ['sest_senat', 'Sim, só Sest/Senat']], pr.autoriza_desconto_inss || 'nao', 'g-desc'))}`)
+      + ins;
+  }
+
+  /* ---------- ANTT ---------- */
+  function marcoRntrc(validade, numero) {
+    if (!validade) return `<div class="vazio-bloco">${numero ? 'Validade do RNTRC não informada: sem ela o NILT não avisa quando vencer.' : 'Sem RNTRC: o proprietário fica pendente até o número e a validade serem informados.'}</div>`;
+    const dias = N.diasAte(validade);
+    const venc = dias < 0;
+    return `<div class="marco-rntrc ${venc ? 'vencido' : dias <= 30 ? 'vencendo' : 'ok'}">
+      <span class="quem"><b>Validade do RNTRC</b><span>${numero ? `<span class="cod">${esc(numero)}</span> · ` : ''}${venc ? 'venceu em' : 'válido até'} ${f.data(validade)}</span></span>
+      <span class="dias${venc ? ' vencido' : ''}"><b>${venc ? 'Vencido' : dias + (dias === 1 ? ' dia' : ' dias')}</b><span>${venc ? f.dias(dias) : 'restantes'}</span></span>
+      ${d.marco({ dias }, 365)}
+      <span class="escala" aria-hidden="true"><span>hoje</span><span>6 meses</span><span>1 ano</span></span></div>`;
+  }
+  function painelAntt() {
+    const enq = [['tac', 'TAC<em>autônomo</em>', pj], ['etc', 'ETC<em>empresa</em>'], ['ctc', 'CTC<em>cooperativa</em>'], ['etc_equiparado', 'ETC equiparado']];
+    return secao('h-antt', 'Registro na ANTT', 'RNTRC do transportador. Vencido, o veículo não pode rodar em nome deste proprietário.',
+      `${campo('f4', 'rntrc', 'RNTRC', inp('rntrc', pr.rntrc, 'maxlength="9" inputmode="numeric" class="cod" placeholder="9 dígitos"'))}
+       ${campo('f4', 'rntrc_emissao', 'Emissão' + opc, inp('rntrc_emissao', pr.rntrc_emissao, 'type="date"'))}
+       ${campo('f4', 'rntrc_validade', 'Validade', inp('rntrc_validade', pr.rntrc_validade, 'type="date"'))}
+       <div class="f12" id="marco-rntrc">${marcoRntrc(pr.rntrc_validade, pr.rntrc)}</div>
+       ${grupo('f8', 'g-enq', 'Enquadramento', radios('enquadramento_antt', enq, pr.enquadramento_antt, 'g-enq'),
+         `<span class="ajuda">${pj ? 'TAC é só para pessoa física: é o transportador autônomo, dono do caminhão. Empresa é ETC, CTC (cooperativa) ou ETC equiparado.' : 'Autônomo com caminhão próprio é TAC. Use ETC equiparado só se o certificado da ANTT disser isso.'}</span>`)}
+       ${campo('f4', 'situacao_cadastro', 'Situação do cadastro', sel('situacao_cadastro', [['normal', 'Normal'], ['pendente', 'Pendente'], ['cancelado', 'Cancelado']], pr.situacao_cadastro))}`)
+      + secao('h-oper', 'Operação', 'Exigências de clientes que alguns fretes pedem.',
+      `${grupo('f4', 'g-alto', 'Operação de alto desempenho', radios('alto_desempenho', SN, simNao(!!pr.alto_desempenho), 'g-alto'))}
+       ${grupo('f4', 'g-gmp', 'Qualificado GMP+', radios('qualificado_gmp', SN, simNao(pr.qualificado_gmp), 'g-gmp'), '<span class="ajuda">Certificação para transportar ingredientes de ração.</span>')}
+       ${campo('f4', 'dt_qualificacao_gmp', 'Data da qualificação' + opc, inp('dt_qualificacao_gmp', pr.dt_qualificacao_gmp, 'type="date"'))}`);
+  }
+
+  /* ---------- Responsável (só empresa) ---------- */
+  function painelResp() {
+    return secao('h-resp', 'Responsável', 'Quem fala pela empresa com a operação: quem atende quando o caminhão precisa sair.',
+      `${campo('f6', 'responsavel_nome', 'Nome', inp('responsavel_nome', pr.responsavel_nome))}
+       ${campo('f3', 'responsavel_telefone', 'Telefone', inp('responsavel_telefone', f.telefone(pr.responsavel_telefone), 'data-mascara="telefone" placeholder="(00) 00000-0000"'))}
+       ${checar('responsavel_whatsapp', 'Tem WhatsApp', pr.responsavel_whatsapp, 'f3')}
+       ${campo('f6', 'responsavel_email', 'E-mail' + opc, inp('responsavel_email', pr.responsavel_email, 'type="email" placeholder="nome@empresa.com.br"'))}`);
+  }
+
+  /* ---------- Pagamento (dados extras) ---------- */
+  function painelPagamento() {
+    const REGRAS = [
+      ['peso_saida', 'Peso de saída', 'Paga pelo peso carregado na origem.'],
+      ['peso_chegada', 'Peso de chegada', 'Paga pelo peso descarregado no destino.'],
+      ['peso_chegada_se_menor', 'Peso de chegada, quando menor que o de saída', 'Paga pelo menor dos dois: a quebra do caminho sai do frete.'],
+      ['peso_chegada_com_tolerancia', 'Peso de chegada com tolerância', 'Paga pelo peso de chegada; a quebra até a tolerância do contrato é aceita.'],
+      ['peso_chegada_acima_tolerancia', 'Peso de chegada, quando ultrapassar a tolerância', 'Paga pelo peso de saída e só passa ao de chegada se a quebra passar da tolerância.'],
+    ];
+    const din = (nm, rot, v, tipo) => campo('f4', nm, rot + opc, `<div class="${tipo === 'R$' ? 'prefixo' : 'sufixo'}">${inp(nm, tipo === 'R$' ? moeda(v) : pct(v), 'inputmode="decimal" class="num" data-numero')}<span aria-hidden="true">${tipo}</span></div>`);
+    return secao('h-taxa', 'Taxa administrativa', 'Cobrada do proprietário em cada contrato de frete. Preencha valor ou percentual.',
+        `${din('taxa_adm_valor', 'Valor', pr.taxa_adm_valor, 'R$')}${din('taxa_adm_percentual', 'Percentual', pr.taxa_adm_percentual, '%')}`)
+      + secao('h-regra', 'Pagamento do frete', 'Qual peso vale para calcular o frete do motorista deste proprietário.', '',
+        `<div class="regras" role="radiogroup" aria-labelledby="h-regra">${REGRAS.map(([v, t, x]) => `<label class="regra"><input type="radio" name="regra_pgto_frete" value="${v}"${pr.regra_pgto_frete === v ? ' checked' : ''}><span><b>${t}</b><small>${x}</small></span></label>`).join('')}</div>
+         ${pr.regra_pgto_frete ? '' : '<p class="explica" style="margin-top:8px">Sem regra escolhida, vale a regra geral da Prisa.</p>'}`)
+      + secao('h-adto', 'Limite de adiantamento', 'Teto do adiantamento no contrato de frete. Com os dois preenchidos, vale o menor.',
+        `${din('limite_adiantamento_percentual', 'Percentual do frete', pr.limite_adiantamento_percentual, '%')}${din('limite_adiantamento_valor', 'Valor máximo', pr.limite_adiantamento_valor, 'R$')}
+         <p class="f12 explica" id="prev-adto"></p>`)
+      + secao('h-frete', 'Frete da empresa para o motorista', 'Quanto do frete da empresa vira frete do motorista. Preencha valor ou percentual.',
+        `${din('frete_empresa_motorista_valor', 'Valor', pr.frete_empresa_motorista_valor, 'R$')}${din('frete_empresa_motorista_percentual', 'Percentual', pr.frete_empresa_motorista_percentual, '%')}
+         <p class="f12 explica" id="prev-frete"></p>`);
+  }
+  function previas() {
+    const ex = 10000;
+    const ap = lerNum($('limite_adiantamento_percentual').value), av = lerNum($('limite_adiantamento_valor').value);
+    const lims = [ap != null ? ex * ap / 100 : null, av].filter((x) => x != null);
+    $('prev-adto').textContent = lims.length ? `Num frete de ${real(ex)}, o adiantamento vai até ${real(Math.min(...lims))}.` : 'Sem limite próprio: vale o limite geral da Prisa.';
+    const fv = lerNum($('frete_empresa_motorista_valor').value), fp = lerNum($('frete_empresa_motorista_percentual').value);
+    $('prev-frete').textContent = fp != null ? `Num frete da empresa de ${real(ex)}, o motorista recebe ${real(ex * fp / 100)}.` : fv != null ? `O motorista recebe ${real(fv)} por frete, qualquer que seja o frete da empresa.` : 'Sem regra própria: o frete do motorista é definido em cada contrato.';
+    N.separarPontos(main);
+  }
+
+  /* ---------- Contatos (endereços, telefones, e-mails) ---------- */
+  let ends = D.enderecos.filter((e) => e.pessoa_id === pe.id).map((e) => ({ ...e }));
+  let tels = D.telefones.filter((t) => t.pessoa_id === pe.id).map((t) => ({ ...t }));
+  let mails = D.emails.filter((t) => t.pessoa_id === pe.id).map((t) => ({ ...t }));
+  const TIPO_END = [['residencial', 'Residencial'], ['comercial', 'Comercial'], ['coleta_descarga', 'Coleta/descarga'], ['cobranca', 'Cobrança'], ['correspondencia', 'Correspondência']];
+  const TIPO_TEL = [['celular', 'Celular'], ['comercial', 'Comercial'], ['residencial', 'Residencial'], ['fax', 'Fax'], ['radio', 'Rádio']];
+  const remover = (tipo, i, rot) => `<button class="btn btn-texto btn-pequeno" type="button" data-remover="${tipo}" data-i="${i}" aria-label="Remover ${rot}"><i data-lucide="trash-2"></i>Remover</button>`;
+  const principal = (grp, i, on) => `<label class="checar" style="min-height:0"><input type="radio" name="${grp}-principal" value="${i}"${on ? ' checked' : ''}>Principal</label>`;
+  function renderContatos() {
+    const E = ends.map((e, i) => `<div class="item">
+        <div class="item-cab"><b>${(TIPO_END.find((t) => t[0] === e.tipo) || ['', 'Endereço'])[1]}</b><span class="dir">${principal('end', i, e.principal)}${remover('end', i, 'endereço')}</span></div>
+        <div class="campos">
+          ${campo('f3', `end-tipo-${i}`, 'Tipo', sel(`end-tipo-${i}`, TIPO_END, e.tipo))}
+          ${campo('f3', `end-cep-${i}`, 'CEP', `<div class="com-acao">${inp(`end-cep-${i}`, f.cep(e.cep), 'data-mascara="cep" placeholder="00000-000"')}<button class="btn" type="button" data-cep="${i}" aria-label="Buscar endereço pelo CEP"><i data-lucide="map-pin"></i></button></div>`)}
+          ${campo('f6', `end-log-${i}`, 'Endereço', inp(`end-log-${i}`, e.logradouro))}
+          ${campo('f2', `end-num-${i}`, 'Número', inp(`end-num-${i}`, e.numero))}
+          ${campo('f4', `end-comp-${i}`, 'Complemento' + opc, inp(`end-comp-${i}`, e.complemento))}
+          ${campo('f6', `end-bairro-${i}`, 'Bairro', inp(`end-bairro-${i}`, e.bairro))}
+          ${campo('f5', `end-cid-${i}`, 'Cidade', inp(`end-cid-${i}`, e.cidade))}
+          ${campo('f2', `end-uf-${i}`, 'UF', sel(`end-uf-${i}`, UF, e.uf))}
+          ${campo('f5', `end-ref-${i}`, 'Ponto de referência' + opc, inp(`end-ref-${i}`, e.ponto_referencia))}
+          ${campo('f6', `end-coord-${i}`, 'Coordenada' + opc, inp(`end-coord-${i}`, e.latitude != null ? `${e.latitude}, ${e.longitude}` : '', 'placeholder="-23.551200, -51.461900 ou link do Google Maps"'))}
+        </div><span class="erro" id="end-msg-${i}" hidden></span></div>`).join('');
+    const T = tels.map((t, i) => `<div class="item">
+        <div class="item-cab"><b class="tab-nums">${f.telefone(t.numero) || 'Novo telefone'}</b>${t.whatsapp ? '<span class="small muted">WhatsApp</span>' : ''}<span class="dir">${principal('tel', i, t.principal)}${remover('tel', i, 'telefone')}</span></div>
+        <div class="campos">
+          ${campo('f3', `tel-num-${i}`, 'Número', inp(`tel-num-${i}`, f.telefone(t.numero), 'data-mascara="telefone" placeholder="(00) 00000-0000"'))}
+          ${campo('f2', `tel-ramal-${i}`, 'Ramal' + opc, inp(`tel-ramal-${i}`, t.ramal, 'maxlength="4" inputmode="numeric"'))}
+          ${campo('f4', `tel-cont-${i}`, 'Contato' + opc, inp(`tel-cont-${i}`, t.contato, 'maxlength="100"'))}
+          ${campo('f3', `tel-tipo-${i}`, 'Tipo', sel(`tel-tipo-${i}`, TIPO_TEL, t.tipo))}
+          ${checar(`tel-whats-${i}`, 'WhatsApp', t.whatsapp, 'f3')}
+          ${checar(`tel-rest-${i}`, 'Restrito: só administradores veem', t.restrito, 'f6')}
+        </div></div>`).join('');
+    const M = mails.map((m, i) => `<div class="item">
+        <div class="item-cab"><b>${esc(m.email) || 'Novo e-mail'}</b><span class="dir">${principal('mail', i, m.principal)}${remover('mail', i, 'e-mail')}</span></div>
+        <div class="campos">
+          ${campo('f6', `mail-${i}`, 'E-mail', inp(`mail-${i}`, m.email, 'type="email" placeholder="nome@empresa.com.br"'))}
+          ${campo('f6', `mail-obs-${i}`, 'Observação' + opc, inp(`mail-obs-${i}`, m.observacao))}
+          ${checar(`mail-cte-${i}`, 'Recebe CT-e', m.recebe_cte, 'f4')}
+        </div></div>`).join('');
+    const add = (tipo, rot) => `<div style="margin-top:12px"><button class="btn" type="button" data-adicionar="${tipo}"><i data-lucide="plus"></i>${rot}</button></div>`;
+    $('contatos').innerHTML =
+      secao('h-end', 'Endereços', 'O principal sai no contrato de frete. O CEP busca rua, bairro e cidade.', '', `<div class="itens">${E || '<div class="vazio-bloco">Nenhum endereço cadastrado.</div>'}</div>${add('end', 'Adicionar endereço')}`)
+      + secao('h-tel', 'Telefones', 'Com WhatsApp marcado, a operação sabe por onde chamar.', '', `<div class="itens">${T || '<div class="vazio-bloco">Nenhum telefone cadastrado.</div>'}</div>${add('tel', 'Adicionar telefone')}`)
+      + secao('h-mail', 'E-mails', 'Marque quem recebe o CT-e e o contrato de frete por e-mail.', '', `<div class="itens">${M || '<div class="vazio-bloco">Nenhum e-mail cadastrado.</div>'}</div>${add('mail', 'Adicionar e-mail')}`);
+    prepararNovos($('contatos'));
+  }
+
+  /* ---------- Contas e Pix ---------- */
+  let cts = contas.map((c) => ({ ...c }));
+  let chaves = D.pix.filter((x) => x.pessoa_id === pe.id).map((x) => ({ ...x }));
+  const BANCOS = Object.entries(D.bancos).sort((a, b) => a[0].localeCompare(b[0])).map(([c, n]) => [c, `${c} – ${n}`]);
+  function avisoTitular(c, i) {
+    const docF = so(c.favorecido_documento);
+    if (!docF) return `<div class="aviso aviso-pendente" id="tit-${i}"><i data-lucide="triangle-alert"></i><span>Informe o CPF ou CNPJ do favorecido: sem ele o NILT não confere se a conta é do proprietário.</span></div>`;
+    if (docF === docDono) return `<div class="aviso aviso-normal" id="tit-${i}"><i data-lucide="check"></i><span>Titular confere com o ${pj ? 'CNPJ' : 'CPF'} do proprietário.</span></div>`;
+    const docFmt = docF.length === 14 ? f.cnpj(docF) : f.cpf(docF);
+    return `<div class="aviso aviso-forte" id="tit-${i}" role="alert"><i data-lucide="triangle-alert"></i><span><b>O titular desta conta não é o proprietário.</b> A conta está em nome de ${esc(c.favorecido_nome || 'outra pessoa')} (${docF.length === 14 ? 'CNPJ' : 'CPF'} <span class="cod">${docFmt}</span>), e o proprietário é ${esc(pe.nome)} (${pj ? 'CNPJ' : 'CPF'} <span class="cod">${f.doc(pe)}</span>). Frete pago em conta de terceiro precisa de autorização assinada pelo proprietário, anexada em Documentos.
+      <span class="acoes-aviso"><button class="btn btn-pequeno" type="button" data-anexar="OUTROS"><i data-lucide="paperclip"></i>Anexar autorização</button></span></span></div>`;
+  }
+  function renderContas() {
+    const C = cts.map((c, i) => `<div class="item${so(c.favorecido_documento) && so(c.favorecido_documento) !== docDono ? ' conta-alerta' : ''}" data-conta="${i}">
+        <div class="item-cab"><b>${esc((D.bancos[c.banco_codigo] || 'Nova conta'))}</b>${c.agencia ? `<span class="small muted tab-nums">ag. ${esc(c.agencia)} · conta ${esc(c.conta)}${c.conta_digito ? '-' + esc(c.conta_digito) : ''}</span>` : ''}<span class="dir">${principal('conta', i, c.principal)}${remover('conta', i, 'conta')}</span></div>
+        <div data-aviso-titular="${i}">${avisoTitular(c, i)}</div>
+        <div class="campos">
+          ${campo('f6', `ct-banco-${i}`, 'Banco', sel(`ct-banco-${i}`, [['', 'Escolha o banco'], ...BANCOS], c.banco_codigo))}
+          ${campo('f3', `ct-tipo-${i}`, 'Tipo', sel(`ct-tipo-${i}`, [['corrente', 'Corrente'], ['poupanca', 'Poupança'], ['salario', 'Salário']], c.tipo))}
+          ${campo('f3', `ct-swift-${i}`, 'Swift' + opc, inp(`ct-swift-${i}`, c.swift, 'class="cod"'))}
+          ${campo('f3', `ct-ag-${i}`, 'Agência', inp(`ct-ag-${i}`, c.agencia, 'maxlength="5" inputmode="numeric" class="cod"'))}
+          ${campo('f2', `ct-agd-${i}`, 'Dígito' + opc, inp(`ct-agd-${i}`, c.agencia_digito, 'maxlength="2" class="cod"'))}
+          ${campo('f4', `ct-conta-${i}`, 'Conta', inp(`ct-conta-${i}`, c.conta, 'maxlength="20" inputmode="numeric" class="cod"'))}
+          ${campo('f3', `ct-cd-${i}`, 'Dígito', inp(`ct-cd-${i}`, c.conta_digito, 'maxlength="2" class="cod"'))}
+          ${campo('f6', `ct-fav-${i}`, 'Favorecido (titular)', inp(`ct-fav-${i}`, c.favorecido_nome))}
+          ${campo('f6', `ct-favdoc-${i}`, 'CPF ou CNPJ do favorecido', inp(`ct-favdoc-${i}`, so(c.favorecido_documento).length === 14 ? f.cnpj(c.favorecido_documento) : f.cpf(c.favorecido_documento), `class="cod" inputmode="numeric" data-favdoc="${i}"`))}
+        </div></div>`).join('');
+    const TIPO_PIX = [['cpf', 'CPF'], ['cnpj', 'CNPJ'], ['celular', 'Celular'], ['email', 'E-mail'], ['aleatoria', 'Chave aleatória']];
+    const contaRot = (c) => `${D.bancos[c.banco_codigo] || 'Conta'}, ag. ${c.agencia || '—'}, conta ${c.conta || '—'}`;
+    const X = chaves.map((x, i) => {
+      const alheia = (x.tipo === 'cpf' || x.tipo === 'cnpj') && so(x.chave) && so(x.chave) !== docDono;
+      return `<div class="item">
+        <div class="item-cab"><b>${(TIPO_PIX.find((t) => t[0] === x.tipo) || ['', 'Chave'])[1]}</b><span class="small muted cod">${x.tipo === 'cpf' ? f.cpf(x.chave) : x.tipo === 'cnpj' ? f.cnpj(x.chave) : esc(x.chave)}</span><span class="dir">${principal('pix', i, x.principal)}${remover('pix', i, 'chave Pix')}</span></div>
+        ${alheia ? '<div class="aviso aviso-forte"><i data-lucide="triangle-alert"></i><span><b>Chave Pix de outro documento.</b> O CPF ou CNPJ da chave não é o do proprietário.</span></div>' : ''}
+        <div class="campos">
+          ${campo('f3', `pix-tipo-${i}`, 'Tipo', sel(`pix-tipo-${i}`, TIPO_PIX, x.tipo))}
+          ${campo('f5', `pix-chave-${i}`, 'Chave', inp(`pix-chave-${i}`, x.tipo === 'cpf' ? f.cpf(x.chave) : x.tipo === 'cnpj' ? f.cnpj(x.chave) : x.chave, 'class="cod" maxlength="37"'))}
+          ${campo('f4', `pix-conta-${i}`, 'Conta vinculada' + opc, sel(`pix-conta-${i}`, [['', 'Nenhuma'], ...cts.map((c, k) => [String(k), contaRot(c)])], x.conta_id ?? ''))}
+          ${campo('f6', `pix-desc-${i}`, 'Descrição' + opc, inp(`pix-desc-${i}`, x.descricao, 'maxlength="30"'))}
+        </div></div>`;
+    }).join('');
+    const add = (tipo, rot) => `<div style="margin-top:12px"><button class="btn" type="button" data-adicionar="${tipo}"><i data-lucide="plus"></i>${rot}</button></div>`;
+    $('contas').innerHTML =
+      secao('h-contas', 'Contas bancárias', `Onde o frete é pago. O titular precisa ser o próprio proprietário (${pj ? 'mesmo CNPJ' : 'mesmo CPF'}).`, '', `<div class="itens">${C || '<div class="vazio-bloco">Nenhuma conta cadastrada. Sem conta, o frete não tem para onde ir.</div>'}</div>${add('conta', 'Adicionar conta')}`)
+      + secao('h-pix', 'Chaves Pix', 'Ligue cada chave à conta em que ela cai.', '', `<div class="itens">${X || '<div class="vazio-bloco">Nenhuma chave Pix cadastrada.</div>'}</div>${add('pix', 'Adicionar chave Pix')}`);
+    prepararNovos($('contas'));
+  }
+
+  function prepararNovos(raiz) { N.aplicarMascaras(raiz); N.montarValidacao(raiz); N.separarPontos(raiz); N.desenharIcones(); }
+
+  /* ---------- Documentos ---------- */
+  let arqs = meusArquivos.map((a) => ({ ...a }));
+  function renderDocumentos() {
+    const antt = arqs.filter((a) => a.tipo === 'ANTT').sort((a, b) => (b.validade || '').localeCompare(a.validade || ''))[0];
+    const falta = [];
+    if (!antt) falta.push(`<div class="aviso aviso-pendente"><i data-lucide="triangle-alert"></i><span><b>Falta o certificado do RNTRC.</b> Anexe como tipo ANTT, com a validade: é o que comprova o registro na ANTT.</span></div>`);
+    else if (antt.validade && N.diasAte(antt.validade) < 0) falta.push(`<div class="aviso aviso-pendente"><i data-lucide="triangle-alert"></i><span><b>Falta o certificado do RNTRC renovado.</b> O anexado ${f.dias(N.diasAte(antt.validade))}: anexe o novo e atualize a validade na aba ANTT.</span></div>`);
+    if (cts.some((c) => so(c.favorecido_documento) && so(c.favorecido_documento) !== docDono) && !arqs.some((a) => a.tipo === 'OUTROS'))
+      falta.push(`<div class="aviso aviso-pendente"><i data-lucide="triangle-alert"></i><span><b>Falta a autorização de pagamento em conta de terceiro.</b> A conta cadastrada não está em nome do proprietário.</span></div>`);
+    const vis = arqs.filter((a) => admin || !a.restrito);
+    const ocultos = arqs.length - vis.length;
+    const validade = (a) => {
+      if (!a.validade) return '<span class="dash">—</span>';
+      const n = N.diasAte(a.validade);
+      if (n < 0) return d.sinal('vencido', f.dias(n).replace('venceu', 'Venceu'));
+      if (n <= 30) return d.sinal('vencendo', f.dias(n).replace('vence', 'Vence'));
+      return `<span class="tab-nums">${f.data(a.validade)}</span>`;
+    };
+    $('documentos').innerHTML = `
+      <p class="muted" style="margin-bottom:16px">${vis.length} ${vis.length === 1 ? 'arquivo' : 'arquivos'}${ocultos ? ` · ${ocultos} restrito, visível só para administradores` : ''}${vis.some((a) => a.restrito) ? ' · arquivos restritos só administradores veem' : ''}</p>
+      ${falta.length ? `<div class="docs-faltando">${falta.join('')}</div>` : ''}
+      ${vis.length ? `<div class="tabela-wrap"><table class="tabela"><thead><tr><th scope="col">Arquivo</th><th scope="col" class="some-celular">Validade</th><th scope="col" class="some-celular">Conferência</th><th scope="col" class="num some-celular">Tamanho</th><th scope="col"><span class="sr-only">Ações</span></th></tr></thead><tbody>
+        ${vis.map((a) => `<tr class="sem-link"><td><span class="id">${esc(a.nome_original)}</span><span class="linha2">${esc(a.tipo)}${a.restrito ? ' · restrito' : ''}${a.numero ? ' · nº ' + esc(a.numero) : ''}</span><span class="linha2 so-celular">${a.validade ? 'validade ' + f.data(a.validade) : 'sem validade'} · ${f.kb(a.tamanho_bytes)}</span></td>
+          <td class="some-celular">${validade(a)}</td>
+          <td class="some-celular">${a.validado_em ? `Conferido por ${esc(a.validado_por)}<span class="linha2">${f.relativo(a.validado_em)}</span>` : '<span class="muted">Não conferido</span>'}</td>
+          <td class="num some-celular">${f.kb(a.tamanho_bytes)}</td>
+          <td class="num"><button class="btn btn-texto btn-pequeno" type="button" data-abrir="${a.id}">${a.restrito ? '<i data-lucide="lock"></i>' : ''}Abrir</button></td></tr>`).join('')}
+        </tbody></table></div>` : '<div class="vazio-bloco">Nenhum documento anexado.</div>'}`;
+    N.separarPontos($('documentos')); N.desenharIcones();
+  }
+
+  /* ---------- Veículos ---------- */
+  function painelVeiculos() {
+    if (!vs.todos.length) return `<div class="vazio-bloco">Nenhum veículo em nome deste proprietário. Ao cadastrar um veículo, escolha ${esc(pe.nome_fantasia || pe.nome.split(' ')[0])} no CRLV ou na ANTT.</div>`;
+    const curto = (p) => esc(p.nome_fantasia || p.nome);
+    const linhas = vs.todos.map((v) => {
+      const posse = v.proprietario_posse_id === pe.id, doc = v.proprietario_documento_id === pe.id;
+      const papel = posse && doc ? 'CRLV e ANTT' : posse ? 'Só no CRLV' : 'Só na ANTT';
+      const outro = !posse ? P.pessoa(v.proprietario_posse_id) : !doc ? P.pessoa(v.proprietario_documento_id) : null;
+      const outroTxt = outro ? `<a href="proprietario.html?id=${outro.id}">${curto(outro)}</a><span class="linha2">${!posse ? 'no CRLV (posse)' : 'na ANTT (documento)'}</span>` : '<span class="dash">—</span>';
+      const semContrato = v.arrendado && !D.arquivos.some((a) => a.veiculo_id === v.id && a.tipo === 'CONTRATO');
+      const sit = v.arrendado ? d.sinal('arrendado') : d.sinal(v.situacao_operacional);
+      return `<tr data-href="veiculo.html?id=${v.id}">
+        <td><div class="placa-cel">${d.placa(v.placa)}<span class="txt"><span class="id">${esc(v.marca)} ${esc(v.modelo)}</span><span class="linha2">${esc(v.tipo.toLowerCase().replace(/ - (\d) eixos/, ' · $1 eixos'))}</span>
+          <span class="linha2 so-celular">${papel}${outro ? ` · ${!posse ? 'CRLV' : 'ANTT'}: ${curto(outro)}` : ''}</span></span></div></td>
+        <td class="some-celular">${papel}<span class="linha2">${posse && doc ? 'dono e transportador' : doc ? 'arrendatário: roda com o veículo' : 'arrendador: é o dono'}</span></td>
+        <td class="some-celular">${outroTxt}</td>
+        <td>${sit}${semContrato ? '<span class="linha2" style="color:var(--laranja-tinta)">sem contrato de arrendamento</span>' : v.arrendado ? '<span class="linha2">contrato anexado</span>' : ''}</td></tr>`;
+    }).join('');
+    return `<p class="muted" style="margin-bottom:16px">${vs.todos.length} ${vs.todos.length === 1 ? 'veículo' : 'veículos'} · ${vs.posse.length} no CRLV · ${vs.documento.length} na ANTT${vs.arrendados.length ? ` · ${vs.arrendados.length} ${vs.arrendados.length === 1 ? 'arrendado' : 'arrendados'}` : ''}</p>
+      <div class="tabela-wrap"><table class="tabela"><thead><tr><th scope="col" style="width:40%">Veículo</th><th scope="col" class="some-celular">Papel deste proprietário</th><th scope="col" class="some-celular">Outro proprietário</th><th scope="col">Situação</th></tr></thead><tbody>${linhas}</tbody></table></div>`;
+  }
+
+  /* ---------- Histórico (auditoria, só admin) ---------- */
+  function painelHistorico() {
+    const ACAO = { insert: 'criou', update: 'alterou', delete: 'excluiu', visualizacao: 'abriu' };
+    const TAB = { pessoa: 'dados da pessoa', proprietario: 'dados de proprietário', pessoa_conta_bancaria: 'conta bancária', arquivo: 'arquivo', pessoa_endereco: 'endereço', pessoa_telefone: 'telefone' };
+    const meusIds = new Set(D.arquivos.filter((a) => a.pessoa_id === pe.id).map((a) => a.id));
+    const ev = D.auditoria.filter((a) => a.registro_id === pe.id || (a.tabela === 'arquivo' && meusIds.has(a.registro_id))).sort((a, b) => b.em.localeCompare(a.em));
+    if (!ev.length) return '<div class="vazio-bloco">Nenhuma alteração registrada neste cadastro.</div>';
+    return `<p class="muted" style="margin-bottom:8px">Toda alteração e toda abertura de documento fica registrada. Só administradores veem esta aba.</p>
+      <div class="linha-tempo">${ev.map((a) => `<div class="evento">
+        <span class="quando" title="${f.dataHora(a.em)}">${f.dataHora(a.em)}</span>${d.avatar(a.usuario)}
+        <span class="o-que"><b>${esc(a.resumo)}</b><span>${esc(a.usuario)} ${ACAO[a.acao] || a.acao} ${TAB[a.tabela] || a.tabela} · ${f.relativo(a.em)}</span></span></div>`).join('')}</div>
+      <p style="margin-top:16px"><a href="auditoria.html?registro=${pe.id}">Ver na auditoria completa</a></p>`;
+  }
+
+  renderContatos(); renderContas(); renderDocumentos(); previas();
+
+
+
+  /* ---------- comportamento ---------- */
+  const form = $('form');
+  const marcarAlterado = () => form.dispatchEvent(new Event('input', { bubbles: true }));
+
+  // inscrição estadual isenta desliga o número
+  form.addEventListener('change', (e) => {
+    if (e.target.id === 'inscricao_estadual_isento') { $('inscricao_estadual').disabled = e.target.checked; }
+  });
+  // validade do RNTRC redesenha o marco
+  form.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.id === 'rntrc') t.value = so(t.value).slice(0, 9);
+    if (t.id === 'rntrc_validade' || t.id === 'rntrc') { $('marco-rntrc').innerHTML = marcoRntrc($('rntrc_validade').value, $('rntrc').value); N.separarPontos($('marco-rntrc')); }
+    if (t.hasAttribute('data-numero')) previas();
+    if (t.dataset.favdoc != null) {
+      const i = +t.dataset.favdoc; const dg = so(t.value).slice(0, 14);
+      cts[i].favorecido_documento = dg;
+      if (dg.length === 11 || dg.length === 14 || !dg) {
+        const box = document.querySelector(`[data-aviso-titular="${i}"]`); box.innerHTML = avisoTitular(cts[i], i);
+        box.closest('.item').classList.toggle('conta-alerta', !!dg && dg !== docDono);
+        N.separarPontos(box); N.desenharIcones();
+      }
+    }
+    if (/^ct-fav-\d+$/.test(t.id)) cts[+t.id.split('-')[2]].favorecido_nome = t.value;
+  });
+  // RNTRC: 9 dígitos
+  $('rntrc').addEventListener('blur', () => {
+    const c = $('rntrc').closest('.campo'); let e = c.querySelector('.erro');
+    const ruim = $('rntrc').value && $('rntrc').value.length !== 9;
+    c.toggleAttribute('data-invalido', ruim);
+    if (ruim) { if (!e) { e = document.createElement('span'); e.className = 'erro'; c.appendChild(e); } e.hidden = false; e.textContent = 'O RNTRC tem 9 dígitos. Confira no certificado da ANTT.'; } else if (e) e.hidden = true;
+  });
+
+  // adicionar e remover itens (endereço, telefone, e-mail, conta, Pix)
+  main.addEventListener('click', async (e) => {
+    const add = e.target.closest('[data-adicionar]');
+    if (add) {
+      lerListas();
+      const t = add.dataset.adicionar;
+      if (t === 'end') { ends.push({ tipo: pj ? 'comercial' : 'residencial', principal: !ends.length }); renderContatos(); $(`end-cep-${ends.length - 1}`).focus(); }
+      if (t === 'tel') { tels.push({ tipo: 'celular', whatsapp: true, principal: !tels.length }); renderContatos(); $(`tel-num-${tels.length - 1}`).focus(); }
+      if (t === 'mail') { mails.push({ email: '', principal: !mails.length }); renderContatos(); $(`mail-${mails.length - 1}`).focus(); }
+      if (t === 'conta') { cts.push({ tipo: 'corrente', favorecido_nome: pe.nome, favorecido_documento: docDono, principal: !cts.length }); renderContas(); $(`ct-banco-${cts.length - 1}`).focus(); }
+      if (t === 'pix') { chaves.push({ tipo: pj ? 'cnpj' : 'cpf', chave: docDono, principal: !chaves.length }); renderContas(); $(`pix-chave-${chaves.length - 1}`).focus(); }
+      marcarAlterado(); return;
+    }
+    const rem = e.target.closest('[data-remover]');
+    if (rem) {
+      lerListas();
+      const i = +rem.dataset.i, t = rem.dataset.remover;
+      ({ end: ends, tel: tels, mail: mails, conta: cts, pix: chaves })[t].splice(i, 1);
+      if (t === 'conta' || t === 'pix') renderContas(); else renderContatos();
+      marcarAlterado(); N.toast('Item removido. Salve para confirmar ou descarte para desfazer.', 'trash-2'); return;
+    }
+    const cep = e.target.closest('[data-cep]');
+    if (cep) {
+      const i = cep.dataset.cep; const v = so($(`end-cep-${i}`).value); const msg = $(`end-msg-${i}`);
+      if (v.length !== 8) { msg.hidden = false; msg.textContent = 'CEP tem 8 dígitos: confira e busque de novo.'; $(`end-cep-${i}`).focus(); return; }
+      cep.disabled = true; cep.innerHTML = '<i data-lucide="loader-circle" class="gira"></i>'; N.desenharIcones();
+      try {
+        const x = await N.consultarCep(v);
+        $(`end-log-${i}`).value = x.logradouro || ''; $(`end-bairro-${i}`).value = x.bairro || ''; $(`end-cid-${i}`).value = x.cidade || ''; $(`end-uf-${i}`).value = x.uf || '';
+        msg.hidden = true; marcarAlterado(); $(`end-num-${i}`).focus();
+      } catch (err) { msg.hidden = false; msg.textContent = 'CEP não encontrado na BrasilAPI. Confira os dígitos ou preencha o endereço à mão.'; }
+      cep.disabled = false; cep.innerHTML = '<i data-lucide="map-pin"></i>'; N.desenharIcones(); return;
+    }
+    const abrir = e.target.closest('[data-abrir]');
+    if (abrir) { const a = arqs.find((x) => x.id === abrir.dataset.abrir); N.toast(`${esc(a.nome_original)}: no sistema real abre o arquivo e registra a visualização na auditoria.`, 'file-text'); return; }
+    const anx = e.target.closest('[data-anexar]');
+    if (anx) { abrirDialogo(anx.dataset.anexar); }
+  });
+
+  // salvar / descartar (nilt.js restaura os campos e avisa com nilt:salvo e nilt:descartado);
+  // as listas de contatos, contas e Pix são redesenhadas a partir da última versão salva
+  const v = (k) => ($(k) ? $(k).value : '');
+  const ck = (k) => !!($(k) && $(k).checked);
+  const pri = (g, i) => !!form.querySelector(`input[name="${g}-principal"][value="${i}"]:checked`);
+  function lerListas() {
+    ends = ends.map((e, i) => ({ ...e, tipo: v(`end-tipo-${i}`), cep: so(v(`end-cep-${i}`)), logradouro: v(`end-log-${i}`), numero: v(`end-num-${i}`), complemento: v(`end-comp-${i}`), bairro: v(`end-bairro-${i}`), cidade: v(`end-cid-${i}`), uf: v(`end-uf-${i}`), ponto_referencia: v(`end-ref-${i}`), principal: pri('end', i) }));
+    tels = tels.map((t, i) => ({ ...t, numero: so(v(`tel-num-${i}`)), ramal: v(`tel-ramal-${i}`), contato: v(`tel-cont-${i}`), tipo: v(`tel-tipo-${i}`), whatsapp: ck(`tel-whats-${i}`), restrito: ck(`tel-rest-${i}`), principal: pri('tel', i) }));
+    mails = mails.map((m, i) => ({ ...m, email: v(`mail-${i}`), observacao: v(`mail-obs-${i}`), recebe_cte: ck(`mail-cte-${i}`), principal: pri('mail', i) }));
+    cts = cts.map((c, i) => ({ ...c, banco_codigo: v(`ct-banco-${i}`), tipo: v(`ct-tipo-${i}`), swift: v(`ct-swift-${i}`), agencia: v(`ct-ag-${i}`), agencia_digito: v(`ct-agd-${i}`), conta: v(`ct-conta-${i}`), conta_digito: v(`ct-cd-${i}`), favorecido_nome: v(`ct-fav-${i}`), favorecido_documento: so(v(`ct-favdoc-${i}`)), principal: pri('conta', i) }));
+    chaves = chaves.map((x, i) => ({ ...x, tipo: v(`pix-tipo-${i}`), chave: ['cpf', 'cnpj', 'celular'].includes(v(`pix-tipo-${i}`)) ? so(v(`pix-chave-${i}`)) : v(`pix-chave-${i}`), conta_id: v(`pix-conta-${i}`) || null, descricao: v(`pix-desc-${i}`), principal: pri('pix', i) }));
+  }
+  const copiar = (a) => a.map((x) => ({ ...x }));
+  let salvo = { ends: copiar(ends), tels: copiar(tels), mails: copiar(mails), cts: copiar(cts), chaves: copiar(chaves) };
+  form.addEventListener('nilt:salvo', () => {
+    lerListas();
+    cts.forEach((c) => { c.titular_confere = !!c.favorecido_documento && c.favorecido_documento === docDono; });
+    salvo = { ends: copiar(ends), tels: copiar(tels), mails: copiar(mails), cts: copiar(cts), chaves: copiar(chaves) };
+    renderContatos(); renderContas(); renderDocumentos();
+  });
+  form.addEventListener('nilt:descartado', () => {
+    ends = copiar(salvo.ends); tels = copiar(salvo.tels); mails = copiar(salvo.mails); cts = copiar(salvo.cts); chaves = copiar(salvo.chaves);
+    renderContatos(); renderContas();
+    $('marco-rntrc').innerHTML = marcoRntrc($('rntrc_validade').value, $('rntrc').value);
+    previas(); if ($('inscricao_estadual')) $('inscricao_estadual').disabled = $('inscricao_estadual_isento').checked;
+    N.separarPontos(main);
+  });
+
+  /* ---------- Atualizar pela Receita (BrasilAPI) ---------- */
+  const btnR = $('btn-receita');
+  if (btnR) btnR.addEventListener('click', async () => {
+    const dg = so($('cnpj').value);
+    const box = $('receita-msg');
+    if (!N.valida.cnpj(dg)) { box.innerHTML = '<div class="aviso aviso-bloqueado"><i data-lucide="circle-alert"></i><span>CNPJ inválido: corrija os dígitos antes de consultar.</span></div>'; N.desenharIcones(); return; }
+    btnR.disabled = true; btnR.setAttribute('aria-busy', 'true'); btnR.innerHTML = '<i data-lucide="loader-circle" class="gira"></i><span>Consultando…</span>'; N.desenharIcones();
+    box.innerHTML = '';
+    try {
+      const x = await N.consultarCnpj(dg);
+      const mapa = { nome: x.nome, nome_fantasia: x.nome_fantasia, fundacao: x.fundacao, natureza_juridica: x.natureza_juridica, cnae_principal: x.cnae_principal };
+      let mudou = 0;
+      Object.entries(mapa).forEach(([k, v]) => { if (v != null && $(k).value !== v) { $(k).value = v; mudou++; } });
+      if (x.optante_simples != null) { const r2 = form.querySelector(`input[name="optante_simples"][value="${x.optante_simples ? 'sim' : 'nao'}"]`); if (!r2.checked) { r2.checked = true; mudou++; } }
+      $('dt_consulta_simples').value = N.HOJE.toISOString().slice(0, 10);
+      $('carimbo').textContent = `Consultado na Receita agora, às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+      const ativa = (x.situacao || '').toUpperCase() === 'ATIVA';
+      box.innerHTML = `<div class="aviso ${ativa ? 'aviso-normal' : 'aviso-bloqueado'}"><i data-lucide="${ativa ? 'check' : 'circle-alert'}"></i><span>${ativa ? 'Ativa na Receita.' : `A Receita mostra a empresa como <b>${esc((x.situacao || 'sem situação').toLowerCase())}</b>.`} ${mudou ? `${mudou} ${mudou === 1 ? 'campo mudou' : 'campos mudaram'}: confira e salve.` : 'Nada mudou em relação à ficha.'} O endereço da Receita fica em Contatos se você quiser trocar.</span></div>`;
+      marcarAlterado();
+    } catch (err) {
+      const naoAchou = /não encontrado/i.test(err.message || '');
+      box.innerHTML = `<div class="aviso aviso-bloqueado" role="alert"><i data-lucide="circle-alert"></i><span>${naoAchou ? 'CNPJ não encontrado na Receita. Confira o CNPJ acima; nada na ficha foi alterado.' : 'A consulta à Receita não respondeu (BrasilAPI fora do ar ou sem internet). Nada na ficha foi alterado.'}
+        <span class="acoes-aviso"><button class="btn btn-pequeno" type="button" id="receita-denovo"><i data-lucide="refresh-cw"></i>Tentar de novo</button></span></span></div>`;
+      $('receita-denovo').addEventListener('click', () => btnR.click());
+    }
+    btnR.disabled = false; btnR.removeAttribute('aria-busy'); btnR.innerHTML = '<i data-lucide="refresh-cw"></i><span>Atualizar pela Receita</span>'; N.desenharIcones();
+  });
+
+  /* ---------- diálogo de anexar ---------- */
+  const dlg = $('dlg-doc');
+  $('doc-tipo').innerHTML = D.tiposArquivo.map((t) => `<option>${t}</option>`).join('');
+  function abrirDialogo(tipo) {
+    $('form-doc').reset();
+    const falta = !arqs.some((a) => a.tipo === 'ANTT') || r.estado === 'vencido';
+    $('doc-tipo').value = tipo || (falta ? 'ANTT' : 'OUTROS');
+    if ($('doc-arquivo').closest('.campo').querySelector('.erro')) $('doc-arquivo').closest('.campo').querySelector('.erro').remove();
+    $('doc-restrito').closest('.campo').hidden = !admin;
+    if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+    $('doc-tipo').focus();
+  }
+  $('doc-cancelar').addEventListener('click', () => dlg.close());
+  $('form-doc').addEventListener('submit', (e) => {
+    const arq = $('doc-arquivo').files[0];
+    if (!arq) {
+      e.preventDefault(); const c = $('doc-arquivo').closest('.campo');
+      if (!c.querySelector('.erro')) { const s = document.createElement('span'); s.className = 'erro'; s.textContent = 'Escolha o arquivo a anexar.'; c.appendChild(s); }
+      return;
+    }
+    arqs.push({ id: 'a-novo-' + arqs.length, tipo: $('doc-tipo').value, pessoa_id: pe.id, nome_original: arq.name, tamanho_bytes: arq.size, validade: $('doc-validade').value || null, numero: $('doc-numero').value.trim() || null, restrito: $('doc-restrito').checked });
+    renderDocumentos();
+    N.toast(`${esc(arq.name)} anexado como ${esc($('doc-tipo').value)}.`, 'paperclip');
+    const b = document.querySelector('[data-aba="documentos"]'); if (b) { b.click(); const n = b.querySelector('.n'); if (n) n.textContent = arqs.filter((a) => admin || !a.restrito).length; }
+  });
+};
+</script>
+<script src="assets/nilt.js"></script>
+</body>
+</html>

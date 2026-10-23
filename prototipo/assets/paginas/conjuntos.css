@@ -1,0 +1,218 @@
+/* NILT — telas de Conjuntos e Pendências (conjuntos.html, conjunto.html, pendencias.html).
+   Só o que é próprio destas telas; tokens e componentes vêm de nilt.css.
+   Na conversão: .montador → componente MontadorConjunto; .grupo-pend → GrupoPendencia. */
+
+/* ---------- controle segmentado (janela de vencimentos) ---------- */
+.segmento { display: inline-flex; height: var(--control-h); border: 1px solid var(--control); border-radius: var(--radius-control); overflow: hidden; background: #fff; }
+.segmento button {
+  border: 0; border-left: 1px solid var(--control); background: transparent; padding: 0 12px;
+  font-weight: 500; cursor: pointer; white-space: nowrap; font-variant-numeric: tabular-nums;
+  transition: background-color 150ms ease;
+}
+.segmento button:first-child { border-left: 0; }
+@media (hover: hover) and (pointer: fine) { .segmento button:hover { background: var(--raised); } }
+.segmento button[aria-pressed="true"] { background: var(--active); font-weight: 600; }
+.segmento button:focus-visible { outline-offset: -2px; }
+.ferramentas .rotulo-ctrl { color: var(--muted); font-size: 13px; }
+.ferramentas label.ctrl { display: inline-flex; align-items: center; gap: 8px; }
+
+/* ---------- lista de conjuntos ---------- */
+.tabela .col-engate { width: 46%; }
+.tabela td .engate { padding: 4px 0; }
+.cap-inline { display: none; margin-top: 10px; max-width: 320px; }
+.so-celular { display: none !important; }
+.tabela td.num .linha2 { text-align: right; }
+.tabela .linha2 { font-size: 13px; line-height: 18px; }
+
+/* ---------- engate grande (ficha e montador) ---------- */
+@media (min-width: 641px) {
+.engate-grande .engate { gap: 0; padding-bottom: 4px; }
+.engate-grande .peca { gap: 8px; }
+.engate-grande .peca-corpo { height: 52px; padding: 0 14px; font-size: 14px; border-width: 2px; }
+.engate-grande .peca.cavalo .peca-corpo { border-radius: 6px 16px 6px 6px; min-width: 132px; }
+.engate-grande .peca.carreta .peca-corpo { min-width: 210px; }
+.engate-grande .peca.dolly .peca-corpo { min-width: 84px; }
+.engate-grande .peca.vaga .peca-corpo { min-width: 170px; border-width: 2px; }
+.engate-grande .peca-eixos { gap: 9px; padding-left: 12px; }
+.engate-grande .peca-eixos i { width: 14px; height: 14px; }
+.engate-grande .peca-placa { font-size: 13px; line-height: 16px; padding-left: 4px; }
+.engate-grande .acoplamento { width: 26px; height: 3px; margin-bottom: 64px; }
+.engate-grande .peca.vaga .peca-eixos { height: 14px; }
+}
+.peca.vaga .peca-eixos { height: 10px; }
+.peca.caminhao .peca-corpo, .peca.cavalo-item .peca-corpo { min-width: 120px; }
+.previa { background: var(--raised); border-radius: var(--radius-card); padding: 20px 20px 16px; overflow-x: auto; }
+
+/* ---------- conta da capacidade ---------- */
+.conta { display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 8px; column-gap: 24px; font-variant-numeric: tabular-nums; }
+.conta dt { color: var(--muted); }
+.conta dd { margin: 0; text-align: right; font-weight: 600; }
+.conta .soma { border-top: 1px solid var(--border); padding-top: 8px; color: var(--ink); font-weight: 600; }
+.conta dd.soma { font-size: 16px; }
+.conta-formula { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.capacidade-larga .capacidade { min-width: 0; }
+
+/* ---------- ficha: pessoa no bloco ---------- */
+.pessoa-cab { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.pessoa-cab .avatar { width: 40px; height: 40px; font-size: 14px; }
+.pessoa-cab b { display: block; font-weight: 600; font-size: 15px; line-height: 20px; }
+.pessoa-cab span.small { color: var(--muted); }
+.avisos { display: grid; gap: 8px; }
+.avisos:empty { display: none; }
+.bloco-corpo > * + .avisos, .avisos + * { margin-top: 16px; }
+
+/* ---------- linha do tempo (histórico) ---------- */
+.tempo { display: grid; }
+.tempo-linha { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 16px; padding: 10px 0; border-top: 1px solid var(--rule); }
+.tempo-linha:first-child { border-top: 0; }
+.tempo-linha .quando { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+/* ---------- montador ---------- */
+.montador .secao-rotulo p + p { margin-top: 8px; }
+.lista-op { display: grid; border: 1px solid var(--border); border-radius: var(--radius-card); overflow: hidden; }
+.op-linha {
+  display: grid; grid-template-columns: 20px 100px minmax(0, 1fr) 96px minmax(0, 200px); gap: 14px; align-items: center;
+  min-height: 56px; padding: 8px 14px; border-top: 1px solid var(--rule); cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.op-linha:first-child { border-top: 0; }
+@media (hover: hover) and (pointer: fine) { .op-linha:hover { background: var(--raised); } }
+.op-linha:has(input:checked) { background: var(--active); }
+.op-linha input { width: 16px; height: 16px; margin: 0; accent-color: var(--verde); }
+.op-linha .desc b { display: block; font-weight: 600; line-height: 18px; }
+.op-linha .desc > span { display: block; font-size: 13px; color: var(--muted); line-height: 18px; }
+.op-linha .num { text-align: right; font-variant-numeric: tabular-nums; }
+.op-linha .num > span { display: block; font-size: 12px; color: var(--muted); line-height: 16px; }
+.op-linha .estado { font-size: 13px; color: var(--muted); line-height: 18px; }
+.op-linha .estado.ocupado { color: var(--laranja-tinta); }
+
+.pecas { display: grid; border: 1px solid var(--border); border-radius: var(--radius-card); }
+.peca-linha {
+  display: grid; grid-template-columns: 32px 100px minmax(0, 1fr) 132px auto; gap: 14px; align-items: center;
+  min-height: 60px; padding: 10px 12px 10px 14px; border-top: 1px solid var(--rule);
+}
+.peca-linha:first-child { border-top: 0; }
+.peca-linha .pos {
+  width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--ink);
+  display: grid; place-items: center; font: 600 13px/1 var(--font); font-variant-numeric: tabular-nums;
+}
+.peca-linha.com-erro .pos { border-color: var(--vermelho); color: var(--vermelho-tinta); }
+.peca-linha .desc b { display: block; font-weight: 600; line-height: 18px; }
+.peca-linha .desc > span { display: block; font-size: 13px; color: var(--muted); line-height: 18px; }
+.peca-linha .num { text-align: right; font-size: 13px; color: var(--muted); line-height: 18px; font-variant-numeric: tabular-nums; }
+.peca-linha .num b { color: var(--ink); font-weight: 600; }
+.peca-linha .botoes { display: flex; gap: 4px; }
+.erros-peca { display: grid; gap: 2px; margin-top: 6px; }
+.erro-msg { display: flex; align-items: flex-start; gap: 6px; font-size: 13px; line-height: 18px; color: var(--vermelho-tinta); }
+.erro-msg svg { width: 14px; height: 14px; flex: none; margin-top: 2px; color: var(--vermelho); }
+.pecas-vazio { padding: 14px; color: var(--muted); border: 1px dashed var(--control); border-radius: var(--radius-card); }
+.adicionar { display: grid; gap: 8px; margin-top: 16px; }
+.adicionar .linha-add { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.adicionar .campo { width: 380px; }
+.livres { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.livres .btn { height: 30px; padding: 0 10px; font-weight: 500; }
+.livres .btn .cod { font-weight: 600; }
+.livres-rot { font-size: 13px; color: var(--muted); }
+.motivo { font-size: 14px; line-height: 18px; }
+.motivo b { font-weight: 600; }
+/* a barra é sólida e escura: dispensa a sombra larga de nilt.css */
+.montador .barra-salvar { box-shadow: 0 4px 12px rgba(30, 35, 39, 0.07); }
+.barra-salvar .acoes-barra { margin-left: auto; display: flex; gap: 8px; align-items: center; flex: none; }
+.barra-salvar .btn-primario[disabled] { background: #3a4146; border-color: #3a4146; color: #c9cfcb; }
+
+/* ---------- pendências ---------- */
+.grupos { display: grid; gap: var(--gap); }
+.grupo-pend { border: 1px solid var(--border); border-radius: var(--radius-card); min-width: 0; }
+.grupo-cab { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 20px; }
+.grupo-cab h2 { font-size: var(--fs-section); line-height: 22px; }
+.grupo-cab p { color: var(--muted); font-size: 13px; line-height: 18px; margin-top: 2px; }
+.grupo-cab .total-grupo { color: var(--muted); font-variant-numeric: tabular-nums; }
+.grupo-corpo { padding: 0 20px 8px; }
+.grupo-corpo .vazio-bloco { margin: 4px 0 12px; }
+.pend-linha {
+  display: grid; grid-template-columns: minmax(240px, 1fr) minmax(0, 1.3fr) 210px; gap: 20px; align-items: center;
+  min-height: 64px; padding: 10px 0; border-top: 1px solid var(--rule);
+}
+.pend-linha .acao { justify-self: end; }
+.objeto { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.objeto .avatar { width: 32px; height: 32px; }
+.objeto .nome { min-width: 0; }
+.objeto .nome a, .objeto .nome b { display: block; font-weight: 600; line-height: 18px; }
+.objeto .nome > span { display: block; font-size: 13px; color: var(--muted); line-height: 18px; }
+.pend-txt b { display: block; font-weight: 500; line-height: 18px; }
+.pend-txt > span { display: block; font-size: 13px; color: var(--muted); line-height: 18px; }
+.pend-txt .vencido { color: var(--vermelho-tinta); font-weight: 600; }
+.filtro-ativo { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+
+.venc-grupo + .venc-grupo { margin-top: 28px; }
+.venc-grupo h2 { font-size: var(--fs-section); line-height: 24px; margin-bottom: 4px; }
+.venc-grupo h2 .n { color: var(--muted); font-weight: 500; margin-left: 4px; font-variant-numeric: tabular-nums; }
+#vencimentos .marco { grid-template-columns: minmax(0, 1fr) minmax(160px, 40%) 128px; }
+.marco .trilho.longe i { background: var(--control); }
+.marco .quem-veic { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.marco .quem-veic > span { min-width: 0; }
+.marco .dias.vencendo b { color: var(--amarelo-tinta); }
+
+.doc-validade.vencido { color: var(--vermelho-tinta); font-weight: 600; }
+.doc-validade.vencendo { color: var(--amarelo-tinta); font-weight: 600; }
+.acesso { display: inline-flex; align-items: center; gap: 6px; }
+.acesso svg { width: 14px; height: 14px; }
+
+/* ---------- tablet ---------- */
+@media (max-width: 1100px) {
+  .tabela .col-cap { display: none; }
+  .some-tablet { display: none; }
+  .cap-inline { display: block; }
+  .op-linha { grid-template-columns: 20px 100px minmax(0, 1fr) 96px; }
+  .op-linha .estado { grid-column: 3 / -1; margin-top: -6px; }
+  .pend-linha { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .pend-linha .acao { grid-column: 1 / -1; justify-self: start; }
+}
+
+/* ---------- celular ---------- */
+@media (max-width: 640px) {
+  .so-celular { display: block !important; }
+  .tabela-fixa { table-layout: fixed; }
+  .tabela .col-engate { width: auto; }
+  .cap-inline { max-width: none; }
+  .titulo .acoes { flex-wrap: wrap; }
+  .titulo .acoes .btn { height: 44px; }
+  .migalha { width: 100%; }
+  .op-linha { grid-template-columns: 20px minmax(0, 1fr) auto; row-gap: 6px; }
+  .op-linha .desc { grid-column: 2 / -1; grid-row: 2; }
+  .op-linha .estado { grid-column: 2 / -1; margin-top: 0; }
+  .op-linha .num { grid-column: 3; grid-row: 1; }
+  .peca-linha { grid-template-columns: 32px minmax(0, 1fr) auto; row-gap: 8px; }
+  .peca-linha .placa { grid-column: 2; }
+  .peca-linha .desc { grid-column: 2 / -1; }
+  .peca-linha .num { grid-column: 2 / -1; text-align: left; }
+  .peca-linha .botoes { grid-column: 3; grid-row: 1; }
+  .peca-linha .botoes .btn { width: 44px; height: 44px; }
+  .adicionar .campo { width: 100%; }
+  .livres .btn { height: 44px; }
+  .barra-salvar { flex-wrap: wrap; }
+  .barra-salvar .acoes-barra { margin-left: 0; width: 100%; justify-content: flex-end; }
+  .barra-salvar .btn { height: 44px; }
+  .grupo-cab { grid-template-columns: 48px minmax(0, 1fr); padding: 12px 14px; }
+  .grupo-cab .total-grupo { display: none; }
+  .grupo-corpo { padding: 0 14px 8px; }
+  .pend-linha { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .pend-linha .acao .btn { height: 44px; }
+  .segmento { width: 100%; }
+  .segmento button { flex: 1; height: 42px; padding: 0 6px; }
+  .tempo-linha { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .previa { padding: 14px; }
+  #vencimentos .marco { grid-template-columns: minmax(0, 1fr) 96px; }
+  .previa .engate { flex-wrap: wrap; row-gap: 14px; overflow: visible; }
+  .ferramentas label.ctrl { width: 100%; }
+  .ferramentas label.ctrl select { flex: 1; }
+}
+
+/* caminhão-fantasma do montador vazio: as peças reais, tracejadas, numa linha só */
+.engate.fantasma { flex-wrap: nowrap !important; overflow-x: auto; }
+.engate.fantasma .peca-corpo { background: transparent !important; color: var(--muted) !important; border: 1.5px dashed var(--control) !important; font-weight: 600; }
+.engate.fantasma .peca.cavalo .peca-corpo { min-width: 96px; border-radius: 4px 10px 4px 4px; }
+.engate.fantasma .peca.carreta .peca-corpo { min-width: 132px; }
+.engate.fantasma .peca-eixos i { background: var(--control); box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--control); }
+.engate.fantasma .acoplamento { background: var(--control); }
+.engate.fantasma .peca-nota { font: 500 12px/14px var(--font); color: var(--muted); padding-left: 2px; white-space: nowrap; }

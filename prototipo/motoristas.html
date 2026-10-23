@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motoristas · NILT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700&family=Overpass+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/nilt.css">
+  <link rel="stylesheet" href="assets/paginas/motoristas.css">
+</head>
+<body data-pagina="motoristas">
+<main>
+  <div class="titulo">
+    <div>
+      <h1>Motoristas</h1>
+      <p class="sub" id="achado">Carregando…</p>
+    </div>
+    <div class="acoes">
+      <a class="btn btn-primario" href="motorista-novo.html"><i data-lucide="plus"></i>Novo motorista</a>
+    </div>
+  </div>
+
+  <div class="abas" id="abas-situacao" role="tablist" aria-label="Situação do motorista"></div>
+
+  <div class="ferramentas">
+    <div class="busca-lista">
+      <i data-lucide="search"></i>
+      <input id="busca" type="search" autocomplete="off" placeholder="Nome, apelido ou CPF" aria-label="Buscar por nome, apelido ou CPF">
+    </div>
+    <label class="filtro-gr" for="filtro-gr">Gerenciadora de risco
+      <select id="filtro-gr">
+        <option value="">Todas as situações</option>
+        <option value="habilitado">Habilitado</option>
+        <option value="vencendo">Vence em até 30 dias</option>
+        <option value="vencido">Vencido</option>
+        <option value="sem_consulta">Sem consulta</option>
+      </select>
+    </label>
+    <span class="total" id="total" aria-live="polite"></span>
+  </div>
+
+  <div class="tabela-wrap">
+    <table class="tabela" id="tabela">
+      <thead>
+        <tr>
+          <th scope="col">Motorista</th>
+          <th scope="col" class="col-tab some-celular">CPF</th>
+          <th scope="col" class="some-celular">CNH</th>
+          <th scope="col" class="some-celular">Consulta de risco</th>
+          <th scope="col" class="col-tab some-celular">Telefone</th>
+          <th scope="col" class="col-tab some-celular">Cidade</th>
+          <th scope="col">Cadastro</th>
+        </tr>
+      </thead>
+      <tbody id="linhas"></tbody>
+    </table>
+  </div>
+</main>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="assets/dados.js"></script>
+<script src="assets/paginas/motoristas.js"></script>
+<script>
+window.pagina = function (N) {
+  const D = N.dados, f = N.fmt, d = N.desenhar, M = N.mot;
+
+  // uma linha por motorista, com o que a lista filtra e mostra
+  const linhas = D.motoristas.map((m) => {
+    const p = N.pessoa(m.pessoa_id);
+    const tel = M.telefonePrincipal(p.id);
+    return { m, p, tel, cidade: M.cidade(p.id), cnh: M.estadoValidade(m.cnh_validade), gr: M.estadoGr(m), atencao: M.docsAtencao(m) };
+  }).sort((a, b) => a.p.nome.localeCompare(b.p.nome, 'pt-BR'));
+
+  const ABAS = [
+    { id: 'todos', rot: 'Todos', ok: () => true },
+    { id: 'normal', rot: 'Normais', ok: (l) => l.m.situacao_cadastro === 'normal' },
+    { id: 'pendente', rot: 'Pendentes', ok: (l) => l.m.situacao_cadastro === 'pendente' },
+    { id: 'documentos', rot: 'Documentos vencendo ou vencidos', ok: (l) => l.m.situacao_cadastro !== 'cancelado' && l.atencao.length > 0 },
+    { id: 'cancelado', rot: 'Cancelados', ok: (l) => l.m.situacao_cadastro === 'cancelado' },
+  ];
+
+  // achado: o fato da lista que pede atenção
+  const cnhVenc = linhas.filter((l) => l.m.situacao_cadastro !== 'cancelado' && l.cnh.cls === 'vencido').length;
+  const cnhVencendo = linhas.filter((l) => l.m.situacao_cadastro !== 'cancelado' && l.cnh.cls === 'vencendo').length;
+  const grAtencao = linhas.filter((l) => l.m.situacao_cadastro !== 'cancelado' && (l.gr.chave === 'vencendo' || l.gr.chave === 'vencido')).length;
+  const partes = [];
+  if (cnhVenc) partes.push(`${cnhVenc} ${cnhVenc === 1 ? 'CNH vencida' : 'CNHs vencidas'}`);
+  if (cnhVencendo) partes.push(`${cnhVencendo} ${cnhVencendo === 1 ? 'CNH vence' : 'CNHs vencem'} em até 30 dias`);
+  if (grAtencao) partes.push(`${grAtencao} ${grAtencao === 1 ? 'consulta de risco vence' : 'consultas de risco vencem'} em até 30 dias`);
+  document.getElementById('achado').textContent = `${linhas.length} ${linhas.length === 1 ? 'motorista cadastrado' : 'motoristas cadastrados'} · ${partes.join(' · ') || 'nenhum documento vencendo'}`;
+
+  const abasEl = document.getElementById('abas-situacao');
+  const busca = document.getElementById('busca'), filtroGr = document.getElementById('filtro-gr');
+  const tbody = document.getElementById('linhas'), total = document.getElementById('total');
+  const url = new URL(location);
+  let aba = ABAS.some((a) => a.id === url.searchParams.get('situacao')) ? url.searchParams.get('situacao') : 'todos';
+  busca.value = url.searchParams.get('q') || '';
+  filtroGr.value = url.searchParams.get('gr') || '';
+
+  const passaBusca = (l) => {
+    const t = busca.value.trim().toLowerCase(); if (!t) return true;
+    const dig = N.so(t);
+    return l.p.nome.toLowerCase().includes(t) || (l.p.apelido || '').toLowerCase().includes(t) || (dig.length >= 3 && l.p.cpf.includes(dig));
+  };
+  const passaGr = (l) => !filtroGr.value || l.gr.chave === filtroGr.value;
+
+  function celValidadeCnh(l) {
+    const cat = l.m.cnh_categoria ? M.ROT.cnh_categoria[l.m.cnh_categoria] : '—';
+    if (!l.m.cnh_validade) return `<span class="dash">sem validade</span><span class="linha2">Categoria ${cat}</span>`;
+    return `${M.marcaValidade(l.m.cnh_validade)}<span class="linha2">Categoria ${cat} · ${l.cnh.cls === 'normal' ? 'válida' : l.cnh.texto}</span>`;
+  }
+  function celGr(l) {
+    const g = l.gr;
+    if (g.chave === 'sem_consulta') return `<span class="dash">Sem consulta</span><span class="linha2">nunca consultado</span>`;
+    if (g.chave === 'vencendo') return `<span>Habilitado</span><span class="linha2"><span class="val val-vencendo">${g.sub}</span></span>`;
+    if (g.chave === 'vencido') return `<span class="val val-vencido">Vencida</span><span class="linha2">${l.m.gr_validade ? g.sub : 'refazer a consulta'}</span>`;
+    return `<span>Habilitado</span><span class="linha2">${g.sub}</span>`;
+  }
+  // resumo da gerenciadora numa frase curta, para a segunda linha no celular
+  function grCurto(l) {
+    const g = l.gr;
+    if (g.chave === 'sem_consulta') return 'risco sem consulta';
+    if (g.chave === 'vencido') return '<span class="val val-vencido">risco vencido</span>';
+    return M.marcaValidade(l.m.gr_validade, 'risco até ');
+  }
+
+  function render() {
+    const base = linhas.filter((l) => passaBusca(l) && passaGr(l));
+    abasEl.innerHTML = ABAS.map((a) => `<button type="button" role="tab" data-id="${a.id}" aria-selected="${a.id === aba}">${a.rot}<span class="n">${base.filter(a.ok).length}</span></button>`).join('');
+    const vis = base.filter(ABAS.find((a) => a.id === aba).ok);
+    total.textContent = `${vis.length} ${vis.length === 1 ? 'motorista' : 'motoristas'}`;
+    if (!vis.length) {
+      const termo = busca.value.trim();
+      tbody.innerHTML = `<tr class="lista-vazia"><td colspan="7"><div class="vazio-bloco">${termo ? `Nenhum motorista com “${N.esc(termo)}” nesta aba. Confira a grafia ou o CPF.` : 'Nenhum motorista nesta situação.'}</div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = vis.map((l) => {
+      const { p, m, tel } = l;
+      const telTxt = tel ? f.telefone(tel.numero) : null;
+      const cnhCurta = m.cnh_validade ? M.marcaValidade(m.cnh_validade, `CNH ${M.ROT.cnh_categoria[m.cnh_categoria] || ''} até `) : 'CNH sem validade';
+      return `<tr data-href="motorista.html?id=${p.id}">
+        <td><div class="cel-pessoa">${d.avatar(p.nome)}<span>
+          <span class="id">${N.esc(p.nome)}</span>
+          <span class="linha2">${N.esc(p.apelido || 'sem apelido')}<span class="x-tab"> · <span class="cod">${f.cpf(p.cpf)}</span></span></span>
+          <span class="linha2 x-cel-b">${cnhCurta} · ${grCurto(l)}</span>
+          <span class="linha2 x-tab-b">${N.esc(l.cidade || 'sem cidade')}${telTxt ? ` · <span class="num">${telTxt}</span>` : ''}</span>
+        </span></div></td>
+        <td class="col-tab some-celular"><span class="cod">${f.cpf(p.cpf)}</span></td>
+        <td class="some-celular">${celValidadeCnh(l)}</td>
+        <td class="some-celular">${celGr(l)}</td>
+        <td class="col-tab some-celular">${telTxt ? `<span class="num">${telTxt}</span><span class="linha2">${tel.whatsapp ? 'WhatsApp' : M.ROT.tipo_telefone[tel.tipo] || ''}</span>` : '<span class="dash">—</span>'}</td>
+        <td class="col-tab some-celular">${l.cidade ? N.esc(l.cidade) : '<span class="dash">—</span>'}</td>
+        <td>${d.sinal(m.situacao_cadastro)}</td>
+      </tr>`;
+    }).join('');
+    if (iniciado) { N.linhaClicavel(tbody); N.separarPontos(tbody); }
+  }
+  let iniciado = false;
+
+  function guardarUrl() {
+    const u = new URL(location);
+    aba === 'todos' ? u.searchParams.delete('situacao') : u.searchParams.set('situacao', aba);
+    busca.value.trim() ? u.searchParams.set('q', busca.value.trim()) : u.searchParams.delete('q');
+    filtroGr.value ? u.searchParams.set('gr', filtroGr.value) : u.searchParams.delete('gr');
+    history.replaceState(null, '', u);
+  }
+  abasEl.addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); if (!b) return; aba = b.dataset.id; render(); guardarUrl(); abasEl.querySelector(`[data-id="${aba}"]`).focus(); });
+  abasEl.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const i = ABAS.findIndex((a) => a.id === aba); aba = ABAS[(i + (e.key === 'ArrowRight' ? 1 : -1) + ABAS.length) % ABAS.length].id;
+    render(); guardarUrl(); abasEl.querySelector(`[data-id="${aba}"]`).focus();
+  });
+  busca.addEventListener('input', () => { render(); guardarUrl(); });
+  filtroGr.addEventListener('change', () => { render(); guardarUrl(); });
+  render(); iniciado = true;
+};
+</script>
+<script src="assets/nilt.js"></script>
+</body>
+</html>

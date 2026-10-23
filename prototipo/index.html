@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Início · NILT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700&family=Overpass+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/nilt.css">
+</head>
+<body data-pagina="inicio">
+<main>
+  <div class="titulo">
+    <div>
+      <h1>Início</h1>
+      <p class="sub" id="achado">Carregando o que precisa de atenção…</p>
+    </div>
+    <div class="acoes">
+      <a class="btn" href="conjuntos.html?novo=1"><i data-lucide="link-2"></i>Montar conjunto</a>
+      <div class="menu-novo" style="position:relative">
+        <button class="btn btn-primario" type="button" id="btn-novo" aria-haspopup="menu" aria-expanded="false"><i data-lucide="plus"></i>Novo cadastro</button>
+        <div class="busca-resultados" id="menu-novo" role="menu" hidden style="left:auto;right:0;width:240px">
+          <a role="menuitem" href="motorista-novo.html" style="grid-template-columns:20px 1fr"><i data-lucide="id-card"></i><span>Motorista</span></a>
+          <a role="menuitem" href="proprietario-novo.html" style="grid-template-columns:20px 1fr"><i data-lucide="building-2"></i><span>Proprietário</span></a>
+          <a role="menuitem" href="veiculo-novo.html" style="grid-template-columns:20px 1fr"><i data-lucide="truck"></i><span>Veículo</span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grade">
+    <section class="bloco c12" aria-labelledby="h-pend">
+      <div class="bloco-cab"><h2 id="h-pend">Pendências</h2><span class="dir"><a href="pendencias.html">Ver todas</a></span></div>
+      <div class="advertencias" id="advertencias"></div>
+    </section>
+
+    <section class="bloco c7" aria-labelledby="h-venc">
+      <div class="bloco-cab"><h2 id="h-venc">Vencimentos</h2><span class="dir">próximos 90 dias e já vencidos</span></div>
+      <div class="bloco-corpo" style="padding-top:8px"><div class="marcos" id="marcos"></div>
+        <div style="padding-top:12px"><a class="btn" href="pendencias.html?aba=vencimentos" style="height:30px">Ver todos os vencimentos</a></div></div>
+    </section>
+
+    <section class="bloco c5" aria-labelledby="h-cad">
+      <div class="bloco-cab"><h2 id="h-cad">Cadastros</h2><span class="dir">situação atual</span></div>
+      <div class="bloco-corpo" id="cadastros"></div>
+    </section>
+
+    <section class="bloco c12" aria-labelledby="h-conj">
+      <div class="bloco-cab"><h2 id="h-conj">Conjuntos rodando</h2><span class="dir" id="conj-total"></span></div>
+      <div class="bloco-corpo" style="padding-top:8px"><div id="conjuntos"></div></div>
+    </section>
+  </div>
+</main>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="assets/dados.js"></script>
+<script>
+window.pagina = function (N) {
+  const D = N.dados, f = N.fmt, d = N.desenhar;
+  const nome = (id) => N.pessoa(id)?.nome || '—';
+
+  // achado do dia: o fato que mais pede atenção
+  const vencidos = D.documentosVencidos;
+  const arrSem = D.pendencias.filter((p) => p.tipo_pendencia === 'veiculo_arrendado_sem_contrato');
+  const partes = [];
+  if (vencidos.length) partes.push(`${vencidos.length} ${vencidos.length === 1 ? 'documento vencido' : 'documentos vencidos'}`);
+  const cmt = D.conjuntos.filter((c) => c.excede_cmt).length;
+  if (cmt) partes.push(`${cmt} ${cmt === 1 ? 'conjunto acima do CMT' : 'conjuntos acima do CMT'}`);
+  if (arrSem.length) partes.push(`${arrSem.length} ${arrSem.length === 1 ? 'veículo arrendado' : 'veículos arrendados'} sem contrato`);
+  const hoje = N.HOJE.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  document.getElementById('achado').textContent = `${hoje[0].toUpperCase() + hoje.slice(1)} · ${partes.length ? partes.slice(0, -1).join(', ') + (partes.length > 1 ? ' e ' : '') + partes[partes.length - 1] : 'nenhuma pendência hoje'}`;
+
+  // placas de advertência
+  const conta = (t) => D.pendencias.filter((p) => p.tipo_pendencia === t).length;
+  const adv = [
+    { tipo: 'arquivo_vencido', n: vencidos.length, rot: 'Documentos vencidos', sub: 'CNH, RNTRC, seguro e arquivos', forma: 'circulo' },
+    { tipo: 'veiculo_arrendado_sem_contrato', n: conta('veiculo_arrendado_sem_contrato'), rot: 'Arrendado sem contrato', sub: 'posse diferente da ANTT', forma: 'laranja' },
+    { tipo: 'conjunto_acima_cmt', n: D.conjuntos.filter((c) => c.excede_cmt).length, rot: 'Conjunto acima do CMT', sub: 'carretas passam do que o cavalo puxa', forma: 'circulo' },
+    { tipo: 'motorista_sem_cnh', n: conta('motorista_sem_cnh'), rot: 'Motorista sem CNH anexada', sub: 'falta o arquivo da CNH', forma: 'laranja' },
+    { tipo: 'motorista_sem_comprovante', n: conta('motorista_sem_comprovante'), rot: 'Sem comprovante de residência', sub: 'falta o arquivo do comprovante', forma: 'laranja' },
+  ];
+  document.getElementById('advertencias').innerHTML = adv.map((a) => {
+    const vazio = a.n === 0;
+    const sinal = a.forma === 'circulo'
+      ? `<span class="circulo-proibido${vazio ? ' vazio' : ''}" aria-hidden="true"><b>${a.n}</b></span>`
+      : `<span class="losango ${vazio ? 'vazio' : a.forma}" aria-hidden="true"><b>${a.n}</b></span>`;
+    return `<a class="advertencia" href="pendencias.html?tipo=${a.tipo}" aria-label="${a.n} ${a.rot}">${sinal}<span class="txt"><b>${a.rot}</b><span>${vazio ? 'nada pendente' : a.sub}</span></span></a>`;
+  }).join('');
+
+  // marcos de quilômetro
+  const prox = D.vencimentos.filter((v) => v.dias <= 90).slice(0, 5);
+  document.getElementById('marcos').innerHTML = prox.length ? prox.map((v) => {
+    const quem = v.pessoa_id ? nome(v.pessoa_id) : N.veiculo(v.veiculo_id).placa + ' · ' + N.veiculo(v.veiculo_id).modelo;
+    const href = v.pessoa_id ? N.linkPessoa(N.pessoa(v.pessoa_id)) : `veiculo.html?id=${v.veiculo_id}`;
+    const venc = v.dias < 0;
+    return `<a class="marco" href="${href}">
+      <span class="quem"><b>${v.tipo}</b><span>${N.esc(quem)} · ${f.data(v.data)}</span></span>
+      ${d.marco(v)}
+      <span class="dias${venc ? ' vencido' : ''}"><b>${venc ? 'Vencido' : v.dias + (v.dias === 1 ? ' dia' : ' dias')}</b><span>${venc ? f.dias(v.dias) : 'restantes'}</span></span></a>`;
+  }).join('') : '<div class="vazio-bloco">Nada vence nos próximos 90 dias.</div>';
+
+  // resumo dos cadastros
+  const m = D.motoristas, p = D.proprietarios, v = D.veiculos;
+  const contaSit = (arr, s) => arr.filter((x) => x.situacao_cadastro === s).length;
+  const cat = (c) => v.filter((x) => x.categoria === c).length;
+  const linha = (rot, total, detalhe, href) => `<a class="marco" href="${href}" style="grid-template-columns:minmax(0,1fr) auto">
+      <span class="quem"><b>${rot}</b><span>${detalhe}</span></span>
+      <span class="dias"><b>${total}</b></span></a>`;
+  document.getElementById('cadastros').innerHTML = `<div class="marcos">
+    ${linha('Motoristas', m.length, `${contaSit(m, 'normal')} normais · ${contaSit(m, 'pendente')} pendentes · ${contaSit(m, 'cancelado')} cancelado`, 'motoristas.html')}
+    ${linha('Proprietários', p.length, `${p.filter((x) => N.pessoa(x.pessoa_id).tipo === 'pf').length} pessoa física · ${p.filter((x) => N.pessoa(x.pessoa_id).tipo === 'pj').length} empresa`, 'proprietarios.html')}
+    ${linha('Veículos', v.length, `${cat('cavalo')} cavalos · ${cat('carreta')} carretas · ${cat('dolly')} dolly · ${cat('caminhao')} truck`, 'veiculos.html')}
+    ${linha('Conjuntos abertos', D.conjuntos.length, `${D.conjuntos.filter((c) => c.itens.length > 1).length} com mais de uma carreta · ${D.conjuntos.filter((c) => c.excede_cmt).length} acima do CMT`, 'conjuntos.html')}
+    ${linha('Documentos anexados', D.arquivos.length, `${D.arquivos.filter((a) => a.validado_em).length} conferidos · ${D.arquivos.filter((a) => a.restrito).length} restrito`, 'pendencias.html?aba=documentos')}
+    ${linha('Arrendados', v.filter((x) => x.arrendado).length, 'posse no CRLV diferente da ANTT', 'veiculos.html?filtro=arrendados')}
+  </div>`;
+
+  // conjuntos engatados
+  document.getElementById('conj-total').textContent = `${D.conjuntos.length} abertos`;
+  document.getElementById('conjuntos').innerHTML = D.conjuntos.map((c) => {
+    const cav = N.veiculo(c.cavalo_id), itens = c.itens.map(N.veiculo);
+    return `<a class="marco marco-conjunto" href="conjunto.html?id=${c.id}">
+      ${d.engate(cav, itens)}
+      <span class="quem"><b>${N.esc(nome(c.motorista_id))}</b><span>desde ${f.data(c.inicio)} · ${cav.eixos + itens.reduce((s, x) => s + x.eixos, 0)} eixos</span></span>
+      ${d.capacidade(c)}</a>`;
+  }).join('');
+
+  // menu "Novo cadastro"
+  const btn = document.getElementById('btn-novo'), menu = document.getElementById('menu-novo');
+  btn.addEventListener('click', (e) => { e.stopPropagation(); const ab = menu.hidden; menu.hidden = !ab; btn.setAttribute('aria-expanded', ab); if (ab) menu.querySelector('a').focus(); });
+  document.addEventListener('click', () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); });
+  menu.addEventListener('keydown', (e) => { if (e.key === 'Escape') { menu.hidden = true; btn.focus(); } });
+};
+</script>
+<script src="assets/nilt.js"></script>
+</body>
+</html>

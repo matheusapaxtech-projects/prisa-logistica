@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Veículos · NILT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700&family=Overpass+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/nilt.css">
+  <link rel="stylesheet" href="assets/paginas/veiculos.css">
+</head>
+<body data-pagina="veiculos">
+<main>
+  <div class="titulo">
+    <div>
+      <h1>Veículos</h1>
+      <p class="sub" id="achado">Carregando veículos…</p>
+    </div>
+    <div class="acoes">
+      <a class="btn" href="conjuntos.html?novo=1"><i data-lucide="link-2"></i>Montar conjunto</a>
+      <a class="btn btn-primario" href="veiculo-novo.html"><i data-lucide="plus"></i>Novo veículo</a>
+    </div>
+  </div>
+
+  <nav class="abas" id="abas" aria-label="Filtrar por tipo de veículo"></nav>
+
+  <div class="ferramentas">
+    <div class="busca-lista">
+      <i data-lucide="search"></i>
+      <input id="busca" type="search" autocomplete="off" placeholder="Placa, Renavam, chassi ou modelo" aria-label="Buscar por placa, Renavam, chassi ou modelo">
+    </div>
+    <select id="situacao" aria-label="Situação operacional"></select>
+    <span class="total" id="total" aria-live="polite"></span>
+  </div>
+
+  <div class="tabela-wrap">
+    <table class="tabela tabela-veiculos">
+      <thead>
+        <tr>
+          <th scope="col">Placa</th>
+          <th scope="col" class="some-tablet">Tipo</th>
+          <th scope="col" class="some-tablet">Marca e modelo</th>
+          <th scope="col" class="some-celular">Proprietário</th>
+          <th scope="col" class="num some-celular">Carga ou CMT</th>
+          <th scope="col" class="some-tablet">Conjunto atual</th>
+          <th scope="col">Situação</th>
+        </tr>
+      </thead>
+      <tbody id="linhas"></tbody>
+    </table>
+  </div>
+</main>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="assets/dados.js"></script>
+<script src="assets/paginas/veiculos.js"></script>
+<script>
+window.pagina = function (N) {
+  const D = N.dados, f = N.fmt, d = N.desenhar, V = N.veic;
+  const nomeProp = (id) => V.nomeCurto(N.pessoa(id));
+
+  // abas por tipo (a contagem segue a busca e a situação escolhidas)
+  const ABAS = [
+    ['todos', 'Todos', () => true],
+    ['cavalos', 'Cavalos', (v) => v.categoria === 'cavalo'],
+    ['carretas', 'Carretas', (v) => v.categoria === 'carreta'],
+    ['dollies', 'Dollies', (v) => v.categoria === 'dolly'],
+    ['outros', 'Outros', (v) => v.categoria === 'caminhao' || v.categoria === 'outros'],
+    ['arrendados', 'Arrendados', (v) => v.arrendado],
+    ['pendentes', 'Pendentes', (v) => v.situacao_cadastro === 'pendente'],
+  ];
+  const estado = {
+    filtro: ABAS.some((a) => a[0] === N.param('filtro')) ? N.param('filtro') : 'todos',
+    situacao: V.SITUACAO_OPERACIONAL.some((s) => s[0] === N.param('situacao')) ? N.param('situacao') : '',
+    busca: '',
+  };
+
+  // achado: o total e o que pede atenção
+  const arr = D.veiculos.filter((v) => v.arrendado);
+  const semContrato = arr.filter((v) => !V.contratoDe(v));
+  const pend = D.veiculos.filter((v) => v.situacao_cadastro === 'pendente');
+  const partes = [`${D.veiculos.length} veículos cadastrados`];
+  partes.push(`${arr.length} ${arr.length === 1 ? 'arrendado' : 'arrendados'}${semContrato.length ? `, ${semContrato.length} sem contrato anexado` : ''}`);
+  if (pend.length) partes.push(`${pend.length} com cadastro pendente`);
+  document.getElementById('achado').textContent = partes.join(' · ');
+
+  // filtro de situação operacional
+  const sel = document.getElementById('situacao');
+  sel.innerHTML = '<option value="">Todas as situações</option>' + V.SITUACAO_OPERACIONAL.map(([k, r]) => `<option value="${k}">${r}</option>`).join('');
+  sel.value = estado.situacao;
+
+  const casaBusca = (v, termo) => {
+    const t = termo.trim().toLowerCase(); if (!t) return true;
+    const pl = N.valida.normalizarPlaca(t), dig = N.so(t);
+    return (pl.length >= 2 && v.placa.includes(pl))
+      || (dig.length >= 3 && (v.renavam || '').includes(dig))
+      || (pl.length >= 3 && (v.chassi || '').toUpperCase().includes(pl))
+      || `${v.marca} ${v.modelo}`.toLowerCase().includes(t)
+      || nomeProp(v.proprietario_posse_id).toLowerCase().includes(t)
+      || nomeProp(v.proprietario_documento_id).toLowerCase().includes(t);
+  };
+
+  const capacidade = (v) => {
+    if (v.categoria === 'cavalo') return v.cmt_t != null
+      ? `<span class="valor">CMT ${f.t(v.cmt_t)}</span><span class="linha2">tara ${f.t(v.tara_t)}</span>`
+      : `<span class="dash">—</span><span class="linha2">CMT não informado</span>`;
+    if (v.categoria === 'dolly') return `<span class="dash">—</span><span class="linha2">não leva carga</span>`;
+    const c = v.capacidade_carga_t;
+    return c != null
+      ? `<span class="valor">${f.t(c)}</span><span class="linha2">PBT ${V.num(v.pbt_t)} · tara ${V.num(v.tara_t)}</span>`
+      : `<span class="dash">—</span><span class="linha2">sem PBT ou tara</span>`;
+  };
+  const capCurta = (v) => v.categoria === 'cavalo' ? (v.cmt_t != null ? `CMT ${f.t(v.cmt_t)}` : '') : v.categoria === 'dolly' ? '' : (v.capacidade_carga_t != null ? `${f.t(v.capacidade_carga_t)} de carga` : '');
+
+  const conjunto = (v) => {
+    if (v.categoria === 'caminhao' || v.categoria === 'outros') return { cel: '<span class="dash">—</span><span class="linha2">não engata</span>', curto: '' };
+    const cj = V.conjuntoDe(v);
+    if (!cj) return { cel: '<span class="muted">livre</span>', curto: 'livre' };
+    if (cj.posicao === 0) {
+      const n = cj.total;
+      return { cel: `<span>${n} ${n === 1 ? 'peça engatada' : 'peças engatadas'}</span><span class="linha2">desde ${f.data(cj.conjunto.inicio)}</span>`, curto: `${n} ${n === 1 ? 'peça engatada' : 'peças engatadas'}` };
+    }
+    const cav = N.veiculo(cj.conjunto.cavalo_id);
+    return { cel: `<span class="cod">${cav.placa}</span><span class="linha2">posição ${cj.posicao} de ${cj.total}</span>`, curto: `no cavalo ${cav.placa}` };
+  };
+
+  const linha = (v) => {
+    const tipo = V.rotuloTipo(v);
+    const modelo = `${V.marca(v)} ${v.modelo}`;
+    const anos = v.ano_fabricacao ? `${v.ano_fabricacao}/${v.ano_modelo}` : '';
+    const posse = nomeProp(v.proprietario_posse_id), antt = nomeProp(v.proprietario_documento_id);
+    const cj = conjunto(v);
+    const prop = v.arrendado
+      ? `<span class="id-prop">${N.esc(posse)}</span><span class="linha2 arr">${d.sinal('arrendado')}<span>ANTT: ${N.esc(antt)}</span></span>`
+      : `<span class="id-prop">${N.esc(posse)}</span><span class="linha2">mesmo dono na ANTT</span>`;
+    const celB = [v.arrendado ? `${posse}, arrendado (ANTT: ${antt})` : posse, capCurta(v), cj.curto].filter(Boolean).join(' · ');
+    const conjCurto = cj.curto || (v.categoria === 'caminhao' || v.categoria === 'outros' ? 'não engata' : '');
+    return `<tr data-href="veiculo.html?id=${v.id}">
+      <td class="col-placa">${d.placa(v.placa)}
+        <span class="linha2 so-tablet">${tipo} · ${N.esc(modelo)}${anos ? ' · ' + anos : ''}</span>
+        <span class="linha2 so-tablet">${v.eixos} eixos · ${conjCurto}</span>
+        <span class="linha2 so-celular">${tipo} · ${N.esc(modelo)}</span>
+        <span class="linha2 so-celular">${N.esc(celB)}</span></td>
+      <td class="some-tablet"><span>${tipo}</span><span class="linha2">${v.eixos} eixos</span></td>
+      <td class="some-tablet"><span>${N.esc(modelo)}</span><span class="linha2">${anos || '—'}</span></td>
+      <td class="some-celular col-prop">${prop}</td>
+      <td class="num some-celular">${capacidade(v)}</td>
+      <td class="some-tablet">${cj.cel}</td>
+      <td>${d.sinal(v.situacao_cadastro)}<span class="linha2">${V.sitOp(v.situacao_operacional).toLowerCase()}</span></td>
+    </tr>`;
+  };
+
+  const abas = document.getElementById('abas'), tbody = document.getElementById('linhas');
+  let primeira = true;
+  function render() {
+    const base = D.veiculos.filter((v) => (!estado.situacao || v.situacao_operacional === estado.situacao) && casaBusca(v, estado.busca));
+    abas.innerHTML = ABAS.map(([id, rot, fn]) => `<a href="?filtro=${id}" data-filtro="${id}" ${id === estado.filtro ? 'aria-current="page"' : ''}>${rot}<span class="n">${base.filter(fn).length}</span></a>`).join('');
+    const filtroFn = ABAS.find((a) => a[0] === estado.filtro)[2];
+    const linhas = base.filter(filtroFn);
+    document.getElementById('total').textContent = `${linhas.length} ${linhas.length === 1 ? 'veículo' : 'veículos'}`;
+    tbody.innerHTML = linhas.length ? linhas.map(linha).join('')
+      : `<tr class="sem-linhas"><td colspan="7"><div class="vazio-bloco">Nenhum veículo com esses filtros.${estado.busca ? ` Confira a placa ou o Renavam “${N.esc(estado.busca)}”.` : ''}<button class="btn btn-texto" type="button" id="limpar">Limpar filtros</button></div></td></tr>`;
+    const limpar = document.getElementById('limpar');
+    if (limpar) limpar.addEventListener('click', () => { estado.busca = ''; estado.situacao = ''; estado.filtro = 'todos'; document.getElementById('busca').value = ''; sel.value = ''; gravarUrl(); render(); });
+    if (!primeira) { N.linhaClicavel(tbody); N.separarPontos(tbody); N.desenharIcones(); }
+    primeira = false;
+  }
+  function gravarUrl() {
+    const u = new URL(location);
+    estado.filtro === 'todos' ? u.searchParams.delete('filtro') : u.searchParams.set('filtro', estado.filtro);
+    estado.situacao ? u.searchParams.set('situacao', estado.situacao) : u.searchParams.delete('situacao');
+    history.replaceState(null, '', u);
+  }
+
+  abas.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-filtro]'); if (!a) return;
+    e.preventDefault(); estado.filtro = a.dataset.filtro; gravarUrl(); render();
+    abas.querySelector(`[data-filtro="${estado.filtro}"]`).focus();
+  });
+  document.getElementById('busca').addEventListener('input', (e) => { estado.busca = e.target.value; render(); });
+  sel.addEventListener('change', () => { estado.situacao = sel.value; gravarUrl(); render(); });
+  render();
+};
+</script>
+<script src="assets/nilt.js"></script>
+</body>
+</html>

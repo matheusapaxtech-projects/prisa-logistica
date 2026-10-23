@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrar · NILT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700&family=Overpass+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/nilt.css">
+  <link rel="stylesheet" href="assets/paginas/admin.css">
+</head>
+<body data-pagina="login" class="entrada">
+<main class="entrada-grade">
+  <!-- placa de orientação: o NILT se apresenta como uma placa verde de rodovia -->
+  <section class="placa-entrada" aria-label="NILT, Núcleo Integrado de Logística e Transporte">
+    <div class="cabeca">
+      <svg class="sinal-nilt" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V8"/><path d="M12 8l-4 4"/><path d="M12 8l4 4"/><path d="M5 21h14"/></svg>
+      <div>
+        <p class="nome">NILT</p>
+        <p class="extenso">Núcleo Integrado de Logística e Transporte</p>
+      </div>
+    </div>
+    <div class="faixa" aria-hidden="true"></div>
+    <ul class="destinos" aria-label="O que está no NILT">
+      <li><i data-lucide="arrow-up"></i><span>Motoristas e proprietários</span></li>
+      <li><i data-lucide="arrow-up-right"></i><span>Veículos e conjuntos</span></li>
+      <li><i data-lucide="arrow-right"></i><span>Documentos e vencimentos</span></li>
+    </ul>
+    <p class="rodape">Prisa Logística e Transportes</p>
+  </section>
+
+  <section class="entrada-form">
+    <div class="entrada-caixa">
+      <h1>Entrar no NILT</h1>
+      <p class="sub">Use o e-mail e a senha que o administrador criou para você.</p>
+
+      <form id="form-entrar" novalidate>
+        <div class="campo" id="c-email">
+          <label for="email">E-mail</label>
+          <input id="email" name="email" type="email" inputmode="email" autocomplete="username" spellcheck="false" autocapitalize="off" aria-describedby="email-erro">
+          <span class="erro" id="email-erro" hidden><i data-lucide="circle-alert"></i><span></span></span>
+        </div>
+
+        <div class="campo" id="c-senha">
+          <div class="rotulo-linha">
+            <label for="senha">Senha</label>
+            <button class="btn btn-texto" type="button" id="btn-esqueci" aria-expanded="false" aria-controls="esqueci">Esqueci minha senha</button>
+          </div>
+          <div class="com-acao">
+            <input id="senha" name="senha" type="password" autocomplete="current-password" aria-describedby="senha-erro senha-caps">
+            <button class="btn" type="button" id="btn-ver" aria-label="Mostrar senha" aria-pressed="false" title="Mostrar senha"><i data-lucide="eye"></i></button>
+          </div>
+          <span class="ajuda" id="senha-caps" hidden>Caps Lock ligado: a senha diferencia maiúsculas.</span>
+          <span class="erro" id="senha-erro" hidden><i data-lucide="circle-alert"></i><span></span></span>
+        </div>
+
+        <div class="aviso aviso-info" id="esqueci" hidden>
+          <i data-lucide="key-round"></i>
+          <p>Quem redefine a senha é o administrador do NILT. Peça a ele: pelo painel do Supabase ele manda para o seu e-mail um link para você criar uma senha nova.</p>
+        </div>
+
+        <div class="aviso aviso-bloqueado" id="erro-entrar" role="alert" hidden>
+          <i data-lucide="circle-alert"></i>
+          <p>E-mail ou senha incorretos. Confira e tente de novo.</p>
+        </div>
+
+        <button class="btn btn-primario btn-entrar" type="submit" id="btn-entrar">
+          <i data-lucide="loader-circle" class="giro"></i><span>Entrar</span>
+        </button>
+      </form>
+
+      <p class="legal">Protótipo com dados fictícios: o que você digita aqui não sai deste navegador nem fica guardado.</p>
+    </div>
+  </section>
+</main>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="assets/dados.js"></script>
+<script>
+// Tela de entrada: o shell não é montado (data-pagina="login").
+// No Next.js: app/(auth)/login/page.tsx com supabase.auth.signInWithPassword; o erro do Supabase
+// ("Invalid login credentials") vira a mesma frase abaixo, sem dizer qual dos dois está errado.
+window.pagina = function (N) {
+  const form = document.getElementById('form-entrar');
+  const email = document.getElementById('email');
+  const senha = document.getElementById('senha');
+  const btn = document.getElementById('btn-entrar');
+  const erroGeral = document.getElementById('erro-entrar');
+  let enviando = false;
+
+  function marcar(campo, msg) {
+    const c = document.getElementById('c-' + campo), el = document.getElementById(campo), e = document.getElementById(campo + '-erro');
+    if (msg) { c.setAttribute('data-invalido', ''); el.setAttribute('aria-invalid', 'true'); e.querySelector('span').textContent = msg; e.hidden = false; }
+    else { c.removeAttribute('data-invalido'); el.removeAttribute('aria-invalid'); e.hidden = true; }
+  }
+  const emailValido = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
+
+  email.addEventListener('input', () => { erroGeral.hidden = true; if (email.hasAttribute('aria-invalid') && emailValido(email.value.trim())) marcar('email'); });
+  senha.addEventListener('input', () => { erroGeral.hidden = true; if (senha.value) marcar('senha'); });
+
+  // mostrar / ocultar senha
+  const ver = document.getElementById('btn-ver');
+  ver.addEventListener('click', () => {
+    const mostrando = senha.type === 'text';
+    senha.type = mostrando ? 'password' : 'text';
+    ver.setAttribute('aria-pressed', String(!mostrando));
+    ver.setAttribute('aria-label', mostrando ? 'Mostrar senha' : 'Ocultar senha');
+    ver.title = mostrando ? 'Mostrar senha' : 'Ocultar senha';
+    ver.innerHTML = N.icone(mostrando ? 'eye' : 'eye-off'); N.desenharIcones();
+    senha.focus();
+  });
+
+  // aviso de Caps Lock
+  const caps = document.getElementById('senha-caps');
+  ['keydown', 'keyup'].forEach((t) => senha.addEventListener(t, (e) => { if (e.getModifierState) caps.hidden = !e.getModifierState('CapsLock'); }));
+  senha.addEventListener('blur', () => { caps.hidden = true; });
+
+  // esqueci minha senha: explica, não finge mandar e-mail
+  const esq = document.getElementById('btn-esqueci'), esqBox = document.getElementById('esqueci');
+  esq.addEventListener('click', () => { const abrir = esqBox.hidden; esqBox.hidden = !abrir; esq.setAttribute('aria-expanded', String(abrir)); });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (enviando) return;
+    erroGeral.hidden = true;
+    const ve = email.value.trim(), vs = senha.value;
+    marcar('email', !ve ? 'Digite o seu e-mail.' : !emailValido(ve) ? 'Esse e-mail parece incompleto. Confira o @ e o que vem depois dele.' : '');
+    marcar('senha', !vs ? 'Digite a sua senha.' : '');
+    if (!ve || !emailValido(ve)) { email.focus(); return; }
+    if (!vs) { senha.focus(); return; }
+
+    // carregando: o botão fica, o texto muda, nada pula de lugar
+    enviando = true;
+    btn.classList.add('carregando'); btn.setAttribute('aria-busy', 'true');
+    btn.querySelector('span').textContent = 'Entrando…';
+    setTimeout(() => {
+      // protótipo: qualquer e-mail válido com senha de 6 ou mais caracteres entra
+      if (vs.length >= 6) { location.href = 'index.html'; return; }
+      enviando = false;
+      btn.classList.remove('carregando'); btn.removeAttribute('aria-busy');
+      btn.querySelector('span').textContent = 'Entrar';
+      erroGeral.hidden = false;
+      senha.select(); senha.focus();
+    }, 900);
+  });
+
+  email.focus();
+};
+</script>
+<script src="assets/nilt.js"></script>
+</body>
+</html>

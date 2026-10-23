@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Proprietários · NILT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700&family=Overpass+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/nilt.css">
+  <link rel="stylesheet" href="assets/paginas/proprietarios.css">
+</head>
+<body data-pagina="proprietarios">
+<main>
+  <div class="titulo">
+    <div>
+      <h1>Proprietários</h1>
+      <p class="sub" id="achado">Carregando…</p>
+    </div>
+    <div class="acoes">
+      <a class="btn btn-primario" href="proprietario-novo.html"><i data-lucide="plus"></i>Novo proprietário</a>
+    </div>
+  </div>
+
+  <div class="abas abas-quebra" id="abas" role="tablist" aria-label="Filtrar proprietários"></div>
+
+  <div class="ferramentas">
+    <label class="busca-lista">
+      <span class="sr-only">Buscar por nome, nome fantasia, CPF ou CNPJ</span>
+      <i data-lucide="search"></i>
+      <input id="busca" type="search" autocomplete="off" placeholder="Nome, nome fantasia, CPF ou CNPJ">
+    </label>
+    <span class="total" id="total" aria-live="polite"></span>
+  </div>
+
+  <div class="tabela-wrap">
+    <table class="tabela" aria-describedby="total">
+      <thead>
+        <tr>
+          <th class="col-prop" scope="col">Proprietário</th>
+          <th class="col-doc some-tablet" scope="col">Documento</th>
+          <th class="some-celular" scope="col">RNTRC</th>
+          <th class="num some-celular" scope="col">Veículos</th>
+          <th class="some-celular" scope="col">Responsável</th>
+          <th scope="col">Situação</th>
+        </tr>
+      </thead>
+      <tbody id="linhas"></tbody>
+    </table>
+  </div>
+</main>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="assets/dados.js"></script>
+<script src="assets/paginas/proprietarios.js"></script>
+<script>
+window.pagina = function (N) {
+  const D = N.dados, f = N.fmt, d = N.desenhar, P = N.prop;
+  const so = N.so;
+
+  // uma linha por proprietário, com o que a tela precisa já calculado
+  const linhas = D.proprietarios.map((pr) => {
+    const pe = P.pessoa(pr.pessoa_id);
+    const r = P.rntrcEstado(pr);
+    const v = P.veiculosDe(pe.id);
+    return { pr, pe, r, v };
+  }).sort((a, b) => a.pe.nome.localeCompare(b.pe.nome, 'pt-BR'));
+
+  const ABAS = [
+    ['todos', 'Todos', () => true],
+    ['pf', 'Pessoa física', (x) => x.pe.tipo === 'pf'],
+    ['pj', 'Empresa', (x) => x.pe.tipo === 'pj'],
+    ['pendentes', 'Pendentes', (x) => x.pr.situacao_cadastro === 'pendente'],
+    ['rntrc', 'RNTRC vencendo ou vencido', (x) => x.r.estado === 'vencido' || x.r.estado === 'vencendo'],
+  ];
+  let aba = ABAS.some((a) => a[0] === N.param('aba')) ? N.param('aba') : 'todos';
+  const inp = document.getElementById('busca');
+  inp.value = N.param('q') || '';
+
+  // achado: o fato que mais pede atenção nos proprietários
+  const venc = linhas.filter((x) => x.r.estado === 'vencido');
+  const vcd = linhas.filter((x) => x.r.estado === 'vencendo');
+  const sem = linhas.filter((x) => x.r.estado === 'sem');
+  const arr = D.veiculos.filter((v) => v.arrendado).length;
+  const curto = (x) => x.pe.nome_fantasia || x.pe.nome.split(' ')[0];
+  const partes = [`${linhas.length} proprietários`];
+  if (venc.length) partes.push(venc.length === 1 ? `RNTRC de ${curto(venc[0])} vencido` : `${venc.length} RNTRC vencidos`);
+  if (vcd.length) partes.push(vcd.length === 1 ? `1 vence em ${vcd[0].r.dias} dias` : `${vcd.length} vencem em até 30 dias`);
+  if (sem.length) partes.push(`${sem.length} sem RNTRC`);
+  if (arr) partes.push(`${arr} ${arr === 1 ? 'veículo arrendado' : 'veículos arrendados'}`);
+  document.getElementById('achado').textContent = partes.join(' · ');
+
+  const casa = (x, t) => {
+    if (!t) return true;
+    const dig = so(t), low = t.toLowerCase();
+    const doc = x.pe.cpf || x.pe.cnpj || '';
+    return x.pe.nome.toLowerCase().includes(low) || (x.pe.nome_fantasia || '').toLowerCase().includes(low)
+      || (x.pe.apelido || '').toLowerCase().includes(low) || (dig.length >= 3 && doc.includes(dig));
+  };
+
+  function celRntrc(x) {
+    const { pr, r } = x;
+    if (r.estado === 'sem') return `<span class="dash">—</span><span class="validade-ok">sem RNTRC${pr.enquadramento_antt ? ' · ' + P.ENQ[pr.enquadramento_antt] : ''}</span>`;
+    const topo = `<span class="rntrc-linha"><span class="cod">${N.esc(pr.rntrc)}</span><span class="enq">${P.ENQ[pr.enquadramento_antt] || ''}</span></span>`;
+    if (r.estado === 'vencido') return topo + `<span class="validade-sinal">${d.sinal('vencido', f.dias(r.dias).replace('venceu', 'Venceu'))}</span>`;
+    if (r.estado === 'vencendo') return topo + `<span class="validade-sinal">${d.sinal('vencendo', f.dias(r.dias).replace('vence', 'Vence'))}</span>`;
+    if (r.estado === 'sem_validade') return topo + `<span class="validade-ok">validade não informada</span>`;
+    return topo + `<span class="validade-ok">válido até ${f.data(pr.rntrc_validade)}</span>`;
+  }
+  function celVeic(x) {
+    const { v } = x;
+    if (!v.todos.length) return `<b>0</b><span class="linha2">nenhum veículo</span>`;
+    const arrTxt = v.arrendados.length ? ` · ${v.arrendados.length} ${v.arrendados.length === 1 ? 'arrendado' : 'arrendados'}` : '';
+    return `<b>${v.posse.length} CRLV · ${v.documento.length} ANTT</b><span class="linha2">${v.todos.length} ${v.todos.length === 1 ? 'veículo' : 'veículos'}${arrTxt}</span>`;
+  }
+  function celResp(x) {
+    if (x.pe.tipo !== 'pj') return '<span class="dash">—</span>';
+    if (!x.pr.responsavel_nome) return '<span class="dash">—</span><span class="linha2">sem responsável</span>';
+    return `${N.esc(x.pr.responsavel_nome)}<span class="linha2"><span class="tel">${f.telefone(x.pr.responsavel_telefone)}</span>${x.pr.responsavel_whatsapp ? ' · WhatsApp' : ''}</span>`;
+  }
+  function resumoCelular(x) {
+    const r = x.r;
+    const rn = r.estado === 'sem' ? 'sem RNTRC' : r.estado === 'vencido' ? 'RNTRC vencido' : r.estado === 'vencendo' ? `RNTRC ${f.dias(r.dias)}` : `RNTRC ${P.ENQ[x.pr.enquadramento_antt] || ''}`;
+    const n = x.v.todos.length;
+    return `${rn} · ${n} ${n === 1 ? 'veículo' : 'veículos'}${x.v.arrendados.length ? ` (${x.v.arrendados.length} arrendado${x.v.arrendados.length > 1 ? 's' : ''})` : ''}`;
+  }
+
+  function render() {
+    const t = inp.value.trim();
+    const visiveis = linhas.filter((x) => casa(x, t));
+    // contagens seguem a busca
+    document.getElementById('abas').innerHTML = ABAS.map(([id, rot, fn]) =>
+      `<button type="button" role="tab" data-filtro="${id}" aria-selected="${id === aba}">${rot}<span class="n">${visiveis.filter(fn).length}</span></button>`).join('');
+    const fn = ABAS.find((a) => a[0] === aba)[2];
+    const rows = visiveis.filter(fn);
+    document.getElementById('total').textContent = `${rows.length} ${rows.length === 1 ? 'proprietário' : 'proprietários'}`;
+    const tb = document.getElementById('linhas');
+    if (!rows.length) {
+      const msg = t ? `Nenhum proprietário com “${N.esc(t)}” nesta aba. Confira o nome ou os dígitos do documento.` : 'Nenhum proprietário nesta aba.';
+      tb.innerHTML = `<tr class="vazio-linha"><td colspan="6"><div class="vazio-bloco">${msg}</div></td></tr>`;
+    } else {
+      tb.innerHTML = rows.map((x) => {
+        const { pe, pr } = x;
+        const sub = pe.tipo === 'pj' ? N.esc(pe.nome_fantasia || 'empresa') : 'pessoa física' + (P.ehMotorista(pe.id) ? ' · também motorista' : '');
+        return `<tr data-href="proprietario.html?id=${pe.id}">
+          <td><span class="id">${N.esc(pe.nome)}</span>
+            <span class="linha2">${sub}<span class="so-estreito-i"> · <span class="cod" style="font-size:12px">${f.doc(pe)}</span></span></span>
+            <span class="linha2 so-celular">${resumoCelular(x)}</span></td>
+          <td class="some-tablet"><span class="cod">${f.doc(pe)}</span></td>
+          <td class="some-celular">${celRntrc(x)}</td>
+          <td class="num veic some-celular">${celVeic(x)}</td>
+          <td class="some-celular">${celResp(x)}</td>
+          <td>${d.sinal(pr.situacao_cadastro)}</td>
+        </tr>`;
+      }).join('');
+      N.linhaClicavel(tb);
+    }
+    N.separarPontos(document.querySelector('main'));
+    const u = new URL(location);
+    if (aba === 'todos') u.searchParams.delete('aba'); else u.searchParams.set('aba', aba);
+    if (t) u.searchParams.set('q', t); else u.searchParams.delete('q');
+    history.replaceState(null, '', u);
+  }
+
+  document.getElementById('abas').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-filtro]'); if (!b) return;
+    aba = b.dataset.filtro; render();
+    document.querySelector(`[data-filtro="${aba}"]`).focus();
+  });
+  document.getElementById('abas').addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const i = ABAS.findIndex((a) => a[0] === aba);
+    aba = ABAS[(i + (e.key === 'ArrowRight' ? 1 : ABAS.length - 1)) % ABAS.length][0];
+    render(); document.querySelector(`[data-filtro="${aba}"]`).focus();
+  });
+  inp.addEventListener('input', render);
+  render();
+};
+</script>
+<script src="assets/nilt.js"></script>
+</body>
+</html>

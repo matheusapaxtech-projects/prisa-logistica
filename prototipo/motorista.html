@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motorista · NILT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700&family=Overpass+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/nilt.css">
+  <link rel="stylesheet" href="assets/paginas/motoristas.css">
+</head>
+<body data-pagina="motoristas">
+<main id="ficha"></main>
+<dialog class="dialogo" id="dlg" aria-labelledby="dlg-titulo"></dialog>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="assets/dados.js"></script>
+<script src="assets/paginas/motoristas.js"></script>
+<script>
+window.pagina = function (N) {
+  const D = N.dados, f = N.fmt, d = N.desenhar, M = N.mot, R = M.ROT;
+  const esc = N.esc;
+  const main = document.getElementById('ficha');
+  const id = N.param('id');
+  const p = id ? N.pessoa(id) : null;
+  const m = p ? M.motorista(p.id) : null;
+  const admin = N.usuarioAtual.papel === 'admin';
+  const BANCOS = Object.assign({ '033': 'Santander', '041': 'Banrisul', '077': 'Inter', '084': 'Sisprime', '085': 'Ailos', '133': 'Cresol', '136': 'Unicred', '290': 'PagSeguro', '336': 'C6 Bank', '348': 'XP', '403': 'Cora', '422': 'Safra', '707': 'Daycoval' }, D.bancos);
+
+  /* ---------- erro amigável: id ausente, inexistente ou de quem não é motorista ---------- */
+  if (!p || !m) {
+    const prop = p && D.proprietarios.find((x) => x.pessoa_id === p.id);
+    document.title = 'Motorista não encontrado · NILT';
+    let corpo;
+    if (p && prop && p.tipo === 'pf') corpo = `<h2>${esc(p.nome)} ainda não é motorista</h2>
+        <p>Esta pessoa está cadastrada como proprietária. Para que ela dirija, ligue o papel de motorista: os dados pessoais, contatos e contas continuam os mesmos.</p>
+        <div class="acoes"><a class="btn btn-primario" href="motorista-novo.html?cpf=${p.cpf}"><i data-lucide="id-card"></i>Cadastrar também como motorista</a><a class="btn" href="proprietario.html?id=${p.id}">Abrir ficha de proprietário</a></div>`;
+    else if (p && p.tipo === 'pj') corpo = `<h2>${esc(p.nome)} é uma empresa</h2>
+        <p>Motorista precisa ser pessoa física. Esta empresa está cadastrada como proprietária.</p>
+        <div class="acoes"><a class="btn btn-primario" href="proprietario.html?id=${p.id}">Abrir ficha de proprietário</a><a class="btn" href="motoristas.html">Voltar para a lista</a></div>`;
+    else corpo = `<h2>${id ? 'Não encontramos este motorista' : 'Nenhum motorista foi indicado'}</h2>
+        <p>${id ? `O endereço pede o motorista <span class="cod">${esc(id)}</span>, que não existe ou foi removido. Confira o link ou procure pelo nome, apelido ou CPF na lista.` : 'O link chegou sem o código do motorista. Escolha o motorista na lista.'}</p>
+        <div class="acoes"><a class="btn btn-primario" href="motoristas.html"><i data-lucide="arrow-left"></i>Ir para a lista de motoristas</a><button class="btn btn-texto" type="button" onclick="location.reload()">Tentar de novo</button></div>`;
+    main.innerHTML = `<div class="titulo"><div><nav class="migalha" aria-label="Caminho"><a href="motoristas.html">Motoristas</a><span class="sep" aria-hidden="true">/</span><h1>${p ? esc(p.nome) : 'Motorista não encontrado'}</h1></nav></div></div>
+      <div class="grade"><section class="bloco erro-ficha c6" role="alert">${corpo}</section>
+      <section class="bloco erro-lista c6" aria-labelledby="h-outros"><div class="bloco-cab"><h2 id="h-outros">Motoristas cadastrados</h2><span class="dir">${D.motoristas.length} no total</span></div>
+        <div class="bloco-corpo"><div class="marcos">${D.motoristas.map((x) => N.pessoa(x.pessoa_id)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map((x) => `<a class="marco erro-item" href="motorista.html?id=${x.id}"><span class="quem"><b>${esc(x.nome)}</b><span>${esc(x.apelido || 'sem apelido')} · <span class="cod">${f.cpf(x.cpf)}</span></span></span>${d.sinal(M.motorista(x.id).situacao_cadastro)}</a>`).join('')}</div></div></section></div>`;
+    return;
+  }
+  document.title = `${p.nome} · Motoristas · NILT`;
+
+  /* ---------- helpers de formulário ---------- */
+  const idDe = (nome) => 'f-' + nome.replace(/\./g, '-');
+  const opc = (t) => (t ? ' <span class="opcional">(opcional)</span>' : '');
+  const campo = (cls, nome, rot, inner, o = {}) => `<div class="campo ${cls}"><label for="${idDe(nome)}">${rot}${opc(o.opcional)}</label>${inner}${o.ajuda ? `<span class="ajuda">${o.ajuda}</span>` : ''}</div>`;
+  const inp = (nome, valor, attrs = '') => `<input id="${idDe(nome)}" name="${nome}" value="${esc(valor ?? '')}" autocomplete="off" ${attrs}>`;
+  const sel = (nome, mapa, atual, vazio = 'Não informado') => `<select id="${idDe(nome)}" name="${nome}">${M.opcoesSelect(mapa, atual || '', vazio)}</select>`;
+  const selUf = (nome, atual) => `<select id="${idDe(nome)}" name="${nome}">${M.opcoesUf(atual)}</select>`;
+  const opcoes = (nome, mapa, atual, rot) => `<div class="campo f12"><span class="rotulo" id="r-${idDe(nome)}">${rot}</span><div class="opcoes" role="radiogroup" aria-labelledby="r-${idDe(nome)}">${Object.entries(mapa).map(([k, v]) => `<label class="opcao"><input type="radio" name="${nome}" value="${k}"${k === atual ? ' checked' : ''}><span>${v}</span></label>`).join('')}</div></div>`;
+  const secao = (titulo, texto, campos) => `<section class="secao"><div class="secao-rotulo"><h2>${titulo}</h2><p>${texto}</p></div><div class="campos">${campos}</div></section>`;
+  const vazio = (txt) => `<div class="vazio-bloco">${txt}</div>`;
+  const marca = (ic, txt) => `<span class="marca-texto"><i data-lucide="${ic}"></i>${txt}</span>`;
+  const dash = '<span class="dash">—</span>';
+
+  /* ---------- cabeçalho, pendências e resumo (re-renderizáveis) ---------- */
+  function sinalCnh() {
+    const e = M.estadoValidade(m.cnh_validade);
+    if (e.cls === 'neutro') return d.sinal('sem_consulta', 'CNH sem validade');
+    if (e.cls === 'vencido') return d.sinal('vencido', 'CNH vencida');
+    if (e.cls === 'vencendo') return d.sinalTipo('vencendo', `CNH ${f.dias(e.dias)}`);
+    return d.sinalTipo('normal', 'CNH válida');
+  }
+  function sinalGr() {
+    const g = M.estadoGr(m);
+    if (g.chave === 'sem_consulta') return d.sinal('sem_consulta', 'Risco sem consulta');
+    if (g.chave === 'vencido') return d.sinal('vencido', 'Risco vencido');
+    if (g.chave === 'vencendo') return d.sinalTipo('vencendo', `Risco ${g.sub}`);
+    return d.sinal('habilitado', 'Risco habilitado');
+  }
+  function faltas() {
+    const itens = [];
+    const tem = (tipo) => D.arquivos.some((a) => a.pessoa_id === p.id && a.tipo === tipo);
+    if (m.situacao_cadastro === 'cancelado') return itens;
+    const cnh = M.estadoValidade(m.cnh_validade);
+    if (cnh.cls === 'vencido') itens.push(`renovar a CNH (${cnh.texto})`);
+    if (!tem('CNH')) itens.push('anexar a CNH');
+    if (!tem('COMP. RESIDÊNCIA')) itens.push('anexar o comprovante de residência');
+    if (!D.enderecos.some((e) => e.pessoa_id === p.id)) itens.push('informar o endereço');
+    if (!m.situacao_gr || m.situacao_gr === 'sem_consulta') itens.push('fazer a consulta na gerenciadora de risco');
+    return itens;
+  }
+  function renderCabecalho() {
+    const conj = M.conjuntoAtual(p.id);
+    document.getElementById('nome-h1').textContent = p.nome;
+    document.getElementById('sinais').innerHTML = d.sinal(m.situacao_cadastro, `Cadastro ${R.situacao_cadastro[m.situacao_cadastro].toLowerCase()}`) + sinalCnh() + sinalGr();
+    document.getElementById('acao-conjunto').outerHTML = conj
+      ? `<a class="btn" id="acao-conjunto" href="conjunto.html?id=${conj.id}"><i data-lucide="link-2"></i>Ver conjunto</a>`
+      : `<a class="btn" id="acao-conjunto" href="conjuntos.html?novo=1&motorista=${p.id}"><i data-lucide="link-2"></i>Montar conjunto</a>`;
+    const fl = faltas();
+    document.getElementById('pendencias').innerHTML = fl.length
+      ? `<div class="aviso aviso-pendente"><i data-lucide="triangle-alert"></i><span><b>Para completar o cadastro:</b> ${fl.join(' · ')}.</span></div>` : '';
+    renderResumo();
+    N.separarPontos(document.getElementById('pendencias'));
+    N.desenharIcones();
+  }
+  function renderResumo() {
+    const tel = M.telefonePrincipal(p.id);
+    const cad = D.auditoria.filter((a) => a.registro_id === p.id && a.acao === 'insert' && (a.tabela === 'motorista' || a.tabela === 'pessoa')).sort((a, b) => (a.em < b.em ? -1 : 1))[0];
+    const conj = M.conjuntoAtual(p.id), ult = M.ultimoVeiculo(p.id);
+    let veic;
+    if (conj) {
+      const cav = N.veiculo(conj.cavalo_id), itens = conj.itens.map(N.veiculo);
+      veic = `<h2>Conjunto atual</h2>
+        <div class="veiculo-linha">${d.placa(cav.placa)}<span><b>${esc(cav.marca)} ${esc(cav.modelo)}</b> <span class="muted">· desde ${f.data(conj.inicio)} · ${cav.eixos + itens.reduce((s, x) => s + x.eixos, 0)} eixos</span></span><a href="conjunto.html?id=${conj.id}">Ver conjunto</a></div>
+        ${d.engate(cav, itens)}`;
+    } else if (ult) {
+      veic = `<h2>Último veículo</h2>
+        <div class="veiculo-linha">${d.placa(ult.placa)}<span><b>${esc(ult.marca)} ${esc(ult.modelo)}</b> <span class="muted">· ${(() => { const hist = [...D.conjuntosHistorico].filter((c) => c.motorista_id === p.id && (c.cavalo_id === ult.id || c.itens.includes(ult.id))).sort((a, b) => (a.fim < b.fim ? 1 : -1))[0]; const agora = D.conjuntos.find((c) => c.cavalo_id === ult.id || c.itens.includes(ult.id)); const ate = hist ? `dirigiu até ${f.data(hist.fim)}` : 'sem conjunto aberto com este motorista'; return agora ? `${ate} · hoje com ${esc(N.pessoa(agora.motorista_id)?.nome || 'outro motorista')}` : ate; })()}</span></span><a href="veiculo.html?id=${ult.id}">Ver veículo</a></div>`;
+    } else veic = `<h2>Veículo</h2>${vazio('Ainda não dirigiu nenhum veículo da Prisa. Monte um conjunto para ligar o motorista a um cavalo.')}`;
+    document.getElementById('resumo').innerHTML = `<div><dl class="kv">
+        <dt>CPF</dt><dd><span class="cod">${f.cpf(p.cpf)}</span></dd>
+        <dt>Apelido</dt><dd>${p.apelido ? esc(p.apelido) : dash}</dd>
+        <dt>Telefone</dt><dd>${tel ? `<span class="num">${f.telefone(tel.numero)}</span>${tel.whatsapp ? ' <span class="muted">· WhatsApp</span>' : ''}` : dash}</dd>
+        <dt>Cidade</dt><dd>${M.cidade(p.id) ? esc(M.cidade(p.id)) : dash}</dd>
+        <dt>CNH</dt><dd>${m.cnh_categoria ? `Categoria ${R.cnh_categoria[m.cnh_categoria]} · ` : ''}${M.marcaValidade(m.cnh_validade, 'até ')}</dd>
+        ${cad ? `<dt>Cadastrado</dt><dd>${f.data(cad.em)} <span class="muted">· por ${esc(cad.usuario)}</span></dd>` : ''}
+      </dl></div><div>${veic}</div>`;
+    N.separarPontos(document.getElementById('resumo'));
+  }
+
+  /* ---------- marco de quilômetro da validade ---------- */
+  function marcoValidade(iso, titulo, fim) {
+    if (!iso) return `<div class="bloco marco-validade"><span class="placa-km"><span>validade</span><b>—</b></span><div class="regua"><b>${titulo}</b><span class="muted">Sem validade informada. Preencha a data abaixo.</span></div><div class="fim">${fim}</div></div>`;
+    const e = M.estadoValidade(iso);
+    const JANELA = 365;
+    const pct = e.dias < 0 ? 100 : Math.max(2, Math.min(100, (e.dias / JANELA) * 100));
+    const num = Math.abs(e.dias);
+    const topo = e.dias < 0 ? 'venceu há' : e.dias === 0 ? 'vence' : 'faltam';
+    const valor = e.dias === 0 ? 'hoje' : num.toLocaleString('pt-BR');
+    return `<div class="bloco marco-validade">
+      <span class="placa-km ${e.cls}" aria-hidden="true"><span>${topo}</span><b>${valor}</b><span>${e.dias === 0 ? '' : num === 1 ? 'dia' : 'dias'}</span></span>
+      <div class="regua"><span><b>${titulo}</b> <span class="muted">· ${e.dias < 0 ? 'validade' : 'válida até'} ${f.data(iso)} · ${e.texto}</span></span>
+        <div class="trilho${e.dias < 0 ? ' vencido' : e.cls === 'normal' ? ' ok' : ''}" role="img" aria-label="${e.texto}"><i style="width:${pct}%"></i><span class="corte" style="left:${(30 / JANELA) * 100}%" aria-hidden="true"></span></div>
+        <div class="escala" aria-hidden="true"><span style="left:0">hoje</span><span class="meio trinta" style="left:${(30 / JANELA) * 100}%">30 dias</span><span class="meio" style="left:${(182 / JANELA) * 100}%">6 meses</span><span style="right:0">1 ano ou mais</span></div></div>
+      <div class="fim">${fim}</div></div>`;
+  }
+
+  /* ---------- abas ---------- */
+  const ABAS = [['dados', 'Dados pessoais'], ['cnh', 'CNH'], ['contatos', 'Contatos'], ['referencias', 'Referências'], ['contas', 'Contas e Pix'], ['documentos', 'Documentos'], ['gr', 'Gerenciadora de risco']];
+  if (admin) ABAS.push(['historico', 'Histórico']);
+
+  main.innerHTML = `
+    <div class="titulo">
+      <div>
+        <nav class="migalha" aria-label="Caminho"><a href="motoristas.html">Motoristas</a><span class="sep" aria-hidden="true">/</span><h1 id="nome-h1"></h1></nav>
+        <div class="ficha-cab"><span class="sinais" id="sinais"></span></div>
+      </div>
+      <div class="acoes"><a class="btn" id="acao-conjunto" href="#">Conjunto</a><button class="btn btn-primario" type="button" id="acao-anexar"><i data-lucide="paperclip"></i>Anexar documento</button></div>
+    </div>
+    <div id="pendencias" class="pendencias-ficha"></div>
+    <section class="bloco resumo" id="resumo" aria-label="Resumo do motorista"></section>
+    <div class="abas" data-abas aria-label="Partes da ficha">${ABAS.map(([k, v]) => `<button type="button" data-aba="${k}" id="aba-${k}">${v}<span class="n" data-conta="${k}"></span></button>`).join('')}</div>
+    <form data-salvar id="form-ficha" novalidate>
+      <div data-painel="dados">${painelDados()}</div>
+      <div data-painel="cnh">${painelCnh()}</div>
+      <div data-painel="gr">${painelGr()}</div>
+    </form>
+    <div data-painel="contatos" id="p-contatos"></div>
+    <div data-painel="referencias" id="p-referencias"></div>
+    <div data-painel="contas" id="p-contas"></div>
+    <div data-painel="documentos" id="p-documentos"></div>
+    ${admin ? '<div data-painel="historico" id="p-historico"></div>' : ''}
+    <div class="barra-salvar" hidden><span>Alterações não salvas nesta ficha</span><span class="espaco"></span><button class="btn btn-texto" type="button" data-descartar>Descartar</button><button class="btn btn-primario" type="button" data-confirmar>Salvar alterações</button></div>`;
+
+  function painelDados() {
+    return secao('Cadastro', 'Pendente enquanto faltar documento ou a CNH estiver vencida. Cancelado não recebe novas cargas.',
+        opcoes('motorista.situacao_cadastro', R.situacao_cadastro, m.situacao_cadastro, 'Situação do cadastro') +
+        campo('f4', 'motorista.radio', 'Rádio', inp('motorista.radio', m.radio), { opcional: true }))
+      + secao('Identificação', 'O CPF identifica a pessoa no NILT inteiro e não muda. A situação vem da consulta na Receita.',
+        campo('f4', 'pessoa.cpf', 'CPF', inp('pessoa.cpf', f.cpf(p.cpf), 'class="cod" readonly'), { ajuda: 'Para corrigir um CPF, fale com o administrador.' }) +
+        campo('f4', 'pessoa.situacao_cpf', 'Situação do CPF', sel('pessoa.situacao_cpf', R.situacao_cpf, p.situacao_cpf, 'Não consultado')) +
+        campo('f4', 'pessoa.dt_consulta_cpf', 'Data da consulta', inp('pessoa.dt_consulta_cpf', p.dt_consulta_cpf, 'type="date"')) +
+        campo('f8', 'pessoa.nome', 'Nome completo', inp('pessoa.nome', p.nome, 'maxlength="110" required')) +
+        campo('f4', 'pessoa.apelido', 'Apelido', inp('pessoa.apelido', p.apelido), { opcional: true }))
+      + secao('Dados pessoais', 'Na ordem da ficha do ATUA. Raça/cor e grau de instrução vão para o eSocial.',
+        campo('f6', 'pessoa.sexo', 'Sexo', sel('pessoa.sexo', R.sexo, p.sexo)) +
+        campo('f6', 'pessoa.raca_cor', 'Raça/cor', sel('pessoa.raca_cor', R.raca_cor, p.raca_cor, 'Selecione')) +
+        campo('f4', 'pessoa.nascimento', 'Nascimento', inp('pessoa.nascimento', p.nascimento, 'type="date"')) +
+        campo('f5', 'pessoa.naturalidade', 'Naturalidade', inp('pessoa.naturalidade', p.naturalidade, 'placeholder="Cidade onde nasceu"')) +
+        campo('f3', 'pessoa.naturalidade_uf', 'UF', selUf('pessoa.naturalidade_uf', p.naturalidade_uf)) +
+        campo('f6', 'pessoa.grau_instrucao', 'Grau de instrução', sel('pessoa.grau_instrucao', R.grau_instrucao, p.grau_instrucao)) +
+        campo('f6', 'pessoa.estado_civil', 'Estado civil', sel('pessoa.estado_civil', R.estado_civil, p.estado_civil)))
+      + secao('RG', 'Como está no documento de identidade.',
+        campo('f4', 'pessoa.rg', 'Número do RG', inp('pessoa.rg', p.rg, 'class="cod" maxlength="20"')) +
+        campo('f3', 'pessoa.rg_orgao', 'Órgão expedidor', inp('pessoa.rg_orgao', p.rg_orgao, 'placeholder="SSP"')) +
+        campo('f2', 'pessoa.rg_uf', 'UF', selUf('pessoa.rg_uf', p.rg_uf)) +
+        campo('f3', 'pessoa.rg_emissao', 'Emissão', inp('pessoa.rg_emissao', p.rg_emissao, 'type="date"')))
+      + secao('Filiação', 'Nome do pai e da mãe, como no RG.',
+        campo('f6', 'pessoa.pai', 'Pai', inp('pessoa.pai', p.pai, 'maxlength="80"'), { opcional: true }) +
+        campo('f6', 'pessoa.mae', 'Mãe', inp('pessoa.mae', p.mae, 'maxlength="80"')))
+      + secao('INSS', 'Número do NIT ou PIS, usado no desconto de INSS, SEST e SENAT do frete.',
+        campo('f4', 'pessoa.nr_inss', 'Número do INSS (NIT)', inp('pessoa.nr_inss', p.nr_inss, 'class="cod" inputmode="numeric" maxlength="11" data-digitos="11"'), { ajuda: '11 dígitos, sem pontos.' }));
+  }
+
+  function painelCnh() {
+    const fim = `<b>Categoria ${m.cnh_categoria ? R.cnh_categoria[m.cnh_categoria] : '—'}</b><span>${m.cnh_primeira_habilitacao ? `habilitado desde ${m.cnh_primeira_habilitacao.slice(0, 4)}` : 'primeira habilitação não informada'}</span>`;
+    return `<div id="marco-cnh">${marcoValidade(m.cnh_validade, 'CNH', fim)}</div>`
+      + secao('Números da carteira', 'Os quatro números impressos na CNH. O registro tem 11 dígitos; o formulário, 10.',
+        campo('f3', 'motorista.cnh_registro', 'Registro', inp('motorista.cnh_registro', m.cnh_registro, 'class="cod" inputmode="numeric" maxlength="11" data-digitos="11"')) +
+        campo('f3', 'motorista.cnh_formulario', 'Formulário', inp('motorista.cnh_formulario', m.cnh_formulario, 'class="cod" inputmode="numeric" maxlength="10"'), { opcional: true }) +
+        campo('f3', 'motorista.cnh_seguranca', 'Segurança', inp('motorista.cnh_seguranca', m.cnh_seguranca, 'class="cod" inputmode="numeric" maxlength="11"'), { opcional: true }) +
+        campo('f3', 'motorista.cnh_renach', 'Renach', inp('motorista.cnh_renach', m.cnh_renach, 'class="cod" maxlength="11"'), { opcional: true }))
+      + secao('Categoria e datas', 'A validade alimenta os vencimentos do início e a pendência de documentos.',
+        campo('f3', 'motorista.cnh_categoria', 'Categoria', sel('motorista.cnh_categoria', R.cnh_categoria, m.cnh_categoria, 'Selecione')) +
+        campo('f3', 'motorista.cnh_validade', 'Validade', inp('motorista.cnh_validade', m.cnh_validade, 'type="date"')) +
+        campo('f3', 'motorista.cnh_emissao', 'Emissão', inp('motorista.cnh_emissao', m.cnh_emissao, 'type="date"')) +
+        campo('f3', 'motorista.cnh_primeira_habilitacao', '1ª habilitação', inp('motorista.cnh_primeira_habilitacao', m.cnh_primeira_habilitacao, 'type="date"')))
+      + secao('Emissão', 'Cidade e UF do Detran que emitiu, e observações impressas (EAR, restrições).',
+        campo('f8', 'motorista.cnh_cidade_emissao', 'Cidade de emissão', inp('motorista.cnh_cidade_emissao', m.cnh_cidade_emissao)) +
+        campo('f4', 'motorista.cnh_uf', 'UF', selUf('motorista.cnh_uf', m.cnh_uf)) +
+        `<div class="campo f12"><label for="${idDe('motorista.cnh_observacao')}">Observação da CNH${opc(true)}</label><textarea id="${idDe('motorista.cnh_observacao')}" name="motorista.cnh_observacao" rows="3">${esc(m.cnh_observacao || '')}</textarea></div>`);
+  }
+
+  function painelGr() {
+    const g = M.estadoGr(m);
+    const fim = `<b>${g.rot}</b><span>${m.qualificado_gmp ? 'qualificado GMP' : 'sem qualificação GMP'}</span>`;
+    return `<div id="marco-gr">${marcoValidade(m.situacao_gr === 'sem_consulta' ? null : m.gr_validade, 'Consulta de risco', fim)}</div>`
+      + secao('Consulta na gerenciadora', 'A consulta é feita no portal da gerenciadora; aqui fica o resultado e até quando vale. A integração automática chega na fase de gerenciadora de risco.',
+        campo('f6', 'motorista.situacao_gr', 'Situação na gerenciadora', sel('motorista.situacao_gr', R.situacao_gr, m.situacao_gr || 'sem_consulta', '')) +
+        campo('f6', 'motorista.gr_validade', 'Validade da consulta', inp('motorista.gr_validade', m.gr_validade, 'type="date"')))
+      + secao('Qualificação GMP', 'Motorista qualificado no programa de boas práticas do cliente (GMP), com a data da qualificação.',
+        opcoes('motorista.qualificado_gmp', { sim: 'Qualificado', nao: 'Não qualificado' }, m.qualificado_gmp ? 'sim' : 'nao', 'Qualificado GMP') +
+        campo('f6', 'motorista.dt_qualificacao_gmp', 'Data da qualificação', inp('motorista.dt_qualificacao_gmp', m.dt_qualificacao_gmp, 'type="date"'), { opcional: true }));
+  }
+
+  /* ---------- listas (contatos, referências, contas, documentos) ---------- */
+  const doP = (arr, campoId = 'pessoa_id') => arr.filter((x) => x[campoId] === p.id);
+  const novoTag = (x) => (x._novo ? ' class="novo-item"' : '');
+  const cab = (titulo, botao) => `<div class="painel-cab"><h2>${titulo}</h2>${botao ? `<span class="dir">${botao}</span>` : ''}</div>`;
+  const botao = (acao, txt) => `<button class="btn" type="button" data-acao="${acao}"><i data-lucide="plus"></i>${txt}</button>`;
+
+  function renderContatos() {
+    const ends = doP(D.enderecos), tels = doP(D.telefones), mails = doP(D.emails);
+    const tEnd = ends.length ? `<div class="tabela-wrap"><table class="tabela leve empilha"><thead><tr><th scope="col">Endereço</th><th scope="col">Tipo</th><th scope="col">CEP</th><th scope="col"><span class="sr-only">Marcas</span></th></tr></thead><tbody>${ends.map((e) => `<tr${novoTag(e)}>
+        <td class="cel-1"><span class="id">${esc(e.logradouro)}${e.numero ? `, ${esc(e.numero)}` : ''}${e.complemento ? ` · ${esc(e.complemento)}` : ''}</span><span class="linha2">${esc(e.bairro || '')}${e.bairro ? ' · ' : ''}${esc(e.cidade)}/${e.uf}${e.ponto_referencia ? ` · ${esc(e.ponto_referencia)}` : ''}</span></td>
+        <td>${R.tipo_endereco[e.tipo] || dash}</td><td><span class="cod">${e.cep ? f.cep(e.cep) : '—'}</span></td>
+        <td class="acoes-linha">${e.principal ? marca('star', 'Principal') : ''}</td></tr>`).join('')}</tbody></table></div>` : vazio('Nenhum endereço. Adicione o residencial: o comprovante de residência precisa bater com ele.');
+    const tTel = tels.length ? `<div class="tabela-wrap"><table class="tabela leve empilha"><thead><tr><th scope="col">Número</th><th scope="col">Tipo</th><th scope="col">Contato</th><th scope="col"><span class="sr-only">Marcas</span></th></tr></thead><tbody>${tels.map((t) => `<tr${novoTag(t)}>
+        <td class="cel-1"><span class="id num">${f.telefone(t.numero)}</span>${t.ramal ? `<span class="linha2">ramal ${esc(t.ramal)}</span>` : ''}</td>
+        <td>${R.tipo_telefone[t.tipo] || dash}</td><td>${t.contato ? esc(t.contato) : dash}</td>
+        <td class="acoes-linha">${t.whatsapp ? marca('message-circle', 'WhatsApp') : ''}${t.principal ? marca('star', 'Principal') : ''}${t.restrito ? marca('lock', 'Restrito') : ''}</td></tr>`).join('')}</tbody></table></div>` : vazio('Nenhum telefone. O motorista precisa de pelo menos um para ser chamado para carga.');
+    const tMail = mails.length ? `<div class="tabela-wrap"><table class="tabela leve empilha"><thead><tr><th scope="col">E-mail</th><th scope="col">Observação</th><th scope="col"><span class="sr-only">Marcas</span></th></tr></thead><tbody>${mails.map((e) => `<tr${novoTag(e)}>
+        <td class="cel-1"><span class="id">${esc(e.email)}</span></td><td>${e.observacao ? esc(e.observacao) : dash}</td>
+        <td class="acoes-linha">${e.recebe_cte ? marca('file-text', 'Recebe CT-e') : ''}${e.principal ? marca('star', 'Principal') : ''}</td></tr>`).join('')}</tbody></table></div>` : vazio('Nenhum e-mail. É opcional; marque “recebe CT-e” se ele quiser receber os conhecimentos.');
+    document.getElementById('p-contatos').innerHTML = `<div class="subsecao">${cab('Endereços', botao('endereco', 'Adicionar endereço'))}${tEnd}</div>
+      <div class="subsecao">${cab('Telefones', botao('telefone', 'Adicionar telefone'))}${tTel}</div>
+      <div class="subsecao">${cab('E-mails', botao('email', 'Adicionar e-mail'))}${tMail}</div>`;
+  }
+
+  function renderReferencias() {
+    const refs = doP(D.referencias, 'motorista_id').sort((a, b) => ((a.dt_referencia || '') < (b.dt_referencia || '') ? 1 : -1));
+    document.getElementById('p-referencias').innerHTML = `<div class="subsecao">${cab('Referências pessoais e comerciais', botao('referencia', 'Adicionar referência'))}
+      ${refs.length ? `<div class="tabela-wrap"><table class="tabela leve empilha"><thead><tr><th scope="col">Referência</th><th scope="col">Tipo</th><th scope="col">Telefone</th><th scope="col" class="num">Data</th></tr></thead><tbody>${refs.map((r) => `<tr${novoTag(r)}>
+        <td class="cel-1"><span class="id">${esc(r.nome)}</span><span class="linha2">${r.observacao ? esc(r.observacao) : 'sem observação'}</span></td>
+        <td>${R.tipo_referencia[r.tipo]}</td><td><span class="num">${r.telefone ? f.telefone(r.telefone) : '—'}</span></td>
+        <td class="num">${f.data(r.dt_referencia)}</td></tr>`).join('')}</tbody></table></div>` : vazio('Nenhuma referência. Peça ao menos uma comercial (última transportadora) antes da primeira carga.')}</div>`;
+  }
+
+  function contaTxt(c) { return `${c.banco_codigo} ${BANCOS[c.banco_codigo] || ''} · ag. ${c.agencia}${c.agencia_digito ? '-' + c.agencia_digito : ''} · conta ${c.conta}${c.conta_digito ? '-' + c.conta_digito : ''}`; }
+  function renderContas() {
+    const contas = doP(D.contas), pix = doP(D.pix);
+    const difere = contas.filter((c) => !c.titular_confere);
+    const aviso = difere.map((c) => `<div class="aviso aviso-pendente"><i data-lucide="triangle-alert"></i><span><b>Titular não confere.</b> A conta ${esc(BANCOS[c.banco_codigo] || c.banco_codigo)} ag. ${esc(c.agencia)} está em nome de ${esc(c.favorecido_nome)} (<span class="cod">${f.doc({ tipo: (c.favorecido_documento || '').length === 14 ? 'pj' : 'pf', cpf: c.favorecido_documento, cnpj: c.favorecido_documento })}</span>), não do motorista. Confirme a autorização por escrito antes de pagar frete nela.</span></div>`).join('');
+    const tContas = contas.length ? `<div class="tabela-wrap"><table class="tabela leve empilha"><thead><tr><th scope="col">Banco</th><th scope="col">Tipo</th><th scope="col" class="num">Agência</th><th scope="col" class="num">Conta</th><th scope="col">Favorecido</th><th scope="col"><span class="sr-only">Marcas</span></th></tr></thead><tbody>${contas.map((c) => `<tr${novoTag(c)}>
+        <td class="cel-1"><span class="id">${esc(BANCOS[c.banco_codigo] || 'Banco')}</span><span class="linha2"><span class="cod">${c.banco_codigo}</span></span></td>
+        <td>${R.tipo_conta[c.tipo] || dash}</td>
+        <td class="num"><span class="cod">${esc(c.agencia)}${c.agencia_digito ? '-' + esc(c.agencia_digito) : ''}</span></td>
+        <td class="num"><span class="cod">${esc(c.conta)}${c.conta_digito ? '-' + esc(c.conta_digito) : ''}</span></td>
+        <td>${esc(c.favorecido_nome || p.nome)}<span class="linha2">${c.titular_confere ? 'o próprio motorista' : '<span class="val val-pendente">titular diferente</span>'}</span></td>
+        <td class="acoes-linha">${c.principal ? marca('star', 'Principal') : ''}</td></tr>`).join('')}</tbody></table></div>` : vazio('Nenhuma conta. O frete do motorista só é pago em conta cadastrada aqui.');
+    const tPix = pix.length ? `<div class="tabela-wrap"><table class="tabela leve empilha"><thead><tr><th scope="col">Chave</th><th scope="col">Tipo</th><th scope="col">Conta ligada</th><th scope="col">Descrição</th><th scope="col"><span class="sr-only">Marcas</span></th></tr></thead><tbody>${pix.map((x) => {
+        const c = D.contas.find((k) => k.id === x.conta_id);
+        const chave = x.tipo === 'cpf' ? f.cpf(x.chave) : x.tipo === 'cnpj' ? f.cnpj(x.chave) : x.tipo === 'celular' ? f.telefone(x.chave) : x.chave;
+        return `<tr${novoTag(x)}><td class="cel-1"><span class="id cod">${esc(chave)}</span></td><td>${R.tipo_chave_pix[x.tipo]}</td>
+        <td>${c ? `${esc(BANCOS[c.banco_codigo] || c.banco_codigo)} <span class="muted">· ag. ${esc(c.agencia)} · ${esc(c.conta)}${c.conta_digito ? '-' + esc(c.conta_digito) : ''}</span>` : '<span class="dash">sem conta ligada</span>'}</td>
+        <td>${x.descricao ? esc(x.descricao) : dash}</td><td class="acoes-linha">${x.principal ? marca('star', 'Principal') : ''}</td></tr>`; }).join('')}</tbody></table></div>` : vazio('Nenhuma chave Pix. Ligue a chave a uma das contas acima para o financeiro conferir o titular.');
+    document.getElementById('p-contas').innerHTML = `<div class="subsecao">${cab('Contas bancárias', botao('conta', 'Adicionar conta'))}${aviso ? `<div class="pendencias-ficha">${aviso}</div>` : ''}${tContas}</div>
+      <div class="subsecao">${cab('Chaves Pix', botao('pix', 'Adicionar chave Pix'))}${tPix}</div>`;
+  }
+
+  function renderDocumentos() {
+    const docs = doP(D.arquivos).filter((a) => admin || !a.restrito);
+    const tem = (tipo) => docs.some((a) => a.tipo === tipo);
+    const falta = ['CNH', 'COMP. RESIDÊNCIA'].filter((t) => !tem(t)).map((t) => (t === 'CNH' ? 'a CNH' : 'o comprovante de residência'));
+    const linhas = docs.map((a) => {
+      const e = M.estadoValidade(a.validade);
+      return `<tr${novoTag(a)}>
+        <td class="cel-1"><span class="id">${esc(a.tipo)}</span><span class="linha2">${esc(a.nome_original)} · ${f.kb(a.tamanho_bytes || 0)}${a.numero ? ` · nº ${esc(a.numero)}` : ''}</span></td>
+        <td>${a.validade ? `${M.marcaValidade(a.validade)}<span class="linha2">${e.cls === 'normal' ? 'em dia' : e.texto}</span>` : '<span class="dash">sem validade</span>'}</td>
+        <td>${a.validado_em ? `<span class="so-cel">conferido por </span>${esc(a.validado_por)}<span class="linha2">em ${f.data(a.validado_em)}</span>` : `<button class="btn btn-texto" type="button" data-conferir="${a.id}">Conferir</button>`}</td>
+        ${a.restrito ? `<td>${marca('lock', 'Restrito')}</td>` : '<td class="vazio-cel"><span class="dash">todos</span></td>'}
+        <td class="acoes-linha"><button class="btn" type="button" data-abrir="${a.id}"><i data-lucide="eye"></i>Abrir</button></td></tr>`;
+    }).join('');
+    document.getElementById('p-documentos').innerHTML = `
+      ${falta.length && m.situacao_cadastro !== 'cancelado' ? `<div class="pendencias-ficha"><div class="aviso aviso-pendente"><i data-lucide="triangle-alert"></i><span><b>Falta anexar ${falta.join(' e ')}.</b> Sem ${falta.length > 1 ? 'eles' : 'ele'}, o cadastro fica pendente.</span></div></div>` : ''}
+      <div class="subsecao">${cab('Arquivos do motorista', `<span class="muted small">${admin ? 'Arquivos restritos só aparecem para administradores.' : ''}</span>`)}
+      ${docs.length ? `<div class="tabela-wrap"><table class="tabela leve empilha"><thead><tr><th scope="col">Documento</th><th scope="col">Validade</th><th scope="col">Conferido por</th><th scope="col">Acesso</th><th scope="col"><span class="sr-only">Ações</span></th></tr></thead><tbody>${linhas}</tbody></table></div>` : vazio('Nenhum arquivo anexado. Comece pela CNH e pelo comprovante de residência.')}</div>
+      <section class="subsecao bloco bloco-corpo" aria-labelledby="h-enviar" id="enviar">
+        <h2 id="h-enviar" class="enviar-titulo">Enviar documento</h2>
+        <div class="campos">
+          <div class="campo f4"><label for="up-tipo">Tipo de arquivo</label><select id="up-tipo">${M.TIPOS_ARQ_PESSOA.map((t) => `<option${t === (falta.length && !tem('CNH') ? 'CNH' : !tem('COMP. RESIDÊNCIA') ? 'COMP. RESIDÊNCIA' : 'CNH') ? ' selected' : ''}>${t}</option>`).join('')}</select></div>
+          <div class="campo f4"><label for="up-validade">Validade${opc(true)}</label><input id="up-validade" type="date"></div>
+          <div class="campo f4"><label for="up-numero">Número do documento${opc(true)}</label><input id="up-numero" autocomplete="off"></div>
+          <div class="campo f8"><label for="up-arquivo">Arquivo</label><input id="up-arquivo" type="file" accept="application/pdf,image/jpeg,image/png,image/heic"><span class="ajuda">PDF, JPG, PNG ou HEIC, até 20 MB. Fica no armazenamento privado; cada abertura é registrada.</span></div>
+          <div class="campo f4"><span class="rotulo" aria-hidden="true">&nbsp;</span><label class="marcar" for="up-restrito"><input type="checkbox" id="up-restrito">Restrito ao administrador</label></div>
+          <div class="f12 enviar-pe"><button class="btn" type="button" id="up-enviar"><i data-lucide="upload"></i>Enviar arquivo</button></div>
+        </div>
+      </section>`;
+  }
+
+  const TABELA = { pessoa: 'dados pessoais', motorista: 'motorista', arquivo: 'documento', pessoa_telefone: 'telefone', pessoa_endereco: 'endereço', pessoa_email: 'e-mail', pessoa_conta_bancaria: 'conta bancária', pessoa_chave_pix: 'chave Pix', motorista_referencia: 'referência' };
+  function renderHistorico() {
+    if (!admin) return;
+    const arqIds = D.arquivos.filter((a) => a.pessoa_id === p.id).map((a) => a.id);
+    const evs = D.auditoria.filter((a) => a.registro_id === p.id || (a.tabela === 'arquivo' && arqIds.includes(a.registro_id))).sort((a, b) => (a.em < b.em ? 1 : -1));
+    document.getElementById('p-historico').innerHTML = `<div class="subsecao">${cab('Histórico do registro', `<span class="muted small">${evs.length} ${evs.length === 1 ? 'evento' : 'eventos'} · só administradores veem</span>`)}
+      ${evs.length ? `<ol class="linha-tempo">${evs.map((a) => `<li><time datetime="${a.em}">${f.dataHora(a.em)}<span class="meta">${f.relativo(a.em)}</span></time><span class="ponto-acao ${a.acao}" aria-hidden="true"></span>
+        <span><b>${esc(a.resumo)}</b><span class="meta">${esc(a.usuario)} · ${R.acao[a.acao] || a.acao} em ${TABELA[a.tabela] || a.tabela}</span></span></li>`).join('')}</ol>` : vazio('Nenhuma alteração registrada desde a importação.')}</div>`;
+  }
+
+  function contagens() {
+    const n = { contatos: doP(D.enderecos).length + doP(D.telefones).length + doP(D.emails).length, referencias: doP(D.referencias, 'motorista_id').length, contas: doP(D.contas).length + doP(D.pix).length, documentos: doP(D.arquivos).filter((a) => admin || !a.restrito).length };
+    document.querySelectorAll('[data-conta]').forEach((el) => { const k = el.dataset.conta; el.textContent = k in n ? n[k] : ''; el.hidden = !(k in n); });
+  }
+  function renderListas() {
+    renderContatos(); renderReferencias(); renderContas(); renderDocumentos(); renderHistorico(); contagens();
+    N.aplicarMascaras(main); N.separarPontos(main); N.desenharIcones();
+  }
+
+  renderCabecalho();
+  renderListas();
+
+  /* ---------- salvar (um modelo só: a barra da ficha) ---------- */
+  const form = document.getElementById('form-ficha');
+  const barra = main.querySelector('.barra-salvar');
+  const alterado = () => { barra.hidden = false; };
+  const LISTAS = [D.enderecos, D.telefones, D.emails, D.referencias, D.contas, D.pix];
+  // nilt.js restaura os campos e dispara nilt:descartado; aqui some o que foi incluído nas listas
+  form.addEventListener('nilt:descartado', () => {
+    LISTAS.forEach((arr) => { for (let i = arr.length - 1; i >= 0; i--) if (arr[i]._novo) arr.splice(i, 1); });
+    renderListas();
+  });
+  // nilt.js só dispara nilt:salvo quando não há campo inválido
+  form.addEventListener('nilt:salvo', () => {
+    // grava os campos do formulário nos registros (no Next.js: update em pessoa e motorista)
+    form.querySelectorAll('[name]').forEach((el) => {
+      const [tab, campoNome] = el.name.split('.'); const alvo = tab === 'pessoa' ? p : m;
+      if (el.readOnly) return;
+      if (el.type === 'radio') { if (!el.checked) return; alvo[campoNome] = campoNome === 'qualificado_gmp' ? el.value === 'sim' : el.value; }
+      else alvo[campoNome] = el.value || null;
+    });
+    const agora = new Date().toISOString();
+    LISTAS.forEach((arr) => arr.forEach((x) => { if (x._novo) { delete x._novo; } }));
+    D.auditoria.unshift({ id: Date.now(), em: agora, usuario: N.usuarioAtual.nome, tabela: 'motorista', registro_id: p.id, acao: 'update', resumo: 'Ficha do motorista alterada' });
+    document.getElementById('marco-cnh').innerHTML = marcoValidade(m.cnh_validade, 'CNH', `<b>Categoria ${m.cnh_categoria ? R.cnh_categoria[m.cnh_categoria] : '—'}</b><span>${m.cnh_primeira_habilitacao ? `habilitado desde ${m.cnh_primeira_habilitacao.slice(0, 4)}` : 'primeira habilitação não informada'}</span>`);
+    const g = M.estadoGr(m);
+    document.getElementById('marco-gr').innerHTML = marcoValidade(m.situacao_gr === 'sem_consulta' ? null : m.gr_validade, 'Consulta de risco', `<b>${g.rot}</b><span>${m.qualificado_gmp ? 'qualificado GMP' : 'sem qualificação GMP'}</span>`);
+    renderCabecalho(); renderListas();
+    N.separarPontos(form);
+  });
+
+  // validação de tamanho dos números (INSS, registro da CNH)
+  form.querySelectorAll('[data-digitos]').forEach((el) => {
+    const c = el.closest('.campo');
+    const checar = () => {
+      el.value = N.so(el.value).slice(0, +el.dataset.digitos);
+      const ok = !el.value || el.value.length === +el.dataset.digitos;
+      if (ok) limparErro(c); else erroCampo(c, `Faltam ${+el.dataset.digitos - el.value.length} dígitos: o número tem ${el.dataset.digitos}.`);
+    };
+    el.addEventListener('blur', checar);
+    el.addEventListener('input', () => { el.value = N.so(el.value).slice(0, +el.dataset.digitos); if (c.hasAttribute('data-invalido')) checar(); });
+  });
+  const nomeEl = document.getElementById(idDe('pessoa.nome'));
+  nomeEl.addEventListener('blur', () => { const c = nomeEl.closest('.campo'); if (nomeEl.value.trim().split(/\s+/).length < 2) erroCampo(c, 'Informe o nome completo, com sobrenome.'); else limparErro(c); });
+
+  function erroCampo(c, msg) {
+    c.setAttribute('data-invalido', ''); c.removeAttribute('data-valido');
+    let e = c.querySelector('.erro'); if (!e) { e = document.createElement('span'); e.className = 'erro'; c.appendChild(e); }
+    e.hidden = false; e.textContent = msg;
+    c.querySelector('input,select,textarea')?.setAttribute('aria-invalid', 'true');
+  }
+  function limparErro(c) { c.removeAttribute('data-invalido'); const e = c.querySelector('.erro'); if (e) e.hidden = true; c.querySelector('input,select,textarea')?.removeAttribute('aria-invalid'); }
+
+  /* ---------- diálogos de inclusão ---------- */
+  const dlg = document.getElementById('dlg');
+  function abrirDialogo(titulo, corpo, botaoTxt, aoConfirmar, aoAbrir) {
+    dlg.innerHTML = `<form method="dialog" novalidate><div class="dialogo-cab"><h2 id="dlg-titulo">${titulo}</h2></div>
+      <div class="dialogo-corpo"><div class="campos">${corpo}</div></div>
+      <div class="dialogo-pe"><button class="btn" type="button" data-fechar>Cancelar</button><button class="btn btn-primario" type="submit">${botaoTxt}</button></div></form>`;
+    const fm = dlg.querySelector('form');
+    N.aplicarMascaras(dlg); N.desenharIcones();
+    fm.querySelector('[data-fechar]').addEventListener('click', () => dlg.close());
+    fm.addEventListener('input', (e) => { const c = e.target.closest('.campo'); if (c && c.hasAttribute('data-invalido')) limparErro(c); });
+    fm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const v = (nome) => fm.elements[nome]?.type === 'checkbox' ? fm.elements[nome].checked : (fm.elements[nome]?.value ?? '').trim();
+      const erros = [];
+      const exige = (nome, ok, msg) => { const c = fm.elements[nome].closest('.campo'); if (!ok) { erroCampo(c, msg); erros.push(fm.elements[nome]); } else limparErro(c); };
+      const reg = aoConfirmar(v, exige);
+      if (erros.length) { erros[0].focus(); return; }
+      if (!reg) return;
+      dlg.close(); alterado(); renderListas();
+      N.toast(`${reg} adicionado. Salve a ficha para gravar.`, 'plus');
+    });
+    dlg.showModal();
+    if (aoAbrir) aoAbrir(fm);
+    fm.querySelector('input:not([type=checkbox]):not([type=radio]),select')?.focus();
+  }
+  const dc = (cls, nome, rot, inner, o = {}) => `<div class="campo ${cls}"><label for="d-${nome}">${rot}${opc(o.opcional)}</label>${inner}${o.ajuda ? `<span class="ajuda">${o.ajuda}</span>` : ''}</div>`;
+  const di = (nome, attrs = '') => `<input id="d-${nome}" name="${nome}" autocomplete="off" ${attrs}>`;
+  const ds = (nome, html) => `<select id="d-${nome}" name="${nome}">${html}</select>`;
+  const dm = (nome, rot, marcado) => `<label class="marcar" for="d-${nome}"><input type="checkbox" id="d-${nome}" name="${nome}"${marcado ? ' checked' : ''}>${rot}</label>`;
+  // só um principal por pessoa (índice único parcial no banco): o novo principal desmarca os outros
+  const umPrincipal = (arr, campoId = 'pessoa_id') => arr.forEach((x) => { if (x[campoId] === p.id) x.principal = false; });
+
+  const DIALOGOS = {
+    endereco() {
+      abrirDialogo('Adicionar endereço', `
+        ${dc('f6', 'cep', 'CEP', `<div class="com-acao">${di('cep', 'data-mascara="cep" class="cod" placeholder="00000-000"')}<button class="btn" type="button" id="d-buscar-cep"><i data-lucide="search"></i>Buscar</button></div>`, { ajuda: '<span id="d-cep-status">Busca rua, bairro e cidade na BrasilAPI.</span>' })}
+        ${dc('f6', 'tipo', 'Tipo', ds('tipo', M.opcoesSelect(R.tipo_endereco, 'residencial')))}
+        ${dc('f9', 'logradouro', 'Rua ou avenida', di('logradouro'))}
+        ${dc('f3', 'numero', 'Número', di('numero', 'placeholder="s/n"'))}
+        ${dc('f6', 'complemento', 'Complemento', di('complemento'), { opcional: true })}
+        ${dc('f6', 'bairro', 'Bairro', di('bairro'))}
+        ${dc('f9', 'cidade', 'Cidade', di('cidade'))}
+        ${dc('f3', 'uf', 'UF', ds('uf', M.opcoesUf('')))}
+        ${dc('f12', 'ponto_referencia', 'Ponto de referência', di('ponto_referencia'), { opcional: true })}
+        ${dc('f12', 'coordenada', 'Coordenada', di('coordenada', 'placeholder="-23.551234,-51.461234 ou link do Google Maps"'), { opcional: true })}
+        <div class="f12">${dm('principal', 'Endereço principal', !doP(D.enderecos).length)}</div>`, 'Adicionar endereço', (v, exige) => {
+        exige('cidade', !!v('cidade'), 'Informe a cidade.'); exige('uf', !!v('uf'), 'Escolha a UF.');
+        exige('logradouro', !!v('logradouro'), 'Informe a rua ou avenida.');
+        exige('cep', !v('cep') || N.so(v('cep')).length === 8, 'O CEP tem 8 dígitos.');
+        if (!v('cidade') || !v('uf') || !v('logradouro') || (v('cep') && N.so(v('cep')).length !== 8)) return null;
+        let lat = null, lon = null; const mt = v('coordenada').match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/); if (mt) { lat = +mt[1]; lon = +mt[2]; }
+        if (v('principal')) umPrincipal(D.enderecos);
+        D.enderecos.push({ pessoa_id: p.id, tipo: v('tipo'), cep: N.so(v('cep')), logradouro: v('logradouro'), numero: v('numero') || 's/n', complemento: v('complemento'), bairro: v('bairro'), cidade: v('cidade'), uf: v('uf'), ponto_referencia: v('ponto_referencia'), latitude: lat, longitude: lon, principal: v('principal'), _novo: true });
+        return 'Endereço';
+      }, (fm) => {
+        const status = fm.querySelector('#d-cep-status');
+        const buscar = async () => {
+          const cep = N.so(fm.elements.cep.value);
+          if (cep.length !== 8) { erroCampo(fm.elements.cep.closest('.campo'), 'Digite os 8 dígitos do CEP para buscar.'); return; }
+          status.textContent = 'Consultando o CEP…';
+          try {
+            const r = await N.consultarCep(cep);
+            ['logradouro', 'bairro', 'cidade'].forEach((k) => { if (r[k]) fm.elements[k].value = r[k]; });
+            if (r.uf) fm.elements.uf.value = r.uf;
+            status.textContent = `Encontrado: ${r.cidade}/${r.uf}. Confira o número.`;
+            fm.elements.numero.focus();
+          } catch (err) {
+            status.innerHTML = `${esc(err.message || 'A consulta não respondeu.')} Preencha à mão ou <button type="button" class="btn-link" id="d-cep-de-novo">tente de novo</button>.`;
+            status.querySelector('#d-cep-de-novo').addEventListener('click', buscar);
+          }
+        };
+        fm.querySelector('#d-buscar-cep').addEventListener('click', buscar);
+        fm.elements.cep.addEventListener('input', () => { if (N.so(fm.elements.cep.value).length === 8) buscar(); });
+      });
+    },
+    telefone() {
+      abrirDialogo('Adicionar telefone', `
+        ${dc('f8', 'numero', 'Número', di('numero', 'data-mascara="telefone" placeholder="(00) 00000-0000"'))}
+        ${dc('f4', 'ramal', 'Ramal', di('ramal', 'maxlength="4" inputmode="numeric"'), { opcional: true })}
+        ${dc('f6', 'tipo', 'Tipo', ds('tipo', M.opcoesSelect(R.tipo_telefone, 'celular')))}
+        ${dc('f6', 'contato', 'Contato', di('contato', 'maxlength="100" placeholder="Quem atende"'), { opcional: true })}
+        <div class="f12 marcas">${dm('whatsapp', 'Tem WhatsApp', true)}${dm('principal', 'Principal', !doP(D.telefones).length)}${dm('restrito', 'Restrito (só administrador vê)', false)}</div>`, 'Adicionar telefone', (v, exige) => {
+        const n = N.so(v('numero')); exige('numero', n.length === 10 || n.length === 11, 'Informe o número com DDD: (43) 99999-0000.');
+        if (n.length < 10) return null;
+        if (v('principal')) umPrincipal(D.telefones);
+        D.telefones.push({ pessoa_id: p.id, numero: n, ramal: v('ramal'), contato: v('contato'), tipo: v('tipo'), whatsapp: v('whatsapp'), principal: v('principal'), restrito: v('restrito'), _novo: true });
+        return 'Telefone';
+      });
+    },
+    email() {
+      abrirDialogo('Adicionar e-mail', `
+        ${dc('f12', 'email', 'E-mail', di('email', 'type="email" placeholder="nome@exemplo.com"'))}
+        ${dc('f12', 'observacao', 'Observação', di('observacao'), { opcional: true })}
+        <div class="f12 marcas">${dm('principal', 'Principal', !doP(D.emails).length)}${dm('recebe_cte', 'Recebe CT-e', false)}</div>`, 'Adicionar e-mail', (v, exige) => {
+        const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v('email')); exige('email', ok, 'E-mail inválido: confira o @ e o domínio.');
+        if (!ok) return null;
+        if (v('principal')) umPrincipal(D.emails);
+        D.emails.push({ pessoa_id: p.id, email: v('email').toLowerCase(), observacao: v('observacao'), principal: v('principal'), recebe_cte: v('recebe_cte'), _novo: true });
+        return 'E-mail';
+      });
+    },
+    referencia() {
+      abrirDialogo('Adicionar referência', `
+        <div class="campo f12"><span class="rotulo" id="d-r-tipo">Tipo</span><div class="opcoes" role="radiogroup" aria-labelledby="d-r-tipo"><label class="opcao"><input type="radio" name="tipo" value="comercial" checked><span>Comercial</span></label><label class="opcao"><input type="radio" name="tipo" value="pessoal"><span>Pessoal</span></label></div></div>
+        ${dc('f12', 'nome', 'Nome da referência', di('nome', 'placeholder="Empresa ou pessoa"'))}
+        ${dc('f6', 'telefone', 'Telefone', di('telefone', 'data-mascara="telefone" placeholder="(00) 00000-0000"'))}
+        ${dc('f6', 'dt_referencia', 'Data do contato', di('dt_referencia', `type="date" value="${N.dia(0)}"`))}
+        <div class="campo f12"><label for="d-observacao">Observação${opc(true)}</label><textarea id="d-observacao" name="observacao" rows="3" placeholder="O que a referência disse"></textarea></div>`, 'Adicionar referência', (v, exige) => {
+        exige('nome', v('nome').length >= 3, 'Informe o nome da empresa ou da pessoa.');
+        const t = N.so(v('telefone')); exige('telefone', !t || t.length >= 10, 'Informe o telefone com DDD.');
+        if (v('nome').length < 3 || (t && t.length < 10)) return null;
+        D.referencias.push({ motorista_id: p.id, tipo: v('tipo'), nome: v('nome'), telefone: t, dt_referencia: v('dt_referencia') || null, observacao: v('observacao'), _novo: true });
+        return 'Referência';
+      });
+    },
+    conta() {
+      abrirDialogo('Adicionar conta bancária', `
+        ${dc('f8', 'banco_codigo', 'Banco', ds('banco_codigo', '<option value="">Selecione</option>' + Object.entries(BANCOS).sort((a, b) => a[0].localeCompare(b[0])).map(([k, n]) => `<option value="${k}">${k} ${n}</option>`).join('')))}
+        ${dc('f4', 'tipo', 'Tipo', ds('tipo', M.opcoesSelect(R.tipo_conta, 'corrente')))}
+        ${dc('f4', 'agencia', 'Agência', di('agencia', 'class="cod" inputmode="numeric" maxlength="5"'))}
+        ${dc('f2', 'agencia_digito', 'Dígito', di('agencia_digito', 'class="cod" maxlength="2"'), { opcional: false })}
+        ${dc('f4', 'conta', 'Conta', di('conta', 'class="cod" inputmode="numeric" maxlength="20"'))}
+        ${dc('f2', 'conta_digito', 'Dígito', di('conta_digito', 'class="cod" maxlength="2"'))}
+        ${dc('f8', 'favorecido_nome', 'Favorecido', di('favorecido_nome', `value="${esc(p.nome)}"`))}
+        ${dc('f4', 'favorecido_documento', 'CPF ou CNPJ do favorecido', di('favorecido_documento', `class="cod" inputmode="numeric" value="${f.cpf(p.cpf)}"`))}
+        <div class="f12" id="d-titular"></div>
+        <div class="f12">${dm('principal', 'Conta principal para pagamento', !doP(D.contas).length)}</div>`, 'Adicionar conta', (v, exige) => {
+        exige('banco_codigo', !!v('banco_codigo'), 'Escolha o banco.');
+        exige('agencia', !!N.so(v('agencia')), 'Informe a agência.'); exige('conta', !!N.so(v('conta')), 'Informe o número da conta.');
+        const doc = N.so(v('favorecido_documento'));
+        exige('favorecido_documento', N.valida.cpf(doc) || N.valida.cnpj(doc), 'Documento do favorecido inválido: confira os dígitos.');
+        if (!v('banco_codigo') || !N.so(v('agencia')) || !N.so(v('conta')) || !(N.valida.cpf(doc) || N.valida.cnpj(doc))) return null;
+        if (v('principal')) umPrincipal(D.contas);
+        D.contas.push({ id: 'cb' + Date.now().toString(36), pessoa_id: p.id, banco_codigo: v('banco_codigo'), tipo: v('tipo'), agencia: N.so(v('agencia')), agencia_digito: v('agencia_digito'), conta: N.so(v('conta')), conta_digito: v('conta_digito'), favorecido_nome: v('favorecido_nome') || p.nome, favorecido_documento: doc, principal: v('principal'), titular_confere: doc === p.cpf, _novo: true });
+        return 'Conta';
+      }, (fm) => {
+        const box = fm.querySelector('#d-titular');
+        const ver = () => { const doc = N.so(fm.elements.favorecido_documento.value); box.innerHTML = doc && doc !== p.cpf ? '<div class="aviso aviso-pendente"><i data-lucide="triangle-alert"></i><span>O favorecido não é o motorista. A conta será marcada como “titular não confere” até o financeiro conferir a autorização.</span></div>' : ''; N.desenharIcones(); };
+        fm.elements.favorecido_documento.addEventListener('input', ver);
+      });
+    },
+    pix() {
+      const contas = doP(D.contas);
+      abrirDialogo('Adicionar chave Pix', `
+        ${dc('f4', 'tipo', 'Tipo da chave', ds('tipo', M.opcoesSelect(R.tipo_chave_pix, 'cpf')))}
+        ${dc('f8', 'chave', 'Chave', di('chave', `class="cod" value="${f.cpf(p.cpf)}" maxlength="77"`))}
+        ${dc('f12', 'conta_id', 'Conta ligada', ds('conta_id', '<option value="">Sem conta ligada</option>' + contas.map((c) => `<option value="${c.id}"${c.principal ? ' selected' : ''}>${esc(contaTxt(c))}</option>`).join('')), { ajuda: contas.length ? 'O financeiro confere se a chave cai na conta indicada.' : 'Cadastre uma conta antes para poder ligar a chave a ela.' })}
+        ${dc('f12', 'descricao', 'Descrição', di('descricao', 'maxlength="30"'), { opcional: true })}
+        <div class="f12">${dm('principal', 'Chave principal', !doP(D.pix).length)}</div>`, 'Adicionar chave', (v, exige) => {
+        const t = v('tipo'), ch = v('chave'), dg = N.so(ch);
+        const ok = t === 'cpf' ? N.valida.cpf(dg) : t === 'cnpj' ? N.valida.cnpj(dg) : t === 'celular' ? dg.length === 11 : t === 'email' ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ch) : ch.length >= 32 && ch.length <= 37;
+        const msgs = { cpf: 'CPF inválido: confira os dígitos.', cnpj: 'CNPJ inválido: confira os dígitos.', celular: 'Celular com DDD, 11 dígitos.', email: 'E-mail inválido.', aleatoria: 'A chave aleatória tem de 32 a 37 caracteres.' };
+        exige('chave', ok, msgs[t]);
+        if (!ok) return null;
+        if (v('principal')) umPrincipal(D.pix);
+        D.pix.push({ pessoa_id: p.id, tipo: t, chave: ['cpf', 'cnpj', 'celular'].includes(t) ? dg : ch, conta_id: v('conta_id') || null, descricao: v('descricao'), principal: v('principal'), _novo: true });
+        return 'Chave Pix';
+      }, (fm) => {
+        fm.elements.tipo.addEventListener('change', () => { const t = fm.elements.tipo.value; fm.elements.chave.value = t === 'cpf' ? f.cpf(p.cpf) : ''; fm.elements.chave.focus(); });
+      });
+    },
+  };
+
+  /* ---------- ações das listas e documentos ---------- */
+  main.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-acao]'); if (a && DIALOGOS[a.dataset.acao]) { DIALOGOS[a.dataset.acao](); return; }
+    const ab = e.target.closest('[data-abrir]');
+    if (ab) {
+      const arq = D.arquivos.find((x) => x.id === ab.dataset.abrir);
+      // no Next.js: registrar_visualizacao(id) e depois o link temporário do Storage
+      D.auditoria.unshift({ id: Date.now(), em: new Date().toISOString(), usuario: N.usuarioAtual.nome, tabela: 'arquivo', registro_id: arq.id, acao: 'visualizacao', resumo: `Abriu ${arq.nome_original}` });
+      renderHistorico(); N.separarPontos(document.getElementById('p-historico') || main);
+      N.toast(`Visualização registrada: ${esc(arq.nome_original)}`, 'eye');
+      return;
+    }
+    const cf = e.target.closest('[data-conferir]');
+    if (cf) {
+      const arq = D.arquivos.find((x) => x.id === cf.dataset.conferir);
+      arq.validado_em = new Date().toISOString(); arq.validado_por = N.usuarioAtual.nome;
+      D.auditoria.unshift({ id: Date.now(), em: arq.validado_em, usuario: N.usuarioAtual.nome, tabela: 'arquivo', registro_id: arq.id, acao: 'update', resumo: `${arq.tipo} conferido` });
+      renderListas(); N.toast(`${esc(arq.tipo)} conferido por ${esc(N.usuarioAtual.nome)}`);
+      return;
+    }
+    if (e.target.closest('#up-enviar')) {
+      const fi = document.getElementById('up-arquivo'), arqF = fi.files[0];
+      const c = fi.closest('.campo');
+      if (!arqF) { erroCampo(c, 'Escolha o arquivo antes de enviar.'); fi.focus(); return; }
+      if (arqF.size > 20e6) { erroCampo(c, `O arquivo tem ${f.kb(arqF.size)}; o limite é 20 MB. Reduza ou envie em partes.`); return; }
+      const tipo = document.getElementById('up-tipo').value, agora = new Date().toISOString();
+      const novo = { id: 'a' + Date.now().toString(36), tipo, pessoa_id: p.id, nome_original: arqF.name, tamanho_bytes: arqF.size, validade: document.getElementById('up-validade').value || (tipo === 'CNH' ? m.cnh_validade : null), numero: document.getElementById('up-numero').value.trim() || null, restrito: document.getElementById('up-restrito').checked };
+      D.arquivos.push(novo);
+      D.auditoria.unshift({ id: Date.now(), em: agora, usuario: N.usuarioAtual.nome, tabela: 'arquivo', registro_id: novo.id, acao: 'insert', resumo: `${tipo} anexado (${arqF.name})` });
+      renderListas(); renderCabecalho();
+      N.toast(`Arquivo enviado: ${esc(arqF.name)}`, 'upload');
+    }
+  });
+  main.addEventListener('change', (e) => { if (e.target.id === 'up-arquivo') limparErro(e.target.closest('.campo')); });
+  document.getElementById('acao-anexar').addEventListener('click', () => {
+    document.getElementById('aba-documentos').click();
+    const env = document.getElementById('enviar'); env.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    document.getElementById('up-tipo').focus();
+  });
+};
+</script>
+<script src="assets/nilt.js"></script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+/* NILT — grupo Motoristas (motoristas.html, motorista-novo.html, motorista.html).
+   Só o que é destas telas; tokens e componentes vêm de nilt.css. */
+
+/* ---------- marca de validade: a data ganha forma e cor só quando vence em até 30 dias ou venceu ---------- */
+.val { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.val::before { content: ""; width: 8px; height: 8px; flex: none; display: none; }
+.val-vencendo { color: var(--amarelo-tinta); font-weight: 600; }
+.val-vencendo::before { display: block; background: var(--amarelo); transform: rotate(45deg) scale(0.86); border-radius: 1px; box-shadow: 0 0 0 1px #c99700; }
+.val-vencido { color: var(--vermelho-tinta); font-weight: 600; }
+.val-vencido::before { display: block; width: 9px; height: 9px; border: 2px solid var(--vermelho); border-radius: 50%; }
+
+.val-pendente { color: var(--laranja-tinta); font-weight: 600; }
+.val-pendente::before { display: block; background: var(--laranja); transform: rotate(45deg) scale(0.86); border-radius: 1px; }
+
+/* ---------- lista ---------- */
+.tabela .cel-pessoa { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.tabela .cel-pessoa > span:last-child { min-width: 0; }
+.tabela .cel-pessoa .id { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tabela td .linha2 { font-size: 13px; line-height: 18px; }
+.tabela td .linha2 .val { font-weight: 500; }
+.x-tab, .tabela .linha2.x-cel-b, .tabela .linha2.x-tab-b { display: none; }
+.tabela .cod, .tabela .num { white-space: nowrap; }
+.filtro-gr { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.lista-vazia td { cursor: default; }
+.lista-vazia:hover { background: transparent !important; }
+.lista-vazia .vazio-bloco { margin: 12px 0; }
+
+/* ---------- novo motorista ---------- */
+.novo { max-width: 1040px; }
+.novo .resultado { margin-top: 8px; }
+.cpf-linha { display: flex; gap: 12px; align-items: flex-start; }
+.cpf-linha .campo { width: 280px; }
+.exemplos { font-size: 12px; color: var(--muted); line-height: 18px; }
+.exemplos button { background: none; border: 0; padding: 0; color: var(--azul); cursor: pointer; font: inherit; }
+.exemplos button:hover { text-decoration: underline; text-underline-offset: 3px; }
+.achado-pessoa { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 16px 20px; }
+.achado-pessoa .avatar { width: 40px; height: 40px; font-size: 14px; }
+.achado-pessoa b { display: block; font-weight: 600; }
+.achado-pessoa .sub { color: var(--muted); font-size: 13px; }
+.acoes-nota { margin-right: auto; align-self: center; }
+.campo input:disabled, .campo select:disabled { background: var(--raised); color: var(--muted); cursor: not-allowed; }
+.acoes-achado { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.aviso-ligar { margin-top: 12px; }
+.acoes-fim { display: flex; gap: 8px; justify-content: flex-end; padding-top: 24px; border-top: 1px solid var(--rule); margin-top: 8px; }
+
+/* campos de arquivo e de marcar dentro da grade */
+.campo input[type="file"] { height: auto; padding: 6px; color: var(--muted); }
+.campo input[type="file"]::file-selector-button {
+  height: 26px; margin-right: 10px; padding: 0 12px;
+  border: 1px solid var(--control); border-radius: var(--radius-control); background: #fff;
+  font: 600 13px var(--font); color: var(--ink); cursor: pointer;
+}
+.marcar { display: inline-flex; align-items: center; gap: 8px; min-height: var(--field-h); cursor: pointer; font-weight: 400 !important; }
+.campo .marcar input, .marcar input { width: 18px; height: 18px; margin: 0; accent-color: var(--verde); flex: none; }
+.marcas { display: flex; gap: 20px; flex-wrap: wrap; }
+
+/* ---------- ficha ---------- */
+.ficha-cab { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ficha-cab .sinais { display: flex; gap: 6px; flex-wrap: wrap; }
+.resumo { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); margin-bottom: var(--gap); }
+.resumo > div { padding: 16px 20px; min-width: 0; }
+.resumo > div + div { border-left: 1px solid var(--rule); }
+.resumo .kv { row-gap: 8px; }
+.resumo .kv dd { min-width: 0; }
+.resumo h2 { font-size: 14px; line-height: 20px; font-weight: 600; margin-bottom: 10px; }
+.resumo .veiculo-linha { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.resumo .engate { margin-top: 12px; }
+.pendencias-ficha { display: grid; gap: 8px; margin-bottom: var(--gap); }
+
+.painel-cab { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.painel-cab h2 { font-size: var(--fs-section); line-height: 24px; }
+.painel-cab .dir { margin-left: auto; display: flex; gap: 8px; }
+.subsecao + .subsecao { margin-top: 32px; }
+
+/* validade em destaque: marco de quilômetro da CNH e da gerenciadora */
+.marco-validade { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 24px; align-items: center; padding: 16px 20px; margin-bottom: var(--gap); }
+.marco-validade .placa-km {
+  display: grid; justify-items: center; align-content: center; min-width: 92px; padding: 8px 12px 10px;
+  border: 2px solid var(--ink); border-radius: 6px; background: #fff; line-height: 1;
+}
+.marco-validade .placa-km span { font-size: 12px; color: var(--muted); }
+.marco-validade .placa-km b { font-size: 28px; line-height: 32px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 4px; }
+.marco-validade .placa-km.vencendo { background: var(--amarelo); border-color: #1e2327; }
+.marco-validade .placa-km.vencendo span { color: var(--amarelo-tinta); }
+.marco-validade .placa-km.vencido { border-color: var(--vermelho); }
+.marco-validade .placa-km.vencido b { color: var(--vermelho-tinta); }
+.marco-validade .placa-km.normal { background: var(--verde); border-color: var(--verde); color: #fff; box-shadow: inset 0 0 0 2px var(--verde), inset 0 0 0 3px #fff; }
+.marco-validade .placa-km.normal span { color: #d8eee0; }
+.marco-validade .regua { display: grid; gap: 8px; }
+.marco-validade .regua b { font-weight: 600; }
+.marco-validade .trilho.ok i { background: var(--verde); }
+.marco-validade .escala { position: relative; height: 16px; font-size: 12px; line-height: 16px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.marco-validade .escala span { position: absolute; top: 0; white-space: nowrap; }
+.marco-validade .escala .meio { transform: translateX(-50%); }
+.marco-validade .trilho { position: relative; }
+.marco-validade .corte { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); border-radius: 1px; }
+.marco-validade .fim { text-align: right; }
+.marco-validade .fim b { display: block; font-size: 16px; font-weight: 600; }
+.marco-validade .fim span { font-size: 13px; color: var(--muted); }
+
+/* listas de contato, contas e documentos */
+.tabela.leve tbody tr { cursor: default; }
+.so-cel { display: none; }
+@media (hover: hover) and (pointer: fine) { .tabela.leve tbody tr:hover { background: transparent; } }
+.tabela .acoes-linha { text-align: right; white-space: nowrap; }
+.tabela .acoes-linha .btn { height: 30px; }
+.marca-texto { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.marca-texto svg { width: 14px; height: 14px; }
+.marca-texto + .marca-texto { margin-left: 12px; }
+tr.novo-item td:first-child .id::after { content: " · novo"; color: var(--muted); font-weight: 400; }
+
+/* histórico */
+.linha-tempo { list-style: none; margin: 0; padding: 0; display: grid; }
+.linha-tempo li { display: grid; grid-template-columns: 150px 18px minmax(0, 1fr); gap: 12px; padding: 10px 0; border-top: 1px solid var(--rule); }
+.linha-tempo li:first-child { border-top: 0; }
+.linha-tempo time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; }
+.linha-tempo .ponto-acao { width: 10px; height: 10px; margin-top: 5px; border-radius: 50%; border: 2px solid var(--control); background: #fff; }
+.linha-tempo .ponto-acao.insert { border-color: var(--verde); }
+.linha-tempo .ponto-acao.visualizacao { border-color: var(--azul); }
+.linha-tempo b { font-weight: 600; }
+.linha-tempo .meta { display: block; color: var(--muted); font-size: 13px; }
+
+/* erro amigável */
+.erro-ficha { padding: 24px; display: grid; gap: 16px; justify-items: start; align-content: start; }
+.erro-ficha h2 { font-size: var(--fs-section); }
+.erro-ficha p { color: var(--muted); }
+
+.marco.erro-item { grid-template-columns: minmax(0, 1fr) auto; }
+.erro-ficha .acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.dialogo .campos { gap: 16px; }
+.dialogo { width: min(640px, calc(100vw - 32px)); }
+.btn-link { background: none; border: 0; padding: 0; color: var(--azul); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.barra-salvar .espaco { margin-left: auto; }
+.enviar-titulo { font-size: var(--fs-section); line-height: 24px; margin-bottom: 16px; }
+.enviar-pe { display: flex; justify-content: flex-end; }
+
+@media (max-width: 1100px) {
+  .x-tab { display: inline; }
+  .tabela .linha2.x-tab-b { display: block; }
+  .tabela .col-tab { display: none; }
+  .resumo { grid-template-columns: minmax(0, 1fr); }
+  .resumo > div + div { border-left: 0; border-top: 1px solid var(--rule); }
+}
+@media (max-width: 640px) {
+  .tabela .linha2.x-cel-b { display: block; }
+  .filtro-gr { width: 100%; }
+  .filtro-gr select { flex: 1; min-width: 0; }
+  .tabela .cel-pessoa .avatar { display: none; }
+  .cpf-linha { flex-wrap: wrap; }
+  .cpf-linha .campo { width: 100%; }
+  .achado-pessoa { grid-template-columns: 40px minmax(0, 1fr); }
+  .achado-pessoa > .btn { justify-self: start; }
+  .achado-pessoa > .btn, .achado-pessoa > .acoes-achado { grid-column: 1 / -1; }
+  .marco-validade { grid-template-columns: auto minmax(0, 1fr); gap: 16px; }
+  .marco-validade .regua { grid-column: 1 / -1; grid-row: 2; }
+  .linha-tempo li { grid-template-columns: 18px minmax(0, 1fr); }
+  .linha-tempo time { grid-column: 2; grid-row: 2; }
+  .tabela.empilha thead { display: none; }
+  .tabela.empilha tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--rule); }
+  .tabela.empilha td { height: auto; padding: 0; border: 0; }
+  .tabela.empilha td.cel-1 { grid-column: 1; }
+  .tabela.empilha td.acoes-linha { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
+  .tabela.empilha td:not(.cel-1):not(.acoes-linha) { grid-column: 1; font-size: 13px; color: var(--muted); }
+  .acoes-fim { flex-direction: column-reverse; }
+  .acoes-nota { margin-right: 0; }
+  .acoes-fim .btn { width: 100%; height: 44px; }
+}
+.pendencias-ficha:empty { display: none; }
