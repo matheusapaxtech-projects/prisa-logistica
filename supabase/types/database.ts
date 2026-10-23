@@ -33,6 +33,7 @@ export type Database = {
           validado_em: string | null
           validado_por: string | null
           veiculo_id: string | null
+          viagem_id: string | null
         }
         Insert: {
           created_at?: string
@@ -52,6 +53,7 @@ export type Database = {
           validado_em?: string | null
           validado_por?: string | null
           veiculo_id?: string | null
+          viagem_id?: string | null
         }
         Update: {
           created_at?: string
@@ -71,6 +73,7 @@ export type Database = {
           validado_em?: string | null
           validado_por?: string | null
           veiculo_id?: string | null
+          viagem_id?: string | null
         }
         Relationships: [
           {
@@ -92,6 +95,13 @@ export type Database = {
             columns: ["veiculo_id"]
             isOneToOne: false
             referencedRelation: "veiculo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arquivo_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "viagem"
             referencedColumns: ["id"]
           },
         ]
@@ -479,6 +489,111 @@ export type Database = {
           nome?: string
         }
         Relationships: []
+      }
+      pedido: {
+        Row: {
+          coleta_prevista: string | null
+          created_at: string
+          created_by: string | null
+          destinatario_id: string
+          entrega_prevista: string | null
+          frete_empresa_origem: Database["public"]["Enums"]["origem_frete"]
+          frete_empresa_tipo: Database["public"]["Enums"]["tipo_tarifa"]
+          frete_empresa_valor: number
+          id: string
+          local_coleta_id: string
+          local_descarga_id: string
+          numero: number
+          observacao: string | null
+          peso_total_kg: number
+          produto: string
+          remetente_id: string
+          situacao: Database["public"]["Enums"]["situacao_pedido"]
+          tomador_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          coleta_prevista?: string | null
+          created_at?: string
+          created_by?: string | null
+          destinatario_id: string
+          entrega_prevista?: string | null
+          frete_empresa_origem?: Database["public"]["Enums"]["origem_frete"]
+          frete_empresa_tipo?: Database["public"]["Enums"]["tipo_tarifa"]
+          frete_empresa_valor: number
+          id?: string
+          local_coleta_id: string
+          local_descarga_id: string
+          numero?: never
+          observacao?: string | null
+          peso_total_kg: number
+          produto: string
+          remetente_id: string
+          situacao?: Database["public"]["Enums"]["situacao_pedido"]
+          tomador_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          coleta_prevista?: string | null
+          created_at?: string
+          created_by?: string | null
+          destinatario_id?: string
+          entrega_prevista?: string | null
+          frete_empresa_origem?: Database["public"]["Enums"]["origem_frete"]
+          frete_empresa_tipo?: Database["public"]["Enums"]["tipo_tarifa"]
+          frete_empresa_valor?: number
+          id?: string
+          local_coleta_id?: string
+          local_descarga_id?: string
+          numero?: never
+          observacao?: string | null
+          peso_total_kg?: number
+          produto?: string
+          remetente_id?: string
+          situacao?: Database["public"]["Enums"]["situacao_pedido"]
+          tomador_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedido_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "cliente"
+            referencedColumns: ["pessoa_id"]
+          },
+          {
+            foreignKeyName: "pedido_local_coleta_id_fkey"
+            columns: ["local_coleta_id"]
+            isOneToOne: false
+            referencedRelation: "pessoa_endereco"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_local_descarga_id_fkey"
+            columns: ["local_descarga_id"]
+            isOneToOne: false
+            referencedRelation: "pessoa_endereco"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_remetente_id_fkey"
+            columns: ["remetente_id"]
+            isOneToOne: false
+            referencedRelation: "cliente"
+            referencedColumns: ["pessoa_id"]
+          },
+          {
+            foreignKeyName: "pedido_tomador_id_fkey"
+            columns: ["tomador_id"]
+            isOneToOne: false
+            referencedRelation: "cliente"
+            referencedColumns: ["pessoa_id"]
+          },
+        ]
       }
       perfil_usuario: {
         Row: {
@@ -1062,18 +1177,21 @@ export type Database = {
         Row: {
           aplica_pessoa: boolean
           aplica_veiculo: boolean
+          aplica_viagem: boolean
           id: number
           nome: string
         }
         Insert: {
           aplica_pessoa?: boolean
           aplica_veiculo?: boolean
+          aplica_viagem?: boolean
           id?: number
           nome: string
         }
         Update: {
           aplica_pessoa?: boolean
           aplica_veiculo?: boolean
+          aplica_viagem?: boolean
           id?: number
           nome?: string
         }
@@ -1395,6 +1513,286 @@ export type Database = {
           },
         ]
       }
+      viagem: {
+        Row: {
+          cancelada_em: string | null
+          cancelada_por: string | null
+          cancelamento_motivo: string | null
+          cavalo_id: string
+          chave_cte: string | null
+          chave_mdfe: string | null
+          conjunto_id: string
+          created_at: string
+          created_by: string | null
+          divergencia: Database["public"]["Enums"]["resultado_contagem"] | null
+          divergencia_descricao: string | null
+          finalizada_em: string | null
+          frete_motorista_tipo:
+            | Database["public"]["Enums"]["tipo_tarifa"]
+            | null
+          frete_motorista_valor: number | null
+          id: string
+          iniciada_em: string | null
+          iniciada_por: string | null
+          liberacao_aptidao: Json | null
+          liberacao_justificativa: string | null
+          motorista_id: string
+          numero: number
+          observacao: string | null
+          pagamento_saida_em: string | null
+          pagamento_saida_por: string | null
+          pedido_id: string
+          peso_chegada_kg: number | null
+          peso_previsto_kg: number
+          peso_saida_kg: number | null
+          resolucao: string | null
+          status_campo: Database["public"]["Enums"]["status_campo"] | null
+          status_desde: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          cancelada_em?: string | null
+          cancelada_por?: string | null
+          cancelamento_motivo?: string | null
+          cavalo_id: string
+          chave_cte?: string | null
+          chave_mdfe?: string | null
+          conjunto_id: string
+          created_at?: string
+          created_by?: string | null
+          divergencia?: Database["public"]["Enums"]["resultado_contagem"] | null
+          divergencia_descricao?: string | null
+          finalizada_em?: string | null
+          frete_motorista_tipo?:
+            | Database["public"]["Enums"]["tipo_tarifa"]
+            | null
+          frete_motorista_valor?: number | null
+          id?: string
+          iniciada_em?: string | null
+          iniciada_por?: string | null
+          liberacao_aptidao?: Json | null
+          liberacao_justificativa?: string | null
+          motorista_id: string
+          numero?: never
+          observacao?: string | null
+          pagamento_saida_em?: string | null
+          pagamento_saida_por?: string | null
+          pedido_id: string
+          peso_chegada_kg?: number | null
+          peso_previsto_kg: number
+          peso_saida_kg?: number | null
+          resolucao?: string | null
+          status_campo?: Database["public"]["Enums"]["status_campo"] | null
+          status_desde?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          cancelada_em?: string | null
+          cancelada_por?: string | null
+          cancelamento_motivo?: string | null
+          cavalo_id?: string
+          chave_cte?: string | null
+          chave_mdfe?: string | null
+          conjunto_id?: string
+          created_at?: string
+          created_by?: string | null
+          divergencia?: Database["public"]["Enums"]["resultado_contagem"] | null
+          divergencia_descricao?: string | null
+          finalizada_em?: string | null
+          frete_motorista_tipo?:
+            | Database["public"]["Enums"]["tipo_tarifa"]
+            | null
+          frete_motorista_valor?: number | null
+          id?: string
+          iniciada_em?: string | null
+          iniciada_por?: string | null
+          liberacao_aptidao?: Json | null
+          liberacao_justificativa?: string | null
+          motorista_id?: string
+          numero?: never
+          observacao?: string | null
+          pagamento_saida_em?: string | null
+          pagamento_saida_por?: string | null
+          pedido_id?: string
+          peso_chegada_kg?: number | null
+          peso_previsto_kg?: number
+          peso_saida_kg?: number | null
+          resolucao?: string | null
+          status_campo?: Database["public"]["Enums"]["status_campo"] | null
+          status_desde?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "viagem_cavalo_id_fkey"
+            columns: ["cavalo_id"]
+            isOneToOne: false
+            referencedRelation: "veiculo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "viagem_conjunto_id_fkey"
+            columns: ["conjunto_id"]
+            isOneToOne: false
+            referencedRelation: "conjunto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "viagem_conjunto_id_fkey"
+            columns: ["conjunto_id"]
+            isOneToOne: false
+            referencedRelation: "v_conjunto_capacidade"
+            referencedColumns: ["conjunto_id"]
+          },
+          {
+            foreignKeyName: "viagem_motorista_id_fkey"
+            columns: ["motorista_id"]
+            isOneToOne: false
+            referencedRelation: "motorista"
+            referencedColumns: ["pessoa_id"]
+          },
+          {
+            foreignKeyName: "viagem_motorista_id_fkey"
+            columns: ["motorista_id"]
+            isOneToOne: false
+            referencedRelation: "v_motorista_situacao"
+            referencedColumns: ["pessoa_id"]
+          },
+          {
+            foreignKeyName: "viagem_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedido"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      viagem_evento: {
+        Row: {
+          dados: Json
+          de: Database["public"]["Enums"]["status_campo"] | null
+          em: string
+          id: number
+          motivo: string | null
+          para: Database["public"]["Enums"]["status_campo"] | null
+          por: string | null
+          viagem_id: string
+        }
+        Insert: {
+          dados?: Json
+          de?: Database["public"]["Enums"]["status_campo"] | null
+          em?: string
+          id?: never
+          motivo?: string | null
+          para?: Database["public"]["Enums"]["status_campo"] | null
+          por?: string | null
+          viagem_id: string
+        }
+        Update: {
+          dados?: Json
+          de?: Database["public"]["Enums"]["status_campo"] | null
+          em?: string
+          id?: never
+          motivo?: string | null
+          para?: Database["public"]["Enums"]["status_campo"] | null
+          por?: string | null
+          viagem_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "viagem_evento_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "viagem"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      viagem_ocorrencia: {
+        Row: {
+          aberta_em: string
+          aberta_por: string | null
+          descricao: string
+          id: string
+          resolucao: string | null
+          resolvida_em: string | null
+          resolvida_por: string | null
+          tipo: Database["public"]["Enums"]["tipo_ocorrencia"]
+          viagem_id: string
+        }
+        Insert: {
+          aberta_em?: string
+          aberta_por?: string | null
+          descricao: string
+          id?: string
+          resolucao?: string | null
+          resolvida_em?: string | null
+          resolvida_por?: string | null
+          tipo: Database["public"]["Enums"]["tipo_ocorrencia"]
+          viagem_id: string
+        }
+        Update: {
+          aberta_em?: string
+          aberta_por?: string | null
+          descricao?: string
+          id?: string
+          resolucao?: string | null
+          resolvida_em?: string | null
+          resolvida_por?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_ocorrencia"]
+          viagem_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "viagem_ocorrencia_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "viagem"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      viagem_pausa: {
+        Row: {
+          coluna_origem: Database["public"]["Enums"]["status_campo"]
+          fim: string | null
+          id: string
+          inicio: string
+          programada: boolean
+          tipo: Database["public"]["Enums"]["tipo_pausa"]
+          viagem_id: string
+        }
+        Insert: {
+          coluna_origem: Database["public"]["Enums"]["status_campo"]
+          fim?: string | null
+          id?: string
+          inicio?: string
+          programada: boolean
+          tipo: Database["public"]["Enums"]["tipo_pausa"]
+          viagem_id: string
+        }
+        Update: {
+          coluna_origem?: Database["public"]["Enums"]["status_campo"]
+          fim?: string | null
+          id?: string
+          inicio?: string
+          programada?: boolean
+          tipo?: Database["public"]["Enums"]["tipo_pausa"]
+          viagem_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "viagem_pausa_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "viagem"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       v_conjunto_capacidade: {
@@ -1552,6 +1950,7 @@ export type Database = {
         | "medio_completo"
         | "superior_incompleto"
         | "superior_completo"
+      origem_frete: "manual" | "tabela"
       raca_cor:
         | "branca"
         | "preta"
@@ -1566,6 +1965,7 @@ export type Database = {
         | "peso_chegada_se_menor"
         | "peso_chegada_com_tolerancia"
         | "peso_chegada_acima_tolerancia"
+      resultado_contagem: "sem_divergencia" | "falta" | "sobra" | "avaria"
       sexo: "masculino" | "feminino"
       situacao_cadastro: "cancelado" | "pendente" | "normal"
       situacao_cpf:
@@ -1587,6 +1987,18 @@ export type Database = {
         | "parado"
         | "sinistro"
         | "vendido"
+      situacao_pedido: "aberto" | "cancelado"
+      status_campo:
+        | "transito"
+        | "aguardando_carregamento"
+        | "em_carregamento"
+        | "aguardando_nf_pagamento"
+        | "em_rota"
+        | "pausa"
+        | "aguardando_descarga"
+        | "aguardando_contagem"
+        | "resolucao_divergencia"
+        | "frete_finalizado"
       tipo_assoalho: "madeira" | "ferro" | "misto"
       tipo_chave_pix: "cpf" | "cnpj" | "celular" | "email" | "aleatoria"
       tipo_conta: "corrente" | "poupanca" | "salario"
@@ -1596,9 +2008,25 @@ export type Database = {
         | "coleta_descarga"
         | "cobranca"
         | "correspondencia"
+      tipo_ocorrencia:
+        | "atraso"
+        | "avaria"
+        | "recusa"
+        | "sinistro"
+        | "parada_nao_prevista"
+        | "outro"
+      tipo_pausa:
+        | "almoco"
+        | "banheiro"
+        | "descanso_pernoite"
+        | "abastecimento"
+        | "manutencao"
+        | "problema"
+        | "outro"
       tipo_pessoa: "pf" | "pj"
       tipo_rastreamento: "telemonitorado" | "rastreador" | "localizador"
       tipo_referencia: "pessoal" | "comercial"
+      tipo_tarifa: "total" | "por_tonelada"
       tipo_telefone: "residencial" | "comercial" | "celular" | "fax" | "radio"
       uf:
         | "AC"
@@ -1782,6 +2210,7 @@ export const Constants = {
         "superior_incompleto",
         "superior_completo",
       ],
+      origem_frete: ["manual", "tabela"],
       raca_cor: [
         "branca",
         "preta",
@@ -1798,6 +2227,7 @@ export const Constants = {
         "peso_chegada_com_tolerancia",
         "peso_chegada_acima_tolerancia",
       ],
+      resultado_contagem: ["sem_divergencia", "falta", "sobra", "avaria"],
       sexo: ["masculino", "feminino"],
       situacao_cadastro: ["cancelado", "pendente", "normal"],
       situacao_cpf: [
@@ -1821,6 +2251,19 @@ export const Constants = {
         "sinistro",
         "vendido",
       ],
+      situacao_pedido: ["aberto", "cancelado"],
+      status_campo: [
+        "transito",
+        "aguardando_carregamento",
+        "em_carregamento",
+        "aguardando_nf_pagamento",
+        "em_rota",
+        "pausa",
+        "aguardando_descarga",
+        "aguardando_contagem",
+        "resolucao_divergencia",
+        "frete_finalizado",
+      ],
       tipo_assoalho: ["madeira", "ferro", "misto"],
       tipo_chave_pix: ["cpf", "cnpj", "celular", "email", "aleatoria"],
       tipo_conta: ["corrente", "poupanca", "salario"],
@@ -1831,9 +2274,27 @@ export const Constants = {
         "cobranca",
         "correspondencia",
       ],
+      tipo_ocorrencia: [
+        "atraso",
+        "avaria",
+        "recusa",
+        "sinistro",
+        "parada_nao_prevista",
+        "outro",
+      ],
+      tipo_pausa: [
+        "almoco",
+        "banheiro",
+        "descanso_pernoite",
+        "abastecimento",
+        "manutencao",
+        "problema",
+        "outro",
+      ],
       tipo_pessoa: ["pf", "pj"],
       tipo_rastreamento: ["telemonitorado", "rastreador", "localizador"],
       tipo_referencia: ["pessoal", "comercial"],
+      tipo_tarifa: ["total", "por_tonelada"],
       tipo_telefone: ["residencial", "comercial", "celular", "fax", "radio"],
       uf: [
         "AC",

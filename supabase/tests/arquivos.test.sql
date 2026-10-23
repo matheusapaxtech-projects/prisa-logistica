@@ -59,8 +59,8 @@ begin
   return next is((select min(id) from public.tipo_arquivo), 1::smallint, 'tipo_arquivo: id mínimo 1');
   return next is((select max(id) from public.tipo_arquivo where id <= 14), 14::smallint, 'tipo_arquivo: id 14 presente');
   return next is(
-    (select count(*) from public.tipo_arquivo where not (aplica_pessoa or aplica_veiculo)),
-    0::bigint, 'tipo_arquivo: todo tipo se aplica a pessoa ou a veículo');
+    (select count(*) from public.tipo_arquivo where not (aplica_pessoa or aplica_veiculo or aplica_viagem)),
+    0::bigint, 'tipo_arquivo: todo tipo se aplica a pessoa, veículo ou viagem');
   return next ok(
     (select aplica_veiculo and not aplica_pessoa from public.tipo_arquivo where nome = 'CRLV'),
     'CRLV é só de veículo');
