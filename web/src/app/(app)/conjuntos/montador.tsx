@@ -235,7 +235,9 @@ export function Montador({ base, editar, cavaloInicial }: Props) {
   } else if (cavalo) {
     motivo = capacidade(cavalo, pecasV).excede_cmt ? "Pronto para salvar, com aviso: passa do CMT do cavalo." : "Pronto para salvar.";
   }
-  const desligado = !cavaloId || !n || nErros > 0 || !!erroBanco || salvando;
+  // recusa de composição (com lugar na peça/cavalo) desliga até a montagem mudar; erro geral
+  // (sessão, falha de rede, conjunto encerrado…) deixa tentar de novo
+  const desligado = !cavaloId || !n || nErros > 0 || !!erroBanco?.local || salvando;
 
   /* ----- ações ----- */
   function escolherCavalo(id: string) {
@@ -302,6 +304,7 @@ export function Montador({ base, editar, cavaloInicial }: Props) {
   function salvar() {
     if (desligado || !cavaloId) return;
     const nome = nomeAtual;
+    setErroBanco(null);
     iniciar(async () => {
       const res = await salvarConjunto({
         conjuntoId,

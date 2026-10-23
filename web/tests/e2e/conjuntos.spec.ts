@@ -8,7 +8,7 @@ import { E2E_EMAIL, E2E_SENHA, entrar, prepararPrint } from "./apoio";
 // Roda contra o banco vivo de desenvolvimento. Re-executável e sem apagar nada:
 // - o cavalo, as carretas e o dolly são escolhidos na hora entre os veículos da seed que estão livres;
 // - o que o teste monta fica no histórico (encerrado) e o estado aberto do cavalo volta ao que era
-//   (o `finally` encerra o que o teste abriu, ou salva de novo a composição original).
+//   (a limpeza, depois do teste, encerra o que o teste abriu, ou salva de novo a composição original).
 try {
   process.loadEnvFile(".env.local");
 } catch {
@@ -61,7 +61,10 @@ const abertoDoCavalo = async (db: SupabaseClient, cavalo: string) => (await aber
 async function restaurar(db: SupabaseClient, cavalo: string, original: Aberto | null) {
   const agora = await abertoDoCavalo(db, cavalo);
   if (!original) {
-    if (agora) expect((await db.rpc("encerrar_conjunto", { p_conjunto_id: agora.id })).error).toBeNull();
+    if (agora) {
+      const r = await db.rpc("encerrar_conjunto", { p_conjunto_id: agora.id });
+      if (r.error) throw new Error(`Não foi possível encerrar o conjunto ${agora.id}: ${r.error.message}`);
+    }
     return;
   }
   if (agora && agora.itens.join() === original.itens.join() && agora.motorista_id === original.motorista_id) return;
@@ -71,7 +74,25 @@ async function restaurar(db: SupabaseClient, cavalo: string, original: Aberto | 
     p_motorista_id: original.motorista_id,
     p_itens: original.itens,
   });
-  expect(r.error).toBeNull();
+  if (r.error) throw new Error(`Não foi possível restaurar o conjunto do cavalo ${cavalo}: ${r.error.message}`);
+}
+
+/**
+ * Limpeza depois do teste, fora do `finally` (sem `expect` lá dentro): roda todos os passos, registra
+ * as falhas no log e devolve a primeira. Quem chama relança primeiro o erro do teste (se houve) e só
+ * depois o da limpeza, para a falha original nunca ficar escondida.
+ */
+async function limpar(...passos: (() => Promise<unknown>)[]): Promise<unknown> {
+  let primeira: unknown = null;
+  for (const passo of passos) {
+    try {
+      await passo();
+    } catch (e) {
+      console.error("Falha na limpeza do teste de conjuntos:", e);
+      primeira ??= e;
+    }
+  }
+  return primeira;
 }
 
 /** Peças livres da seed (fora de qualquer conjunto aberto) e um cavalo da seed sem conjunto aberto. */
@@ -122,6 +143,7 @@ test.describe("conjuntos", () => {
     const { cavalo, a, b, dolly } = await escolher(db);
     test.skip(!cavalo || !a || !b || !dolly, "A seed não tem um cavalo, duas carretas e um dolly livres agora.");
     const original = await abertoDoCavalo(db, cavalo!.id);
+    let falha: unknown = null;
 
     try {
       await entrar(page);
@@ -180,10 +202,15 @@ test.describe("conjuntos", () => {
       await expect(page.locator(".toast", { hasText: `Conjunto ${nome2} encerrado` })).toBeVisible();
       await expect(page.locator(".migalha .sinal")).toContainText("Encerrado");
       expect(await abertoDoCavalo(db, cavalo!.id)).toBeNull();
-    } finally {
-      await restaurar(db, cavalo!.id, original);
-      await db.auth.signOut({ scope: "local" });
+    } catch (e) {
+      falha = e;
     }
+    const limpeza = await limpar(
+      () => restaurar(db, cavalo!.id, original),
+      () => db.auth.signOut({ scope: "local" }),
+    );
+    if (falha) throw falha;
+    if (limpeza) throw limpeza;
   });
 
   test("banco recusa a peça que outra pessoa engatou: mensagem junto da peça e nada gravado", async ({ page }) => {
@@ -194,7 +221,7 @@ test.describe("conjuntos", () => {
     const alvo = abs.find((c) => c.id.startsWith(SEED_CONJUNTO) && c.itens.length < 4);
     test.skip(!cavalo || !a || !alvo, "A seed não tem um cavalo e uma carreta livres e um conjunto aberto agora.");
     const original = await abertoDoCavalo(db, cavalo!.id);
-    let outro: string | null = null;
+    let falha: unknown = null;
 
     try {
       await entrar(page);
@@ -204,8 +231,7 @@ test.describe("conjuntos", () => {
 
       // enquanto a tela está aberta, "outra pessoa" engata a carreta num conjunto novo
       const r = await db.rpc("salvar_conjunto", { p_conjunto_id: null, p_cavalo_id: cavalo!.id, p_motorista_id: null, p_itens: [a!.id] });
-      expect(r.error).toBeNull();
-      outro = r.data as string;
+      expect(r.error).toBeNull(); // a limpeza encerra este conjunto (é o do cavalo escolhido)
 
       // a tela (com os dados de antes) acha que a carreta está livre e deixa salvar; o banco recusa
       await livre(page, a!.placa).click();
@@ -219,11 +245,56 @@ test.describe("conjuntos", () => {
       // nada gravado pela metade: o conjunto continua aberto, com o mesmo id e as mesmas peças
       const depois = (await abertos(db)).find((c) => c.cavalo_id === alvo!.cavalo_id);
       expect(depois).toEqual(alvo);
-    } finally {
-      if (outro) await db.rpc("encerrar_conjunto", { p_conjunto_id: outro });
-      await restaurar(db, cavalo!.id, original);
-      await db.auth.signOut({ scope: "local" });
+    } catch (e) {
+      falha = e;
     }
+    const limpeza = await limpar(
+      () => restaurar(db, cavalo!.id, original),
+      () => db.auth.signOut({ scope: "local" }),
+    );
+    if (falha) throw falha;
+    if (limpeza) throw limpeza;
+  });
+
+  test("montar não encerra o conjunto que outra pessoa abriu no mesmo cavalo com a tela aberta", async ({ page }) => {
+    test.setTimeout(120_000);
+    const db = await banco();
+    const { cavalo, a, b } = await escolher(db);
+    test.skip(!cavalo || !a || !b, "A seed não tem um cavalo e duas carretas livres agora.");
+    const original = await abertoDoCavalo(db, cavalo!.id);
+    let falha: unknown = null;
+
+    try {
+      await entrar(page);
+      await page.goto(`/conjuntos/novo?cavalo=${cavalo!.id}`);
+      await expect(page.locator(`#lista-cav input[value="${cavalo!.id}"]`)).toBeChecked();
+      await livre(page, b!.placa).click();
+      await expect(page.locator("#motivo")).toContainText("Pronto para salvar");
+
+      // enquanto a tela está aberta, "outra pessoa" monta um conjunto no mesmo cavalo
+      const r = await db.rpc("salvar_conjunto", { p_conjunto_id: null, p_cavalo_id: cavalo!.id, p_motorista_id: null, p_itens: [a!.id] });
+      expect(r.error).toBeNull();
+      const deOutro = r.data as string;
+
+      // salvar com a tela velha: a action recusa no cavalo, sem chamar o salvar_conjunto
+      await page.locator("#salvar").click();
+      await expect(page.locator("#erro-cav .erro-msg").first()).toHaveText(MSG_OUTRO);
+      await expect(page.locator("#salvar")).toBeDisabled();
+      await expect(page).toHaveURL(/\/conjuntos\/novo/);
+
+      // o conjunto da outra pessoa continua aberto, com a peça dela
+      const agora = await abertoDoCavalo(db, cavalo!.id);
+      expect(agora?.id).toBe(deOutro);
+      expect(agora?.itens).toEqual([a!.id]);
+    } catch (e) {
+      falha = e;
+    }
+    const limpeza = await limpar(
+      () => restaurar(db, cavalo!.id, original),
+      () => db.auth.signOut({ scope: "local" }),
+    );
+    if (falha) throw falha;
+    if (limpeza) throw limpeza;
   });
 
   test("id que não é uuid e id inexistente mostram 'Conjunto não encontrado'", async ({ page }) => {

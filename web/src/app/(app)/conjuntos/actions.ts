@@ -6,10 +6,14 @@ import { comSessao, type ResultadoAcao } from "@/lib/acao";
 import { tipado } from "@/lib/banco";
 import { createClient } from "@/lib/supabase/server";
 import { carregarAbertos, carregarVeiculos } from "./consultas";
+import { conferirMontagem, conferirMotorista, MSG_ENCERRADO, type Recusa } from "./guardas";
 import { localizarErro, MAX_PECAS, type LocalErro } from "./regras";
 
 /* Gravações da tela de Conjuntos. Montar e trocar peças = uma chamada só de `salvar_conjunto`
    (encerra o anterior, insere o novo e valida dentro da mesma transação: ou grava tudo, ou nada).
+   Antes da RPC, as guardas (guardas.ts) conferem no banco que o cavalo está livre (montar) ou que o
+   conjunto editado continua aberto e é do mesmo cavalo (trocar peças): o `salvar_conjunto` encerra
+   todo conjunto aberto do cavalo e não pode fechar o de outra pessoa em silêncio.
    Encerrar = `encerrar_conjunto`. Trocar motorista = update de `conjunto.motorista_id` (o conjunto
    continua o mesmo). Tudo passa por `comSessao` (RLS: só admin e operação gravam). */
 
@@ -58,8 +62,13 @@ export async function salvarConjunto(entrada: Montagem): Promise<ResultadoMontag
   if (!p.success) return { ok: false, erro: p.error.issues[0].message, local: null };
   const m = p.data;
 
+  // a recusa das guardas sai daqui de dentro com o lugar onde aparece (cavalo), não só a frase
+  const guarda: { recusa: Recusa | null } = { recusa: null };
   const r = await comSessao(async ({ supabase }) => {
-    const { data, error } = await tipado(supabase).rpc("salvar_conjunto", {
+    const db = tipado(supabase);
+    guarda.recusa = await conferirMontagem(db, m);
+    if (guarda.recusa) return "";
+    const { data, error } = await db.rpc("salvar_conjunto", {
       // os tipos gerados não dizem que os dois aceitam null (conjunto novo, sem motorista)
       p_conjunto_id: m.conjuntoId as string,
       p_cavalo_id: m.cavaloId,
@@ -70,6 +79,7 @@ export async function salvarConjunto(entrada: Montagem): Promise<ResultadoMontag
     revalidar();
     return data;
   });
+  if (guarda.recusa) return { ok: false, ...guarda.recusa };
   if (r.ok) return r;
   return { ok: false, erro: r.erro, local: await localizarNoBanco(r.erro, m) };
 }
@@ -90,7 +100,13 @@ export async function trocarMotorista(entrada: z.infer<typeof Troca>): Promise<R
   const p = Troca.safeParse(entrada);
   if (!p.success) return { ok: false, erro: p.error.issues[0].message };
   return comSessao(async ({ supabase }) => {
-    const { data, error } = await tipado(supabase)
+    const db = tipado(supabase);
+    const atual = await db.from("conjunto").select("motorista_id, fim").eq("id", p.data.conjuntoId).maybeSingle();
+    if (atual.error) throw atual.error;
+    if (!atual.data || atual.data.fim) throw { code: "P0001", message: MSG_ENCERRADO };
+    const recusa = await conferirMotorista(db, p.data.motoristaId, atual.data.motorista_id);
+    if (recusa) throw { code: "P0001", message: recusa.erro };
+    const { data, error } = await db
       .from("conjunto")
       .update({ motorista_id: p.data.motoristaId })
       .eq("id", p.data.conjuntoId)
@@ -98,7 +114,7 @@ export async function trocarMotorista(entrada: z.infer<typeof Troca>): Promise<R
       .select("id");
     if (error) throw error;
     // nenhuma linha: encerrado nesse meio-tempo (ou o RLS barrou)
-    if (!data?.length) throw { code: "P0001", message: "Este conjunto já foi encerrado. Atualize a página." };
+    if (!data?.length) throw { code: "P0001", message: MSG_ENCERRADO };
     revalidar();
   });
 }
