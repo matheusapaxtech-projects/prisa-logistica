@@ -20,6 +20,7 @@ import { ehId } from "../schema";
 import { marcaCurta, rotuloSituacaoCadastro, rotuloTipo } from "../rotulos";
 import { AvisoCriado } from "./aviso-criado";
 import {
+  arquivoEnviado,
   capacidadeDoConjunto,
   carregarVeiculo,
   conjuntoAberto,
@@ -41,11 +42,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 type Pendencia = [TipoSinal, string];
 
 /** O que pede atenção neste veículo (`pendencias()` do protótipo), na ordem em que aparecem no cabeçalho. */
-function pendenciasDo(arrendado: boolean, arquivos: ArquivoResumo[], seguroValidade: string | null): Pendencia[] {
+function pendenciasDo(
+  arrendado: boolean,
+  { contratoEnviado, crlvEnviado }: { contratoEnviado: boolean; crlvEnviado: boolean },
+  arquivos: ArquivoResumo[],
+  seguroValidade: string | null,
+): Pendencia[] {
   const l: Pendencia[] = [];
-  if (arrendado && !arquivos.some((a) => a.tipo === "CONTRATO")) l.push(["pendente", "Sem contrato de arrendamento"]);
+  if (arrendado && !contratoEnviado) l.push(["pendente", "Sem contrato de arrendamento"]);
   arquivos.filter((a) => a.validade && diasAte(a.validade) < 0).forEach((a) => l.push(["bloqueado", `${a.tipo} vencido`]));
-  if (!arquivos.some((a) => a.tipo === "CRLV")) l.push(["pendente", "CRLV não anexado"]);
+  if (!crlvEnviado) l.push(["pendente", "CRLV não anexado"]);
   if (seguroValidade) {
     const s = diasAte(seguroValidade);
     if (s < 0) l.push(["bloqueado", "Seguro vencido"]);
@@ -86,8 +92,10 @@ export default async function FichaVeiculo({ params, searchParams }: { params: P
   const ativa = abas.some((a) => a.id === abaPedida) ? abaPedida : "crlv";
 
   const db = tipado(await createClient());
-  const [arquivos, abertoId, donos, motoristas] = await Promise.all([
+  const [arquivos, contratoEnviado, crlvEnviado, abertoId, donos, motoristas] = await Promise.all([
     listarArquivos(db, id),
+    arquivoEnviado(db, id, "CONTRATO"),
+    arquivoEnviado(db, id, "CRLV"),
     engata ? conjuntoAberto(db, id) : Promise.resolve(null),
     opcoesPorId(db, "proprietario", [v.proprietario_posse_id, v.proprietario_documento_id]),
     opcoesPorId(db, "motorista", [v.ultimo_motorista_id]),
@@ -109,14 +117,14 @@ export default async function FichaVeiculo({ params, searchParams }: { params: P
   const anos = v.ano_fabricacao ? `${v.ano_fabricacao}/${v.ano_modelo ?? v.ano_fabricacao}` : "";
   const crlvArq = arquivos.find((a) => a.tipo === "CRLV") ?? null;
   const contratoArq = arquivos.find((a) => a.tipo === "CONTRATO") ?? null;
-  const semContrato = arrendado && !contratoArq;
-  const pendencias = pendenciasDo(arrendado, arquivos, v.seguro_validade);
+  const semContrato = arrendado && !contratoEnviado;
+  const pendencias = pendenciasDo(arrendado, { contratoEnviado, crlvEnviado }, arquivos, v.seguro_validade);
   const tipoAnexo = typeof sp.tipo === "string" && TIPOS_ARQUIVO_VEICULO.includes(sp.tipo) ? sp.tipo : null;
   const anexarHref = (t: string) => `?aba=arquivos&tipo=${encodeURIComponent(t)}#enviar-documento`;
 
   // Documentos esperados que ainda não foram anexados
   const esperados: [string, string][] = [["CRLV", "CRLV do exercício"], ...(arrendado ? ([["CONTRATO", "Contrato de arrendamento"]] as [string, string][]) : [])];
-  const faltam = esperados.filter(([t]) => !arquivos.some((a) => a.tipo === t));
+  const faltam = esperados.filter(([t]) => !(t === "CRLV" ? crlvEnviado : contratoEnviado));
 
   const conjuntos = ativa === "conjunto" && engata ? await conjuntosDoVeiculo(db, id) : [];
   const atual = conjuntos.find((c) => c.id === abertoId) ?? null;
@@ -159,8 +167,9 @@ export default async function FichaVeiculo({ params, searchParams }: { params: P
             </p>
             <div className="sinais" id="sinais">
               <Sinal situacao={v.situacao_cadastro} texto={`Cadastro ${rotuloSituacaoCadastro(v.situacao_cadastro).toLowerCase()}`} />
+              {/* "Arrendado" vem só da coluna gerada (posse ≠ ANTT), como a aba Arrendados da lista */}
               {v.situacao_operacional !== "arrendado" && <Sinal situacao={v.situacao_operacional} />}
-              {(arrendado || v.situacao_operacional === "arrendado") && <Sinal situacao="arrendado" />}
+              {arrendado && <Sinal situacao="arrendado" />}
               {pendencias.slice(0, 2).map(([t, texto]) => (
                 <Sinal key={texto} tipo={t} texto={texto} />
               ))}
@@ -202,8 +211,8 @@ export default async function FichaVeiculo({ params, searchParams }: { params: P
         posse={donos.get(v.proprietario_posse_id) ?? null}
         documento={donos.get(v.proprietario_documento_id) ?? null}
         motorista={v.ultimo_motorista_id ? (motoristas.get(v.ultimo_motorista_id) ?? null) : null}
-        crlv={crlvArq ? { nome: crlvArq.nome, validade: crlvArq.validade } : null}
-        contrato={contratoArq ? { nome: contratoArq.nome, validade: contratoArq.validade } : null}
+        crlv={crlvEnviado ? { nome: crlvArq?.nome ?? "CRLV (restrito)", validade: crlvArq?.validade ?? null } : null}
+        contrato={contratoEnviado ? { nome: contratoArq?.nome ?? "Contrato de arrendamento", validade: contratoArq?.validade ?? null } : null}
         taraPecas={taraPecas}
         podeEditar={podeEditar}
         verDocumentosHref="?aba=arquivos"

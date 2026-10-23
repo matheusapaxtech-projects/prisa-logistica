@@ -95,6 +95,34 @@ test.describe("veículos", () => {
     await expect(page.locator(".arrendamento .upload.com-arquivo")).toContainText("CONTRATO");
   });
 
+  test("operação (não admin): contrato restrito já enviado não gera a pendência; sem contrato, gera", async ({ page }) => {
+    const { E2E_OPERACAO_EMAIL, E2E_OPERACAO_SENHA } = process.env;
+    test.skip(!E2E_OPERACAO_EMAIL || !E2E_OPERACAO_SENHA, "Faltam E2E_OPERACAO_* em web/.env.test.local.");
+    await page.goto("/login");
+    await page.getByLabel("E-mail").fill(E2E_OPERACAO_EMAIL!);
+    await page.getByLabel("Senha", { exact: true }).fill(E2E_OPERACAO_SENHA!);
+    await page.getByRole("button", { name: "Entrar" }).click();
+    await expect(page).toHaveURL(/\/$/);
+
+    // RTV6H10: arrendada, contrato restrito (a operação não vê a linha) com o objeto no Storage
+    await page.goto(`/veiculos/${RTV6H10}`);
+    await expect(page.locator("#sinais .sinal-info")).toHaveText("Arrendado");
+    await expect(page.locator("#sinais")).not.toContainText("Sem contrato de arrendamento");
+    await aba(page, "Proprietários");
+    await expect(page.locator(".arrendamento")).not.toContainText("Falta o contrato de arrendamento.");
+    await expect(page.locator(".arrendamento .upload.com-arquivo")).toContainText("restrito: só o administrador abre");
+    await aba(page, "Documentos");
+    await expect(page.locator("[data-painel=arquivos]")).not.toContainText("Contrato de arrendamento ainda não anexado");
+
+    // RTU1F45: arrendada sem contrato nenhum
+    await page.goto(`/veiculos/${RTU1F45}`);
+    await expect(page.locator("#sinais")).toContainText("Sem contrato de arrendamento");
+
+    // a lista conta só 1 arrendado sem contrato (o mesmo número da view de pendências)
+    await page.goto("/veiculos");
+    await expect(page.locator("#achado")).toContainText("1 sem contrato anexado");
+  });
+
   test("id que não é código válido ou que não existe mostra 'não encontrado'", async ({ page }) => {
     await entrar(page);
     for (const id of ["zzz", "00000000-0000-4000-8000-0000000009ff"]) {

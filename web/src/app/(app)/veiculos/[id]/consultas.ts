@@ -49,6 +49,19 @@ export async function listarArquivos(db: Banco, veiculoId: string): Promise<Arqu
   }));
 }
 
+/** O arquivo do tipo existe de verdade? Linha em `arquivo` E objeto no Storage (função `existe_arquivo_enviado`):
+   vale também para o arquivo restrito, que o RLS esconde de quem não é admin, e não conta o envio interrompido. */
+export async function arquivoEnviado(db: Banco, veiculoId: string, tipo: string): Promise<boolean> {
+  const { data, error } = await db.rpc("existe_arquivo_enviado", {
+    // a função aceita nulo no dono que não se aplica; o tipo gerado não sabe disso
+    p_pessoa_id: null as unknown as string,
+    p_veiculo_id: veiculoId,
+    p_tipo: tipo,
+  });
+  if (error) throw error;
+  return data === true;
+}
+
 /** Id do conjunto aberto em que o veículo está (como cavalo ou como peça), se houver. */
 export async function conjuntoAberto(db: Banco, veiculoId: string): Promise<string | null> {
   const [comoCavalo, comoPeca] = await Promise.all([
