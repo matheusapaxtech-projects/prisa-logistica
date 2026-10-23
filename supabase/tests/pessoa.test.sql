@@ -20,7 +20,7 @@ declare
 begin
   perform tests.executar_como(v_op,
     $q$insert into public.pessoa (tipo, nome, cpf) values ('pf', 'Fulano de Tal', '529.982.247-25')$q$);
-  select cpf into v_cpf from public.pessoa where nome = 'Fulano de Tal';
+  select cpf into v_cpf from public.pessoa where nome = 'Fulano de Tal' and cpf = '52998224725';
   return next is(v_cpf, '52998224725', 'CPF com máscara é gravado só com dígitos');
 end $$;
 
@@ -31,7 +31,7 @@ declare
 begin
   perform tests.executar_como(v_op,
     $q$insert into public.pessoa (tipo, nome, cnpj) values ('pj', 'Empresa Teste', '11.222.333/0001-81')$q$);
-  select cnpj into v_cnpj from public.pessoa where nome = 'Empresa Teste';
+  select cnpj into v_cnpj from public.pessoa where nome = 'Empresa Teste' and cnpj = '11222333000181';
   return next is(v_cnpj, '11222333000181', 'CNPJ com máscara é gravado só com dígitos');
 end $$;
 
@@ -136,17 +136,20 @@ declare
   v_semperfil uuid := tests.criar_usuario('sem@exemplo.test', null);
   v_pessoas bigint;
   v_bancos bigint;
+  v_total_bancos bigint;
   v_sem bigint;
 begin
   insert into public.pessoa (tipo, nome, cpf) values ('pf', 'Fulano', '52998224725');
+  select count(*) into v_total_bancos from public.banco;
   perform tests.como(v_lei);
-  select count(*) into v_pessoas from public.pessoa;
+  select count(*) into v_pessoas from public.pessoa where cpf = '52998224725';
   select count(*) into v_bancos from public.banco;
   perform tests.como(v_semperfil);
   select count(*) into v_sem from public.pessoa;
   perform tests.como_servico();
   return next is(v_pessoas, 1::bigint, 'leitura enxerga pessoa');
-  return next is(v_bancos, 20::bigint, 'leitura enxerga os 20 bancos da carga');
+  return next ok(v_total_bancos >= 20, 'carga de bancos presente (>= 20)');
+  return next is(v_bancos, v_total_bancos, 'leitura enxerga todos os bancos');
   return next is(v_sem, 0::bigint, 'usuário sem perfil não enxerga pessoa');
 end $$;
 

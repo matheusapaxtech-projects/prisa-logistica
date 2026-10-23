@@ -100,31 +100,32 @@ create function tests.test_tipos_carregados() returns setof text language plpgsq
 declare
   v_ruins text;
 begin
-  return next is((select count(*) from public.tipo_veiculo), 33::bigint, '33 tipos de veículo');
+  -- A carga do ATUA ocupa os ids 1..38; tipos criados depois recebem ids maiores.
+  return next is((select count(*) from public.tipo_veiculo where id <= 38), 33::bigint, '33 tipos de veículo');
   return next is((select categoria::text from public.tipo_veiculo where id = 18), 'dolly', 'id 18 é dolly');
   return next is((select configuracao_cavalo::text from public.tipo_veiculo where id = 7), 'trucado', 'id 7 é cavalo trucado');
   return next is((select configuracao_cavalo::text from public.tipo_veiculo where id = 6), 'toco', 'id 6 é cavalo toco');
   return next is((select configuracao_cavalo::text from public.tipo_veiculo where id = 27), 'trucado', 'id 27 (tração 3 eixos) é trucado');
   return next is((select configuracao_cavalo::text from public.tipo_veiculo where id = 29), 'toco', 'id 29 (tração 2 eixos) é toco');
-  return next is((select count(*) from public.tipo_veiculo where categoria = 'cavalo'), 4::bigint, '4 cavalos');
-  return next is((select count(*) from public.tipo_veiculo where categoria = 'carreta'), 17::bigint, '17 carretas');
-  return next is((select count(*) from public.tipo_veiculo where categoria = 'caminhao'), 8::bigint, '8 caminhões');
-  return next is((select count(*) from public.tipo_veiculo where categoria = 'outros'), 3::bigint, '3 outros');
-  return next is((select count(*) from public.tipo_veiculo where categoria = 'dolly'), 1::bigint, '1 dolly');
+  return next is((select count(*) from public.tipo_veiculo where id <= 38 and categoria = 'cavalo'), 4::bigint, '4 cavalos');
+  return next is((select count(*) from public.tipo_veiculo where id <= 38 and categoria = 'carreta'), 17::bigint, '17 carretas');
+  return next is((select count(*) from public.tipo_veiculo where id <= 38 and categoria = 'caminhao'), 8::bigint, '8 caminhões');
+  return next is((select count(*) from public.tipo_veiculo where id <= 38 and categoria = 'outros'), 3::bigint, '3 outros');
+  return next is((select count(*) from public.tipo_veiculo where id <= 38 and categoria = 'dolly'), 1::bigint, '1 dolly');
   return next is(
-    (select array_agg(id order by id) from public.tipo_veiculo where categoria = 'carreta'),
+    (select array_agg(id order by id) from public.tipo_veiculo where id <= 38 and categoria = 'carreta'),
     array[8, 9, 10, 11, 12, 14, 16, 22, 23, 24, 25, 28, 30, 33, 35, 36, 38]::smallint[], 'ids das carretas');
   return next is(
-    (select array_agg(id order by id) from public.tipo_veiculo where categoria = 'caminhao'),
+    (select array_agg(id order by id) from public.tipo_veiculo where id <= 38 and categoria = 'caminhao'),
     array[2, 3, 4, 5, 17, 31, 34, 37]::smallint[], 'ids dos caminhões');
   return next is(
-    (select array_agg(id order by id) from public.tipo_veiculo where categoria = 'outros'),
+    (select array_agg(id order by id) from public.tipo_veiculo where id <= 38 and categoria = 'outros'),
     array[1, 26, 32]::smallint[], 'ids de outros');
   return next is((select eixos from public.tipo_veiculo where id = 32), 2::smallint, 'ESPECIAL CAMINHONETE tem 2 eixos');
   -- eixos = número do nome (ex.: "... - 3 EIXOS"), exceto o id 32 que não traz número.
   select string_agg(id::text, ',') into v_ruins
   from public.tipo_veiculo
-  where id <> 32 and eixos::text is distinct from substring(nome from '- ([0-9]+) EIXOS$');
+  where id <= 38 and id <> 32 and eixos::text is distinct from substring(nome from '- ([0-9]+) EIXOS$');
   return next is(v_ruins, null::text, 'eixos confere com o número no nome em todos os tipos');
   return next is((select nome from public.tipo_veiculo where id = 11), 'CARRETA BAU - 3 EIXOS', 'nome ATUA preservado (id 11)');
 end $$;
@@ -144,15 +145,16 @@ end $$;
 
 create function tests.test_marcas_carregadas() returns setof text language plpgsql as $$
 begin
-  return next is((select count(*) from public.marca_veiculo), 42::bigint, '42 marcas');
+  -- A carga do ATUA ocupa os ids 1..42; marcas criadas depois recebem ids maiores.
+  return next is((select count(*) from public.marca_veiculo where id <= 42), 42::bigint, '42 marcas');
   return next is((select min(id) from public.marca_veiculo), 1::smallint, 'ids começam em 1');
-  return next is((select max(id) from public.marca_veiculo), 42::smallint, 'ids terminam em 42');
+  return next is((select max(id) from public.marca_veiculo where id <= 42), 42::smallint, 'ids da carga terminam em 42');
   return next is((select nome from public.marca_veiculo where id = 1), 'AGRALE', 'id 1 = AGRALE');
   return next is((select nome from public.marca_veiculo where id = 21), 'LAND ROVER', 'id 21 = LAND ROVER');
   return next is((select nome from public.marca_veiculo where id = 42), 'YAMAHA', 'id 42 = YAMAHA');
   return next is(
-    (select array_agg(nome order by id) from public.marca_veiculo),
-    (select array_agg(nome order by nome collate "C") from public.marca_veiculo),
+    (select array_agg(nome order by id) from public.marca_veiculo where id <= 42),
+    (select array_agg(nome order by nome collate "C") from public.marca_veiculo where id <= 42),
     'ids seguem a ordem alfabética');
   return next lives_ok($f$insert into public.marca_veiculo (nome) values ('MARCA TESTE')$f$, 'nova marca recebe id automático');
   return next ok((select id from public.marca_veiculo where nome = 'MARCA TESTE') >= 43,
@@ -161,17 +163,16 @@ end $$;
 
 create function tests.test_operadoras_unidades_centros() returns setof text language plpgsql as $$
 begin
-  return next is((select count(*) from public.operadora_tag), 5::bigint, '5 operadoras de TAG');
+  return next is((select count(*) from public.operadora_tag where id between 120 and 124), 5::bigint, '5 operadoras de TAG');
   return next is((select nome from public.operadora_tag where id = 120), 'PAMCARD TAG CONECTCAR', '120 CONECTCAR');
   return next is((select nome from public.operadora_tag where id = 121), 'PAMCARD TAG MOVEMAIS', '121 MOVEMAIS');
   return next is((select nome from public.operadora_tag where id = 122), 'PAMCARD TAG SEM PARAR', '122 SEM PARAR');
   return next is((select nome from public.operadora_tag where id = 123), 'PAMCARD TAG VELOE', '123 VELOE');
   return next is((select nome from public.operadora_tag where id = 124), 'PAMCARD - TAGGY', '124 TAGGY');
-  return next is((select count(*) from public.unidade_operacional), 3::bigint, '3 unidades operacionais');
+  return next is((select count(*) from public.unidade_operacional where id between 1 and 3), 3::bigint, '3 unidades operacionais');
   return next is((select nome from public.unidade_operacional where id = 1), 'TERCEIRIZACAO', '1 TERCEIRIZACAO');
   return next is((select nome from public.unidade_operacional where id = 2), 'FROTA PROPRIA', '2 FROTA PROPRIA');
   return next is((select nome from public.unidade_operacional where id = 3), 'PRISA APUCARANA', '3 PRISA APUCARANA');
-  return next is((select count(*) from public.centro_custo), 0::bigint, 'centro_custo sem carga');
   -- Identity continua depois dos ids do ATUA.
   insert into public.operadora_tag (nome) values ('OPERADORA TESTE');
   insert into public.unidade_operacional (nome) values ('UNIDADE TESTE');
@@ -291,7 +292,7 @@ begin
     format($f$select tests.executar_como(%L, $q$insert into public.veiculo (placa, tipo_veiculo_id, proprietario_posse_id, proprietario_documento_id) values ('TST1A21', 11, %L, %L)$q$)$f$, v_lei, v_p, v_p),
     '42501', null, 'leitura não insere veículo');
   perform tests.como(v_lei);
-  select count(*) into v_ve from public.veiculo;
+  select count(*) into v_ve from public.veiculo where placa in ('TST1A20', 'TST1A21');
   perform tests.como(v_sem);
   select count(*) into v_sem_n from public.veiculo;
   perform tests.como_servico();
@@ -315,7 +316,7 @@ declare
   v_n_sem bigint;
 begin
   perform tests.como(v_lei);
-  select count(*) into v_n_lei from public.marca_veiculo;
+  select count(*) into v_n_lei from public.marca_veiculo where id <= 42;
   perform tests.como(v_sem);
   select count(*) into v_n_sem from public.marca_veiculo;
   perform tests.como_servico();

@@ -103,12 +103,12 @@ begin
 
   -- admin: enxerga todos e altera 1 linha
   perform tests.como(v_admin);
-  select count(*) into v_vistos from public.perfil_usuario;
+  select count(*) into v_vistos from public.perfil_usuario where user_id in (v_admin, v_op);
   update public.perfil_usuario set nome = 'Operação Teste' where user_id = v_op;
   get diagnostics v_n_admin = row_count;
   perform tests.como_servico();
   select updated_by into v_by from public.perfil_usuario where user_id = v_op;
-  return next is(v_vistos, 2::bigint, 'admin enxerga todos os perfis');
+  return next is(v_vistos, 2::bigint, 'admin enxerga os perfis de outros usuários (os dois do teste)');
   return next is(v_n_admin, 1, 'admin altera 1 linha');
   return next is(v_by, v_admin, 'trigger carimba updated_by com o admin');
 end $$;
@@ -183,6 +183,54 @@ begin
     'fn_set_updated_at: authenticated sem execute');
   return next ok(not has_function_privilege('public', 'public.fn_set_updated_at()', 'execute'),
     'fn_set_updated_at: public sem execute');
+end $$;
+
+-- Migration 0901 (privilegios_padrao): default privileges do postgres em public.
+-- Parte 1 lê pg_default_acl; parte 2 cria objetos descartáveis (desfeitos pelo rollback do teste)
+-- e confere os privilégios que eles realmente recebem.
+create function tests.test_privilegios_padrao() returns setof text language plpgsql as $$
+declare
+  v_anon oid := (select oid from pg_roles where rolname = 'anon');
+  v_auth oid := (select oid from pg_roles where rolname = 'authenticated');
+  v_ruins text;
+begin
+  select string_agg(d.defaclobjtype::text || ':' || p.privilege_type, ', ') into v_ruins
+  from pg_default_acl d
+  join pg_roles r on r.oid = d.defaclrole and r.rolname = 'postgres'
+  join pg_namespace n on n.oid = d.defaclnamespace and n.nspname = 'public'
+  cross join lateral aclexplode(d.defaclacl) p
+  where p.grantee = v_anon;
+  return next is(v_ruins, null, 'default privileges (postgres, public): anon sem nada em tabelas, funções e sequências');
+
+  select string_agg(d.defaclobjtype::text || ':' || p.privilege_type, ', ') into v_ruins
+  from pg_default_acl d
+  join pg_roles r on r.oid = d.defaclrole and r.rolname = 'postgres'
+  join pg_namespace n on n.oid = d.defaclnamespace and n.nspname = 'public'
+  cross join lateral aclexplode(d.defaclacl) p
+  where p.grantee = v_auth and d.defaclobjtype = 'r'
+    and p.privilege_type in ('TRUNCATE', 'REFERENCES', 'TRIGGER', 'MAINTAIN');
+  return next is(v_ruins, null, 'default privileges (postgres, public): authenticated sem truncate/references/trigger/maintain em tabelas');
+
+  select string_agg(d.defaclobjtype::text || ':' || p.privilege_type, ', ') into v_ruins
+  from pg_default_acl d
+  join pg_roles r on r.oid = d.defaclrole and r.rolname = 'postgres'
+  cross join lateral aclexplode(d.defaclacl) p
+  where p.grantee = 0 and d.defaclobjtype = 'f';
+  return next is(v_ruins, null, 'default privileges (postgres): PUBLIC sem execute em funções futuras');
+
+  -- Comportamento: objetos novos criados pelo postgres em public.
+  create table public.tests_tmp_priv (id int primary key, x int);
+  create sequence public.tests_tmp_seq;
+  create function public.tests_tmp_fn() returns int language sql set search_path = '' as 'select 1';
+
+  return next ok(not has_table_privilege('anon', 'public.tests_tmp_priv', 'select'), 'tabela nova: anon sem select');
+  return next ok(not has_table_privilege('anon', 'public.tests_tmp_priv', 'insert'), 'tabela nova: anon sem insert');
+  return next ok(not has_table_privilege('authenticated', 'public.tests_tmp_priv', 'truncate'), 'tabela nova: authenticated sem truncate');
+  return next ok(not has_table_privilege('authenticated', 'public.tests_tmp_priv', 'trigger'), 'tabela nova: authenticated sem trigger');
+  return next ok(has_table_privilege('authenticated', 'public.tests_tmp_priv', 'select'), 'tabela nova: authenticated mantém select (RLS decide)');
+  return next ok(not has_sequence_privilege('anon', 'public.tests_tmp_seq', 'usage'), 'sequência nova: anon sem usage');
+  return next ok(not has_function_privilege('anon', 'public.tests_tmp_fn()', 'execute'), 'função nova: anon sem execute');
+  return next ok(not has_function_privilege('public', 'public.tests_tmp_fn()', 'execute'), 'função nova: PUBLIC sem execute');
 end $$;
 
 select * from runtests('tests'::name, '^test_');

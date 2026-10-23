@@ -119,7 +119,7 @@ begin
   insert into public.pessoa (tipo, nome, cpf) values ('pf', 'Motorista Teste', '52998224725') returning id into v_pf;
   insert into public.motorista (pessoa_id) values (v_pf);
   perform tests.como(v_lei);
-  select count(*) into v_com from public.v_motorista_situacao;
+  select count(*) into v_com from public.v_motorista_situacao where pessoa_id = v_pf;
   perform tests.como(v_sem);
   select count(*) into v_sem_n from public.v_motorista_situacao;
   perform tests.como_servico();

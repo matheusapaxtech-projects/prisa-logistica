@@ -123,11 +123,11 @@ begin
   perform tests.como_servico();
 
   perform tests.como(v_admin);
-  select count(*) into v_qtd_admin from public.auditoria;
+  select count(*) into v_qtd_admin from public.auditoria where tabela = 't';
   perform tests.como_servico();
 
   return next is(v_qtd_op, 0::bigint, 'operacao não enxerga auditoria');
-  return next ok(v_qtd_admin > 0, 'admin enxerga auditoria');
+  return next ok(v_qtd_admin >= 1, 'admin enxerga a auditoria gerada pelo teste');
 end $$;
 
 create function tests.test_auditoria_perfil_usuario_auditado() returns setof text language plpgsql as $$

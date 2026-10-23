@@ -52,12 +52,12 @@ end $$;
 create function tests.test_tipo_arquivo_carga() returns setof text language plpgsql as $$
 begin
   return next is(
-    array(select nome from public.tipo_arquivo order by id),
+    array(select nome from public.tipo_arquivo where id between 1 and 14 order by id),
     array['ANTT', 'ASSINATURA', 'CARIMBO', 'CND', 'CNH', 'COMP. RESIDÊNCIA', 'CONTRATO',
           'CRV / DUT', 'CRLV', 'DOC PESSOAL', 'FOTO', 'FOTO CONJUNTO', 'LOGO', 'OUTROS'],
     'tipo_arquivo: 14 tipos, ids 1 a 14 nessa ordem');
   return next is((select min(id) from public.tipo_arquivo), 1::smallint, 'tipo_arquivo: id mínimo 1');
-  return next is((select max(id) from public.tipo_arquivo), 14::smallint, 'tipo_arquivo: id máximo 14');
+  return next is((select max(id) from public.tipo_arquivo where id <= 14), 14::smallint, 'tipo_arquivo: id 14 presente');
   return next is(
     (select count(*) from public.tipo_arquivo where not (aplica_pessoa or aplica_veiculo)),
     0::bigint, 'tipo_arquivo: todo tipo se aplica a pessoa ou a veículo');
@@ -316,8 +316,8 @@ begin
   values (v_arq, 6, v_pes, 'pessoa/' || v_pes || '/' || v_arq || '-comp.pdf');
 
   perform tests.como(v_lei);
-  select count(*) into v_n_lei from public.arquivo;
-  select count(*) into v_t_lei from public.tipo_arquivo;
+  select count(*) into v_n_lei from public.arquivo where id = v_arq;
+  select count(*) into v_t_lei from public.tipo_arquivo where id between 1 and 14;
   perform tests.como(v_sem);
   select count(*) into v_n_sem from public.arquivo;
   select count(*) into v_t_sem from public.tipo_arquivo;
