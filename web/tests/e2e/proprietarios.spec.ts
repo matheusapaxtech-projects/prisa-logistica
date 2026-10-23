@@ -59,6 +59,10 @@ test.describe("proprietários", () => {
 
   test("novo: empresa desabilita TAC, confere o CNPJ e preenche pela Receita (rede real)", async ({ page }) => {
     await entrar(page);
+    // Só pula se a Receita está fora do ar ou sem rede (504 ou falha de rede). Um 502/403/500 é regressão: falha.
+    const sonda = await page.request.get("/api/cnpj/00000000000191", { timeout: 25_000 }).catch(() => null);
+    test.skip(!sonda || sonda.status() === 504, "BrasilAPI sem resposta agora (offline, timeout): a consulta real de CNPJ não pôde ser conferida.");
+    expect(sonda!.status(), "o CNPJ 00000000000191 existe na Receita; só 200 é aceitável quando há rede").toBe(200);
     await page.goto("/proprietarios/novo");
     // Antes do tipo: só a prévia das etapas.
     await expect(page.getByRole("heading", { name: "Depois do tipo" })).toBeVisible();
@@ -79,10 +83,7 @@ test.describe("proprietários", () => {
     await page.getByRole("button", { name: "Buscar na Receita" }).click();
 
     const razao = page.getByLabel("Razão social");
-    const falha = page.locator(".existe .aviso-bloqueado");
-    await expect(razao.or(falha)).toBeVisible({ timeout: 20_000 });
-    const motivo = (await falha.isVisible()) ? ((await falha.first().textContent()) ?? "") : "";
-    test.skip(!!motivo, `BrasilAPI inacessível agora (sem rede ou fora do ar): a consulta real de CNPJ não pôde ser conferida. Aviso da tela: ${motivo}`);
+    await expect(razao).toBeVisible({ timeout: 20_000 });
     await expect(razao).not.toHaveValue("");
     expect((await razao.inputValue()).toUpperCase()).toContain("BANCO DO BRASIL");
     await expect(page.locator("#receita-estado")).toContainText("Consultado na Receita hoje às");
@@ -291,6 +292,65 @@ test.describe("proprietários", () => {
     await expect(page.locator(".campo", { has: cpf }).locator(".erro")).toHaveText(
       "CPF inválido: os dois últimos dígitos não conferem. Copie de novo do documento.",
     );
+    await page.getByRole("button", { name: "Descartar" }).click();
+  });
+
+  test("novo: resposta antiga da Receita não preenche o formulário de outro CNPJ", async ({ page }) => {
+    await entrar(page);
+    // A Receita (simulada) demora para o primeiro CNPJ; no meio do caminho a pessoa troca o CNPJ.
+    await page.route("**/api/cnpj/00000000000191", async (rota) => {
+      await new Promise((r) => setTimeout(r, 1500));
+      await rota.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ nome: "EMPRESA ANTIGA SA", nome_fantasia: "", fundacao: "", natureza_juridica: "", cnae_principal: "", optante_simples: null, situacao: "ATIVA", endereco: { cep: "", logradouro: "", numero: "", complemento: "", bairro: "", cidade: "", uf: "" } }) });
+    });
+    await page.goto("/proprietarios/novo");
+    await page.locator(".tipo-opcao", { hasText: "Empresa" }).click();
+    const cnpj = page.getByLabel("CNPJ", { exact: true });
+    await cnpj.fill("00000000000191");
+    await expect(page.locator("#cnpj-estado")).toContainText("CNPJ válido");
+    await page.getByRole("button", { name: "Buscar na Receita" }).click();
+    await expect(page.getByRole("button", { name: "Buscando…" })).toBeVisible();
+    await cnpj.fill("45321876000178");
+    await page.waitForTimeout(2500);
+    await expect(page.getByLabel("Razão social")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Buscar na Receita" })).toBeEnabled();
+  });
+
+  test("novo: falha da Receita usa os textos do protótipo e mantém o formulário editável", async ({ page }) => {
+    await entrar(page);
+    await page.route("**/api/cnpj/00000000000191", (rota) => rota.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ erro: "CNPJ não encontrado na Receita." }) }));
+    await page.goto("/proprietarios/novo");
+    await page.locator(".tipo-opcao", { hasText: "Empresa" }).click();
+    const cnpj = page.getByLabel("CNPJ", { exact: true });
+    await cnpj.fill("00000000000191");
+    await page.getByRole("button", { name: "Buscar na Receita" }).click();
+    await expect(page.locator(".existe .aviso-bloqueado")).toContainText(
+      "CNPJ não encontrado na Receita. Confira os dígitos no cartão CNPJ; se estiverem certos, preencha os dados à mão.",
+    );
+    await page.unroute("**/api/cnpj/00000000000191");
+    await page.route("**/api/cnpj/00000000000191", (rota) => rota.fulfill({ status: 504, contentType: "application/json", body: JSON.stringify({ erro: "A consulta não respondeu. Preencha à mão ou tente de novo." }) }));
+    await page.getByRole("button", { name: "Buscar na Receita" }).click();
+    await expect(page.locator(".existe .aviso-bloqueado")).toContainText("A consulta à Receita não respondeu (BrasilAPI fora do ar ou sem internet). Tente de novo em instantes ou preencha os dados à mão.");
+    await page.getByRole("button", { name: "Preencher à mão" }).click();
+    await expect(page.getByLabel("Razão social")).toBeEditable();
+  });
+
+  test("ficha: erro do servidor em painel oculto leva à aba do campo e foca nele", async ({ page }) => {
+    await entrar(page);
+    await page.goto(`/proprietarios/${TSC}`);
+    // Uma edição visível primeiro (garante a hidratação); nada é gravado porque o servidor recusa o outro campo.
+    await page.locator("#nome_fantasia").fill("TSC Transportes x");
+    await expect(page.locator(".barra-salvar")).toBeVisible();
+    // Campo de Pagamento (painel oculto): a validação do servidor recusa e a ficha troca de aba.
+    await page.evaluate(() => {
+      const el = document.querySelector<HTMLInputElement>("#taxa_adm_percentual")!;
+      // Setter nativo: o React ignora o evento quando o valor foi trocado pela propriedade do elemento.
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(el, "150");
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await page.getByRole("button", { name: "Salvar alterações" }).click();
+    await expect(page).toHaveURL(/aba=pagamento/);
+    await expect(page.locator("#taxa_adm_percentual")).toBeFocused();
+    await expect(page.locator(".campo", { has: page.locator("#taxa_adm_percentual") }).locator(".erro")).toHaveText("Percentual inválido: use um número de 0 a 100.");
     await page.getByRole("button", { name: "Descartar" }).click();
   });
 

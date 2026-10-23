@@ -6,6 +6,8 @@ import { validacao } from "@/lib/validacao";
 
 const BASE = "https://brasilapi.com.br/api";
 const TIMEOUT_MS = 8000;
+// A BrasilAPI recusa (403) o fetch do Node sem User-Agent: sempre mandamos um.
+const USER_AGENT = "NILT/1.0 (+Prisa Logística)";
 
 export const ERROS_BRASILAPI = {
   cnpjNaoEncontrado: "CNPJ não encontrado na Receita.",
@@ -88,7 +90,7 @@ async function consultar(
   let r: Response;
   try {
     // no-store: o resultado nunca é guardado em cache, nem compartilhado entre usuários.
-    r = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS), cache: "no-store" });
+    r = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS), cache: "no-store", headers: { "user-agent": USER_AGENT } });
   } catch (e) {
     // Estouro do tempo (TimeoutError), cancelamento (AbortError) e falha de rede.
     // Pelo nome, não por instanceof: o DOMException pode vir de outro realm (ex.: jsdom nos testes).
@@ -96,6 +98,8 @@ async function consultar(
     return erro(ERROS_BRASILAPI.semResposta, nome === "TimeoutError" || nome === "AbortError" ? 504 : 502);
   }
   if (r.status === 404) return erro(naoEncontrado, 404);
+  // Bloqueio ou limite de uso (403, 429): do ponto de vista de quem cadastra, a consulta não respondeu.
+  if (r.status === 403 || r.status === 429) return erro(ERROS_BRASILAPI.semResposta, 504);
   if (!r.ok) return erro(falhou, 502);
   try {
     const j = (await r.json()) as unknown;

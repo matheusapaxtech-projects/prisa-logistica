@@ -25,7 +25,8 @@ type Pj = { receita: Receita | null; versao: number };
 type Props = { tipoInicial: Tipo | null; documentoInicial: string };
 
 const so = validacao.soDigitos;
-const MSG_RECEITA_FALHOU = "A consulta não respondeu. Preencha à mão ou tente de novo.";
+const MSG_RECEITA_404 = "CNPJ não encontrado na Receita. Confira os dígitos no cartão CNPJ; se estiverem certos, preencha os dados à mão.";
+const MSG_RECEITA_FALHOU = "A consulta à Receita não respondeu (BrasilAPI fora do ar ou sem internet). Tente de novo em instantes ou preencha os dados à mão.";
 const MSG_CORRIJA = "Corrija os campos marcados em vermelho para criar.";
 
 /* Novo proprietário (proprietario-novo.html): tipo → documento → dados → ANTT (→ responsável).
@@ -110,6 +111,7 @@ function FormularioTipo({ tipo, documentoInicial }: { tipo: Tipo; documentoInici
   const form = useRef<HTMLFormElement>(null);
   const cnpjRef = useRef<HTMLInputElement>(null);
   const pedido = useRef(0);
+  const buscaReceita = useRef(0);
   const iniciado = useRef(false);
   const [consulta, setConsulta] = useState<Consulta>({ estado: "nada" });
   const [ligado, setLigado] = useState(false);
@@ -177,6 +179,9 @@ function FormularioTipo({ tipo, documentoInicial }: { tipo: Tipo; documentoInici
     const el = e.currentTarget;
     el.value = mascaras.cnpj(el.value);
     setCnpjErro(null);
+    // Digitar outro CNPJ invalida a busca na Receita que estiver no ar.
+    buscaReceita.current++;
+    setBuscandoReceita(false);
     if (so(el.value).length === 14) void conferirCnpj(false);
     else {
       pedido.current++;
@@ -209,17 +214,24 @@ function FormularioTipo({ tipo, documentoInicial }: { tipo: Tipo; documentoInici
       return;
     }
     if (!(await conferirCnpj(true))) return;
+    // Resposta de um CNPJ que já não está no campo (ou de uma busca mais velha) não vale: descarta.
+    const meu = pedido.current;
+    const minha = ++buscaReceita.current;
+    const atual = () => meu === pedido.current && minha === buscaReceita.current && so(cnpjRef.current?.value) === d;
     setBuscandoReceita(true);
     setErroReceita(null);
     try {
       const r = await fetch(`/api/cnpj/${d}`, { cache: "no-store" });
-      const j = (await r.json()) as DadosCnpj & { erro?: string };
-      if (!r.ok || j.erro) throw new Error(j.erro || MSG_RECEITA_FALHOU);
+      const j = (await r.json().catch(() => ({}))) as DadosCnpj & { erro?: string };
+      if (!atual()) return;
+      if (r.status === 404) throw new Error(MSG_RECEITA_404);
+      if (!r.ok || j.erro) throw new Error(MSG_RECEITA_FALHOU);
       abrirPj({ ...j, cnpj: d, em: new Date().toISOString() });
     } catch (e) {
-      setErroReceita({ texto: (e as Error).message || MSG_RECEITA_FALHOU });
+      if (!atual()) return;
+      setErroReceita({ texto: (e as Error).message === MSG_RECEITA_404 ? MSG_RECEITA_404 : MSG_RECEITA_FALHOU });
     } finally {
-      setBuscandoReceita(false);
+      if (minha === buscaReceita.current) setBuscandoReceita(false);
     }
   }
 

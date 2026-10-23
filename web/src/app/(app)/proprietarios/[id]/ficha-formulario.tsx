@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ChangeEvent, type FocusEvent, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ChangeEvent, type FocusEvent, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Check, CircleAlert, LoaderCircle, RefreshCw } from "lucide-react";
 import { BarraSalvar, useAlteracoes } from "@/components/BarraSalvar";
@@ -168,6 +168,14 @@ function Din({ nome, rotulo, valor, tipo, erro }: { nome: string; rotulo: string
   );
 }
 
+/** Aba (painel) em que cada campo do servidor mora; o que não está aqui é de "dados". */
+function painelDoCampo(nome: string): string {
+  if (/^(rntrc|enquadramento_antt$|situacao_cadastro$|alto_desempenho$|qualificado_gmp$|dt_qualificacao_gmp$)/.test(nome)) return "antt";
+  if (nome.startsWith("responsavel_")) return "responsavel";
+  if (/^(taxa_adm_|regra_pgto_frete$|limite_adiantamento_|frete_empresa_motorista_)/.test(nome)) return "pagamento";
+  return "dados";
+}
+
 type Vivo = {
   rntrc: string;
   validade: string;
@@ -189,6 +197,9 @@ function lerVivo(f: HTMLFormElement | null, inicial: Vivo): Vivo {
     freteVal: g("frete_empresa_motorista_valor"),
   };
 }
+
+const MSG_404 = "CNPJ não encontrado na Receita. Confira o CNPJ acima; nada na ficha foi alterado.";
+const MSG_FALHOU = "A consulta à Receita não respondeu (BrasilAPI fora do ar ou sem internet). Nada na ficha foi alterado.";
 
 type MsgReceita = { ok: boolean; texto: ReactNode; tentarDeNovo?: boolean } | null;
 
@@ -218,6 +229,16 @@ export function FichaFormulario({ pessoa: p, proprietario: pr, aba, podeEditar, 
   const [consultada, setConsultada] = useState(false);
   const [buscando, setBuscando] = useState(false);
   const [msgReceita, setMsgReceita] = useState<MsgReceita>(null);
+  const buscaReceita = useRef(0);
+  const focoPendente = useRef<string | null>(null);
+
+  // Erro do servidor num campo de painel oculto: a página troca de aba e o foco vai para o campo aqui.
+  useEffect(() => {
+    const nome = focoPendente.current;
+    if (!nome || painelDoCampo(nome) !== aba) return;
+    focoPendente.current = null;
+    document.querySelector<HTMLElement>(`#form [name="${nome}"]`)?.focus();
+  }, [aba]);
 
   function marcar(nome: string, msg: string | null) {
     setCampos((c) => {
@@ -243,6 +264,8 @@ export function FichaFormulario({ pessoa: p, proprietario: pr, aba, podeEditar, 
     setCarimbo(consultaOriginal);
     setConsultada(false);
     setMsgReceita(null);
+    buscaReceita.current++;
+    setBuscando(false);
     limpar();
   }
 
@@ -256,6 +279,14 @@ export function FichaFormulario({ pessoa: p, proprietario: pr, aba, podeEditar, 
         if ("campos" in r) {
           setCampos(r.campos);
           toast(MSG_FALTAM_DADOS, "alert-circle");
+          const primeiro = Object.keys(r.campos)[0];
+          if (primeiro) {
+            if (painelDoCampo(primeiro) === aba) document.querySelector<HTMLElement>(`#form [name="${primeiro}"]`)?.focus();
+            else {
+              focoPendente.current = primeiro;
+              router.replace(`?aba=${painelDoCampo(primeiro)}`, { scroll: false });
+            }
+          }
         } else setErro(r.erro);
         return;
       }
@@ -276,12 +307,17 @@ export function FichaFormulario({ pessoa: p, proprietario: pr, aba, podeEditar, 
       setMsgReceita({ ok: false, texto: "CNPJ inválido: corrija os dígitos antes de consultar." });
       return;
     }
+    const minha = ++buscaReceita.current;
+    // Resposta de um CNPJ que já não está no campo, de uma busca mais velha ou de antes do "Descartar" não vale.
+    const atual = () => minha === buscaReceita.current && validacao.soDigitos(campo("cnpj").value) === d;
     setBuscando(true);
     setMsgReceita(null);
     try {
       const r = await fetch(`/api/cnpj/${d}`, { cache: "no-store" });
-      const x = (await r.json()) as DadosCnpj & { erro?: string };
-      if (!r.ok || x.erro) throw new Error(x.erro || "A consulta não respondeu. Preencha à mão ou tente de novo.");
+      const x = (await r.json().catch(() => ({}))) as DadosCnpj & { erro?: string };
+      if (!atual()) return;
+      if (r.status === 404) throw new Error(MSG_404);
+      if (!r.ok || x.erro) throw new Error(MSG_FALHOU);
       let mudou = 0;
       for (const k of ["nome", "nome_fantasia", "fundacao", "natureza_juridica", "cnae_principal"] as const) {
         const v = x[k];
@@ -313,9 +349,10 @@ export function FichaFormulario({ pessoa: p, proprietario: pr, aba, podeEditar, 
       });
       f.dispatchEvent(new Event("input", { bubbles: true }));
     } catch (e) {
-      setMsgReceita({ ok: false, texto: `${(e as Error).message || "A consulta não respondeu."} Nada na ficha foi alterado.`, tentarDeNovo: true });
+      if (!atual()) return;
+      setMsgReceita({ ok: false, texto: (e as Error).message === MSG_404 ? MSG_404 : MSG_FALHOU, tentarDeNovo: true });
     } finally {
-      setBuscando(false);
+      if (minha === buscaReceita.current) setBuscando(false);
     }
   }
 

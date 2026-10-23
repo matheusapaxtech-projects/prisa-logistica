@@ -115,6 +115,8 @@ describe("GET /api/cnpj/:cnpj", () => {
     expect(String(url)).toBe("https://brasilapi.com.br/api/cnpj/v1/11222333000181");
     expect(opcoes.signal).toBeInstanceOf(AbortSignal);
     expect(opcoes.cache).toBe("no-store");
+    // Sem User-Agent a BrasilAPI responde 403 ao fetch do Node.
+    expect(opcoes.headers["user-agent"]).toMatch(/^NILT\//);
   });
   it("404 da BrasilAPI vira 404 com a mensagem da Receita", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ message: "CNPJ não encontrado" }, 404)));
@@ -134,8 +136,14 @@ describe("GET /api/cnpj/:cnpj", () => {
     expect(res.status).toBe(502);
     expect(await res.json()).toEqual({ erro: MSG_TIMEOUT });
   });
+  it.each([403, 429])("%i (bloqueio ou limite de uso) vira 504 com a mensagem de preencher à mão", async (status) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("Forbidden", { status })));
+    const res = await getCnpj(req("/api/cnpj/11222333000181"), ctxCnpj("11222333000181"));
+    expect(res.status).toBe(504);
+    expect(await res.json()).toEqual({ erro: MSG_TIMEOUT });
+  });
   it("outro status da BrasilAPI vira 502 com mensagem genérica", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ message: "limite" }, 429)));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ message: "erro" }, 500)));
     const res = await getCnpj(req("/api/cnpj/11222333000181"), ctxCnpj("11222333000181"));
     expect(res.status).toBe(502);
     expect(await res.json()).toEqual({ erro: "A consulta de CNPJ não respondeu. Tente de novo em instantes." });
@@ -169,6 +177,7 @@ describe("GET /api/cep/:cep", () => {
     expect(await res.json()).toEqual({ logradouro: "Rua das Flores", bairro: "Centro", cidade: "Apucarana", uf: "PR" });
     expect(String(fetchMock.mock.calls[0][0])).toBe("https://brasilapi.com.br/api/cep/v2/86800000");
     expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+    expect(fetchMock.mock.calls[0][1].headers["user-agent"]).toMatch(/^NILT\//);
   });
   it("404 vira 404 com a mensagem do protótipo", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ message: "CEP não encontrado" }, 404)));
