@@ -1855,8 +1855,20 @@ export type Database = {
       }
     }
     Functions: {
+      aptidao_viagem: {
+        Args: { p_conjunto: string; p_tomador?: string }
+        Returns: {
+          codigo: string
+          mensagem: string
+          nivel: string
+        }[]
+      }
       arquivo_restrito: { Args: { p_path: string }; Returns: boolean }
       auditar: { Args: { p_tabela: unknown }; Returns: undefined }
+      cancelar_viagem: {
+        Args: { p_motivo: string; p_viagem: string }
+        Returns: undefined
+      }
       capacidade_carga: {
         Args: { v: Database["public"]["Tables"]["veiculo"]["Row"] }
         Returns: number
@@ -1877,6 +1889,10 @@ export type Database = {
       existe_arquivo_enviado: {
         Args: { p_pessoa_id: string; p_tipo: string; p_veiculo_id: string }
         Returns: boolean
+      }
+      iniciar_viagem: {
+        Args: { p_justificativa?: string; p_viagem: string }
+        Returns: undefined
       }
       listar_usuarios: {
         Args: never
@@ -1907,6 +1923,10 @@ export type Database = {
       registrar_visualizacao: {
         Args: { p_arquivo: string }
         Returns: undefined
+      }
+      rotulo_status_campo: {
+        Args: { p: Database["public"]["Enums"]["status_campo"] }
+        Returns: string
       }
       salvar_conjunto: {
         Args: {
