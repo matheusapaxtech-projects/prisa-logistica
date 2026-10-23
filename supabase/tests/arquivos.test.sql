@@ -145,7 +145,7 @@ begin
   return next is(v_ns_op, 1::bigint, 'operacao vê o objeto do arquivo não restrito');
   return next ok(public.arquivo_restrito(v_path_r), 'arquivo_restrito: true para o caminho restrito');
   return next ok(not public.arquivo_restrito(v_path_n), 'arquivo_restrito: false para o caminho comum');
-  return next ok(not public.arquivo_restrito('nao/existe.pdf'), 'arquivo_restrito: false para caminho sem arquivo');
+  return next ok(public.arquivo_restrito('nao/existe.pdf'), 'arquivo_restrito: true (fail-closed) para caminho sem arquivo');
 end $$;
 
 create function tests.test_bucket_privado() returns setof text language plpgsql as $$
@@ -385,9 +385,9 @@ begin
     (select with_check like '%pode_editar%' from pg_policies where schemaname = 'public' and tablename = 'arquivo' and cmd = 'INSERT'),
     'arquivo: insert exige pode_editar');
   return next ok(
-    (select qual like '%pode_editar%' and with_check like '%pode_editar%'
+    (select qual like '%pode_editar%' and qual like '%restrito%' and qual like '%eh_admin%' and with_check like '%pode_editar%'
        from pg_policies where schemaname = 'public' and tablename = 'arquivo' and cmd = 'UPDATE'),
-    'arquivo: update com using e with check de pode_editar');
+    'arquivo: update com using (pode_editar e não restrito ou admin) e with check de pode_editar');
 
   -- storage.objects (políticas deste bucket)
   return next is(
@@ -461,6 +461,76 @@ begin
   return next ok(exists (select 1 from pg_trigger where tgrelid = 'public.tipo_arquivo'::regclass
                          and tgname = 'trg_auditoria' and not tgisinternal),
     'tipo_arquivo: auditoria ligada');
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Fix round 1: update protegido (I1) e storage fail-closed (I2)
+-- ---------------------------------------------------------------------------
+create function tests.test_update_nao_desmarca_restrito() returns setof text language plpgsql as $$
+declare
+  v_op uuid := tests.criar_usuario('op.upd@exemplo.test', 'operacao');
+  v_adm uuid := tests.criar_usuario('adm.upd@exemplo.test', 'admin');
+  v_pes uuid := tests.nova_pessoa('52998224725');
+  v_r uuid := gen_random_uuid();
+  v_n uuid := gen_random_uuid();
+  v_restrito_apos boolean;
+  v_n_restrito boolean;
+  v_numero text;
+begin
+  insert into public.arquivo (id, tipo_arquivo_id, pessoa_id, storage_path, restrito) values
+    (v_r, 5, v_pes, 'pessoa/' || v_pes || '/' || v_r || '-cnh.pdf', true),
+    (v_n, 6, v_pes, 'pessoa/' || v_pes || '/' || v_n || '-comp.pdf', false);
+
+  -- (a) WHERE que não referencia colunas de arquivo: não pode alcançar a linha restrita
+  perform tests.executar_como(v_op, $q$update public.arquivo set restrito = false where now() > '2000-01-01'$q$);
+  perform tests.executar_como(v_op, $q$update public.arquivo set numero = 'X'$q$);
+  select restrito into v_restrito_apos from public.arquivo where id = v_r;
+  select numero into v_numero from public.arquivo where id = v_r;
+  return next is(v_restrito_apos, true, 'operacao com update sem referência a colunas não desmarca arquivo restrito');
+  return next is(v_numero, null, 'operacao não altera nenhuma coluna de arquivo restrito');
+
+  -- (b) não admin pode marcar como restrito um arquivo visível. Atenção (semântica do Postgres):
+  -- com WHERE que lê colunas (ex.: where id = ...) a política de SELECT também vale para a linha
+  -- nova, e restrito = true a reprova (42501); só o UPDATE sem referência a colunas passa.
+  return next throws_ok(
+    format($f$select tests.executar_como(%L, $q$update public.arquivo set restrito = true where id = %L$q$)$f$, v_op, v_n),
+    '42501', null, 'operacao não marca restrito com WHERE em coluna (SELECT policy vale para a linha nova)');
+  perform tests.executar_como(v_op, $q$update public.arquivo set restrito = true where now() > '2000-01-01'$q$);
+  select restrito into v_n_restrito from public.arquivo where id = v_n;
+  return next is(v_n_restrito, true, 'operacao marca como restrito o arquivo visível (UPDATE sem referência a colunas)');
+  select restrito into v_restrito_apos from public.arquivo where id = v_r;
+  return next is(v_restrito_apos, true, 'o arquivo que já era restrito continua intocado');
+
+  -- depois de restrito, a própria operacao não mexe mais nele
+  perform tests.executar_como(v_op, format('update public.arquivo set restrito = false where id = %L', v_n));
+  select restrito into v_n_restrito from public.arquivo where id = v_n;
+  return next is(v_n_restrito, true, 'operacao não consegue desmarcar o que acabou de restringir');
+
+  -- admin continua podendo desmarcar
+  perform tests.executar_como(v_adm, format('update public.arquivo set restrito = false where id = %L', v_r));
+  select restrito into v_restrito_apos from public.arquivo where id = v_r;
+  return next is(v_restrito_apos, false, 'admin desmarca arquivo restrito');
+end $$;
+
+create function tests.test_storage_sem_arquivo_so_admin() returns setof text language plpgsql as $$
+declare
+  v_op uuid := tests.criar_usuario('op.orf@exemplo.test', 'operacao');
+  v_lei uuid := tests.criar_usuario('lei.orf@exemplo.test', 'leitura');
+  v_adm uuid := tests.criar_usuario('adm.orf@exemplo.test', 'admin');
+  v_path text := 'pessoa/orfao/sem-arquivo.pdf';
+  v_op_n bigint; v_lei_n bigint; v_adm_n bigint;
+begin
+  insert into storage.objects (bucket_id, name) values ('documentos', v_path);
+  perform tests.como(v_op);
+  select count(*) into v_op_n from storage.objects where bucket_id = 'documentos' and name = v_path;
+  perform tests.como(v_lei);
+  select count(*) into v_lei_n from storage.objects where bucket_id = 'documentos' and name = v_path;
+  perform tests.como(v_adm);
+  select count(*) into v_adm_n from storage.objects where bucket_id = 'documentos' and name = v_path;
+  perform tests.como_servico();
+  return next is(v_op_n, 0::bigint, 'operacao não vê objeto sem arquivo registrado');
+  return next is(v_lei_n, 0::bigint, 'leitura não vê objeto sem arquivo registrado');
+  return next is(v_adm_n, 1::bigint, 'admin vê objeto sem arquivo registrado');
 end $$;
 
 select * from runtests('tests'::name, '^test_');
