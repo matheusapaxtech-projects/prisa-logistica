@@ -53,7 +53,7 @@ Todas as rotinas 3, 4, 5 e 7 giram em torno de uma única coisa: a **Viagem**. E
 | Encerrada | MDF-e encerrado e saldo pago (ou contrato quitado sem saldo) | Operação / Financeiro | 4, 5 |
 | Cancelada | Desistência antes de sair; documentos cancelados dentro do prazo | Operação | 3, 4 |
 
-A situação da viagem é **calculada pelo banco a partir dos fatos** (CT-e autorizado, MDF-e encerrado, saldo pago), não marcada à mão. Assim a etapa nunca mente. **[designer]**
+Estas são as etapas **administrativas** (documentos e dinheiro). Onde a carga está **fisicamente** é o **status de campo**, as 10 colunas do Quadro da operação definidas pelo usuário (3.5); as duas andam juntas e o cartão mostra as duas. A situação administrativa da viagem é **calculada pelo banco a partir dos fatos** (CT-e autorizado, MDF-e encerrado, saldo pago), não marcada à mão. Assim a etapa nunca mente. **[designer]**
 
 Frota própria (motorista funcionário, sem CIOT) passa pelas mesmas etapas; o contrato de frete e o CIOT não se aplicam e as etapas de pagamento ao motorista são puladas (R-012/EV-012: "Frota Própria {Com CIOT; Sem CIOT}").
 
@@ -112,27 +112,44 @@ Dinheiro que sai para terceiro passa por **duas pessoas**: a operação monta (c
 Os horários e a divisão entre pessoas são **[entrevista]**. O sistema não impõe horário; só mostra o que está atrasado.
 
 ### 3.5 Quadro da operação (kanban em tempo real)
-Pedido do usuário (2026-10-23): "um kanban para poder visualizar a operação em tempo [real]". É a tela de acompanhamento da operação; a **Hoje** (3.1) continua sendo a lista de tarefas de cada pessoa. As duas leem os mesmos dados.
+Pedido do usuário (2026-10-23): um kanban para visualizar a operação em tempo real, **com as colunas definidas por ele, nesta ordem**. É a tela de acompanhamento da operação no campo; a **Hoje** (3.1) continua sendo a lista de tarefas de cada pessoa. As duas leem os mesmos dados.
 
-**Colunas** = etapas da Viagem (seção 2), da esquerda para a direita **[designer]**:
+**Colunas (do usuário)** e o que cada uma significa; regras de entrada e saída **[designer]**:
 
-| A planejar | Planejada | Liberada | Documentada | Em trânsito | Entregue | Encerrada |
-|---|---|---|---|---|---|---|
-| Pedidos com peso ainda sem viagem (cartão de pedido, mostra quanto falta) | Viagem com conjunto, aguardando aptidão | Apta, aguardando CT-e | CT-e/MDF-e/contrato ok, aguardando saída | Saiu; sub-status no cartão: em rota, no destino, descarregando | Canhoto e peso lançados; aguardando saldo e encerramento do MDF-e | Só as encerradas **hoje**; as antigas saem do quadro |
+| # | Coluna | Significado | Entra quando | Sai para |
+|---|---|---|---|---|
+| 1 | **Trânsito** | Motorista se deslocando até o local de carga | Viagem Liberada (seção 2) e motorista avisa que partiu | Aguardando carregamento |
+| 2 | **Aguardando carregamento** | Chegou no local de carga, na fila | Chegada informada (operação ou app) | Em carregamento |
+| 3 | **Em carregamento** | Sendo carregado | Início do carregamento informado | Aguardando NF e pagamento |
+| 4 | **Aguardando NF e pagamento** | Carregado; esperando as NF-e do cliente, a emissão de CT-e/MDF-e/contrato e o adiantamento e vale-pedágio | Fim do carregamento, com peso de saída | Em rota, **só** com a viagem Documentada e os pagamentos de saída resolvidos (rotinas 4 e 5; trava) |
+| 5 | **Em rota** | Deslocamento até o destino | Liberação da coluna 4 | Pausa ou Aguardando descarga |
+| 6 | **Pausa** | Parada programada ou não (almoço, banheiro, pernoite, abastecimento, problema) | Motorista ou operação informa a pausa, com motivo e se é programada | Volta para a coluna de onde veio (Trânsito ou Em rota) |
+| 7 | **Aguardando descarga** | Chegou no destino, na fila | Chegada no destino informada | Aguardando contagem de divergência |
+| 8 | **Aguardando contagem de divergência** | Descarregado; o destinatário confere peso/quantidade | Fim da descarga, com canhoto e peso de chegada | Frete finalizado (sem divergência) ou Resolução de divergência |
+| 9 | **Resolução de divergência na carga** | Falta, sobra, quebra acima da tolerância ou avaria em tratamento | Contagem registrada com divergência | Frete finalizado, com a solução registrada (desconto no contrato, cobrança, sinistro) |
+| 10 | **Frete finalizado** | Carga entregue e conferida | Contagem sem divergência ou divergência resolvida | Sai do quadro no dia seguinte; segue nas rotinas 4, 5 e 7 (encerrar MDF-e, saldo, fatura) |
+
+**Pausa** **[designer]:** guarda tipo (almoço, banheiro, descanso/pernoite, abastecimento, manutenção, problema), programada ou não, início e fim. A soma das pausas fica na viagem e serve para a jornada do motorista e para explicar atrasos. Pausa não programada acima de um tempo configurável (padrão sugerido: 60 min) deixa o cartão vermelho e avisa a operação.
+
+**Divergência** **[designer]:** a contagem registra peso/quantidade de chegada contra a saída e o resultado {Sem divergência; Falta; Sobra; Avaria}. A tolerância de quebra vem do contrato/proprietário (8.3): dentro dela, o cartão vai direto a Frete finalizado. A resolução alimenta o cálculo do saldo (8.3) e, se for avaria, abre ocorrência (6.4).
+
+**O que fica fora do quadro:** pedidos ainda sem viagem e viagens Planejadas que ainda não liberaram ficam na **Hoje** (filas da rotina 3). O cartão entra no quadro na coluna Trânsito. **[designer]**
 
 **Cartão da viagem** (o mínimo para decidir sem abrir) **[designer]**:
 - Placa do cavalo, nome curto do motorista, cliente, origem → destino (cidade/UF).
-- **Há quanto tempo está na coluna**; o cartão fica âmbar e depois vermelho quando passa do tempo-limite da coluna (configurável pelo admin; padrão sugerido: Liberada 4 h, Documentada 6 h, Entregue 24 h).
-- Sinais: trava (o que falta, ex.: "GR vencida", "sem averbação"), aviso, ocorrência aberta, contrato bloqueado, MDF-e aberto.
-- Clicar abre a viagem com **o próximo passo** em destaque (ex.: "Emitir CT-e", "Lançar canhoto").
+- **Há quanto tempo está na coluna**; âmbar e depois vermelho quando passa do tempo-limite da coluna, configurável pelo admin.
+- Sinais da parte administrativa: CT-e/MDF-e (falta, rejeitado, autorizado), averbação, CIOT, adiantamento pago, GR/SM, ocorrência aberta, contrato bloqueado, MDF-e aberto depois da entrega, saldo pago.
+- Clicar abre a viagem com **o próximo passo** em destaque.
 
-**Tempo real:** quando alguém (ou o app do motorista, ou o retorno da SEFAZ/PAMCARD) muda um fato, o cartão muda de coluna ou de sinal na tela de todos em poucos segundos, sem recarregar. Se a conexão cair, o quadro mostra "desatualizado desde hh:mm" e volta a sincronizar sozinho. **[designer; o mecanismo (ex.: Supabase Realtime) fica para o builder]**
+**Arrastar cartões:** a coluna é um **status de campo**, então arrastar para a coluna seguinte muda o status direto e grava quem e quando. Três passagens pedem dados e abrem um formulário curto: entrar em Pausa (tipo e se é programada), sair de Em carregamento (peso de saída), sair de Aguardando descarga (canhoto e peso de chegada). A saída de "Aguardando NF e pagamento" para "Em rota" respeita a trava. Se faltar algo, o cartão volta e a tela diz o quê. Voltar uma coluna é permitido com motivo (correção de clique errado), exceto depois de Em rota com documento emitido. **[designer]**
 
-**Arrastar cartões:** como a etapa é calculada dos fatos (seção 2), arrastar **não muda a etapa sozinho**: soltar o cartão na coluna seguinte abre a ação que faz a mudança (ex.: soltar em Documentada abre a emissão do CT-e; soltar em Entregue abre o envio do canhoto). Se faltar algo, o cartão volta e a tela diz o quê. Só os status de campo dentro de "Em trânsito" (em rota → no destino → descarregando) mudam direto ao arrastar. Não se arrasta para trás; voltar é cancelar documento (rotina 4). **[designer]**
+**Quem move:** a operação, pelo quadro; o motorista, pelo app (fase 6), com os botões "cheguei", "comecei a carregar", "saí", "pausa", "cheguei no destino". Até o app existir, a operação move a partir do que o motorista avisa por telefone ou WhatsApp.
 
-**Filtros e visões:** por cliente, motorista, unidade operacional (Terceirização, Frota Própria, Prisa Apucarana), "só com problema" e "só minhas". Contador no topo de cada coluna. No celular, uma coluna por vez com abas no topo (equipe externa).
+**Tempo real:** quando alguém (operação, app, retorno da SEFAZ/PAMCARD) muda um fato, o cartão muda de coluna ou de sinal na tela de todos em poucos segundos, sem recarregar. Se a conexão cair, o quadro mostra "desatualizado desde hh:mm" e volta a sincronizar sozinho. **[designer; o mecanismo (ex.: Supabase Realtime) fica para o builder]**
 
-**Pronto quando:** a operação abre o quadro de manhã e sabe, sem perguntar a ninguém, onde está cada carga e qual está parada.
+**Filtros e visões:** por cliente, motorista, unidade operacional (Terceirização, Frota Própria, Prisa Apucarana), "só com problema" e "só minhas". Contador no topo de cada coluna. Com 10 colunas, no computador o quadro rola na horizontal com as colunas de espera (2, 4, 7, 8) estreitáveis; no celular, uma coluna por vez com abas no topo.
+
+**Pronto quando:** a operação abre o quadro e sabe, sem perguntar a ninguém, onde está cada carga, qual está parada e há quanto tempo.
 
 ### 3.6 Avisos fora da tela
 Na fase em que cada rotina entra, o sistema manda um resumo diário por e-mail para cada papel com o que ficou na fila. Mensagem por WhatsApp fica para quando o app do motorista existir. **[designer]**
@@ -236,15 +253,15 @@ Se a entrevista mostrar que a Prisa usa outro caminho do ATUA de verdade (ex.: a
 - **Pronto quando:** viagem **Liberada**. Se Não apto, a viagem fica Planejada na fila com o que falta.
 
 ### 6.3 Carregar e sair
-- Status de campo, informados pela operação ou pelo motorista no app: **No local de carregamento → Carregado → Saiu**. (O ATUA tem: Emitida, No Local Car., Carregado, Em Trânsito, Finalizado.)
+- Status de campo = colunas do Quadro (3.5): **Trânsito → Aguardando carregamento → Em carregamento → Aguardando NF e pagamento → Em rota**, com **Pausa** a qualquer momento do deslocamento. Informados pela operação ou pelo motorista no app. (O ATUA tem só: Emitida, No Local Car., Carregado, Em Trânsito, Finalizado.)
 - Ao "Carregado", a operação recebe as NF-e do cliente (XML ou chave) e segue para a rotina 4.
-- **Saiu** só é aceito com a viagem Documentada e pagamentos de saída resolvidos (rotina 5).
+- **Em rota** só é aceito com a viagem Documentada e pagamentos de saída resolvidos (rotina 5).
 
 ### 6.4 Ocorrências
 Atraso, avaria, recusa, sinistro, parada não prevista: registro com tipo, descrição, foto e resolução. Ocorrência aberta aparece na viagem e no extrato do CT-e. Ocorrência de avaria ou sinistro avisa o financeiro (pode virar desconto ou prejuízo, rotina 5).
 
 ### 6.5 Entrega
-- **Passos:** chegada no destino → descarga → **canhoto** (foto pelo app ou upload) → **peso de chegada**.
+- **Passos** (colunas 7 a 10 do Quadro): chegada no destino (Aguardando descarga) → descarga → **canhoto** (foto pelo app ou upload) e **peso de chegada** (Aguardando contagem de divergência) → contagem sem divergência ou divergência resolvida (Frete finalizado).
 - **Pronto quando:** canhoto anexado e conferido por alguém da operação (legível, assinado, NF certa) e peso de chegada lançado. A viagem fica **Entregue** e libera o cálculo do saldo (rotina 5) e o encerramento do MDF-e (rotina 4).
 
 ---
@@ -437,9 +454,9 @@ Segue a ordem de fases do design do NILT (seção 6), com estes acréscimos **[d
 | 2 Frota | Rotina 6 (9.1 e 9.2 primeiro; pneus e acerto depois do estudo) |
 | 3 GR | Rotina 2 e a parte de GR da aptidão |
 | antes da 4 | Cadastros de 4.5 (cliente, local, seguradora, posto, produto) |
-| 4 Operação e fiscal | Rotinas 3, 4 e 5, em homologação em paralelo com o ATUA; **Quadro da operação (3.5)** entra na primeira entrega da fase, junto com pedido e viagem, antes do CT-e do NILT, com todas as colunas: Documentada vem da chave do ATUA (paralelo, seção 7) |
+| 4 Operação e fiscal | Rotinas 3, 4 e 5, em homologação em paralelo com o ATUA; **Quadro da operação (3.5)** entra na primeira entrega da fase, junto com pedido e viagem, antes do CT-e do NILT, com as 10 colunas do usuário; a passagem de "Aguardando NF e pagamento" para "Em rota" usa a chave do CT-e/MDF-e do ATUA durante o paralelo (seção 7) |
 | 5 Financeiro | Rotina 7 |
-| 6 App do motorista | Status de campo (6.3), canhoto (6.5), envio de documentos (4.1) |
+| 6 App do motorista | Botões que movem o cartão no Quadro (3.5), pausa, canhoto (6.5), envio de documentos (4.1) |
 
 A tela **Hoje** cresce a cada fase: cada rotina entregue traz suas filas. O **Quadro** precisa da Viagem, que só existe a partir da fase 4; se a Prisa quiser o quadro antes, o caminho é antecipar pedido e viagem (sem CT-e) para logo depois do complemento da fase 1, e o fiscal entra depois sem mudar o quadro. **[usuário decide]**
 
