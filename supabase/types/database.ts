@@ -1873,7 +1873,15 @@ export type Database = {
         Args: { v: Database["public"]["Tables"]["veiculo"]["Row"] }
         Returns: number
       }
+      chave_dfe_valida: {
+        Args: { p_chave: string; p_modelo: string }
+        Returns: boolean
+      }
       cnpj_valido: { Args: { p: string }; Returns: boolean }
+      confirmar_pagamento_saida: {
+        Args: { p_viagem: string }
+        Returns: undefined
+      }
       cpf_valido: { Args: { p: string }; Returns: boolean }
       definir_perfil: {
         Args: {
@@ -1904,6 +1912,15 @@ export type Database = {
           ultimo_acesso: string
           user_id: string
         }[]
+      }
+      mover_viagem: {
+        Args: {
+          p_dados?: Json
+          p_de: Database["public"]["Enums"]["status_campo"]
+          p_para: Database["public"]["Enums"]["status_campo"]
+          p_viagem: string
+        }
+        Returns: undefined
       }
       nomes_usuarios: {
         Args: { p_ids: string[] }
