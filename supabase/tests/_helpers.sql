@@ -64,4 +64,15 @@ begin
   perform tests.como_servico();
 end $$;
 
+-- "Hoje" no dia de Brasília, o mesmo das views de vencimento (migration dia_brasilia). Use no lugar de
+-- current_date: o TimeZone do banco é UTC e, das 21h à meia-noite (BRT), current_date já é o dia seguinte.
+create function tests.hoje()
+returns date
+language sql
+stable
+set search_path = ''
+as $$
+  select (now() at time zone 'America/Sao_Paulo')::date;
+$$;
+
 grant execute on all functions in schema tests to authenticated;

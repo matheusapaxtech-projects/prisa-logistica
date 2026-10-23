@@ -99,12 +99,12 @@ end $$;
 -- ---------------------------------------------------------------------------
 create function tests.test_vencimentos_sem_duplicar() returns setof text language plpgsql as $$
 declare
-  v_mot uuid := tests.novo_motorista('52998224725', current_date - 10);
+  v_mot uuid := tests.novo_motorista('52998224725', tests.hoje() - 10);
 begin
   -- arquivo CNH vencido do mesmo motorista e outro documento (CND) que não está no cadastro
   insert into public.arquivo (tipo_arquivo_id, pessoa_id, storage_path, validade)
-  values (5, v_mot, 'teste/apoio/cnh-vencida.pdf', current_date - 10),
-         (4, v_mot, 'teste/apoio/cnd.pdf', current_date + 20);
+  values (5, v_mot, 'teste/apoio/cnh-vencida.pdf', tests.hoje() - 10),
+         (4, v_mot, 'teste/apoio/cnd.pdf', tests.hoje() + 20);
 
   return next is(
     (select count(*) from public.v_vencimentos where pessoa_id = v_mot and tipo = 'CNH'),
@@ -125,19 +125,19 @@ end $$;
 
 create function tests.test_vencimentos_origens() returns setof text language plpgsql as $$
 declare
-  v_mot uuid := tests.novo_motorista('52998224725', current_date + 400, current_date + 5);
-  v_canc uuid := tests.novo_motorista('11144477735', current_date - 30, current_date - 20, 'cancelado');
-  v_prop uuid := tests.novo_proprietario('11222333000181', current_date + 15);
-  v_vei uuid := tests.novo_veiculo(7, v_prop, current_date + 30, current_date + 60);
+  v_mot uuid := tests.novo_motorista('52998224725', tests.hoje() + 400, tests.hoje() + 5);
+  v_canc uuid := tests.novo_motorista('11144477735', tests.hoje() - 30, tests.hoje() - 20, 'cancelado');
+  v_prop uuid := tests.novo_proprietario('11222333000181', tests.hoje() + 15);
+  v_vei uuid := tests.novo_veiculo(7, v_prop, tests.hoje() + 30, tests.hoje() + 60);
 begin
   insert into public.arquivo (tipo_arquivo_id, pessoa_id, storage_path, validade)
-  values (1, v_prop, 'teste/apoio/antt.pdf', current_date + 15);
+  values (1, v_prop, 'teste/apoio/antt.pdf', tests.hoje() + 15);
   insert into public.arquivo (tipo_arquivo_id, veiculo_id, storage_path, validade)
-  values (9, v_vei, 'teste/apoio/crlv.pdf', current_date + 7);
+  values (9, v_vei, 'teste/apoio/crlv.pdf', tests.hoje() + 7);
   -- motorista cancelado: o arquivo CNH é o mesmo documento da linha de cadastro (que não conta); o CND não
   insert into public.arquivo (tipo_arquivo_id, pessoa_id, storage_path, validade)
-  values (5, v_canc, 'teste/apoio/cnh-cancelado.pdf', current_date - 30),
-         (4, v_canc, 'teste/apoio/cnd-cancelado.pdf', current_date + 40);
+  values (5, v_canc, 'teste/apoio/cnh-cancelado.pdf', tests.hoje() - 30),
+         (4, v_canc, 'teste/apoio/cnd-cancelado.pdf', tests.hoje() + 40);
 
   return next is(
     array(select tipo from public.v_vencimentos where pessoa_id = v_mot order by tipo),
@@ -322,7 +322,7 @@ create function tests.test_salvar_conjunto_edicao() returns setof text language 
 declare
   v_op uuid := tests.criar_usuario('op.conj2@exemplo.test', 'operacao');
   v_p uuid := tests.novo_proprietario('11222333000181');
-  v_mot uuid := tests.novo_motorista('52998224725', current_date + 400);
+  v_mot uuid := tests.novo_motorista('52998224725', tests.hoje() + 400);
   v_cav1 uuid := tests.novo_veiculo(7, v_p);
   v_cav2 uuid := tests.novo_veiculo(6, v_p);
   v_c1 uuid := tests.novo_veiculo(11, v_p);

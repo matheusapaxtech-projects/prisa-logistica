@@ -34,6 +34,7 @@ Assim tudo (schema `tests`, usuários de teste, dados) é desfeito pelo `rollbac
 - `tests.como(p_uid uuid)`: passa a agir como o usuário (papel `authenticated` + claims JWT; `auth.uid()` devolve `p_uid`).
 - `tests.como_servico()`: volta ao papel `postgres`.
 - `tests.executar_como(p_uid uuid, p_sql text)`: roda `p_sql` como o usuário e sempre volta ao papel `postgres`. Use para DML/consultas do usuário: o pgTAP grava resultados em tabelas temporárias do `postgres`, então `ok()/is()/lives_ok()` não devem rodar com o papel `authenticated` ativo. Alternativa: guardar o valor em variável, chamar `tests.como_servico()` e só então fazer a assertiva. `throws_ok` de SQL que falha volta sozinho ao papel anterior.
+- `tests.hoje() returns date`: o dia de hoje em Brasília (`(now() at time zone 'America/Sao_Paulo')::date`), o mesmo "hoje" das views de vencimento (migration `dia_brasilia`). Use no lugar de `current_date` nas datas de teste: o banco está em UTC e, das 21h à meia-noite (BRT), `current_date` já é o dia seguinte.
 
 ### Onde e quando rodar (dados reais)
 

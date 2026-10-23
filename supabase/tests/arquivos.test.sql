@@ -217,9 +217,9 @@ declare
   v_sem uuid := gen_random_uuid();
 begin
   insert into public.arquivo (id, tipo_arquivo_id, pessoa_id, storage_path, validade) values
-    (v_venc, 4, v_pes, 'pessoa/' || v_pes || '/' || v_venc || '-cnd.pdf', current_date - 1),
-    (v_hoje, 4, v_pes, 'pessoa/' || v_pes || '/' || v_hoje || '-cnd.pdf', current_date),
-    (v_fut,  4, v_pes, 'pessoa/' || v_pes || '/' || v_fut  || '-cnd.pdf', current_date + 30),
+    (v_venc, 4, v_pes, 'pessoa/' || v_pes || '/' || v_venc || '-cnd.pdf', tests.hoje() - 1),
+    (v_hoje, 4, v_pes, 'pessoa/' || v_pes || '/' || v_hoje || '-cnd.pdf', tests.hoje()),
+    (v_fut,  4, v_pes, 'pessoa/' || v_pes || '/' || v_fut  || '-cnd.pdf', tests.hoje() + 30),
     (v_sem,  4, v_pes, 'pessoa/' || v_pes || '/' || v_sem  || '-cnd.pdf', null);
   return next is(
     (select count(*) from public.v_pendencias_documentos where tipo_pendencia = 'arquivo_vencido' and arquivo_id = v_venc),
