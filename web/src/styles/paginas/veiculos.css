@@ -1,0 +1,203 @@
+/* NILT — estilo próprio das telas de veículo (lista, novo e ficha). Porte de prototipo/assets/paginas/veiculos.css
+   sem o que <Documentos>, <Historico> e a barra de salvar já trazem (componentes.css). Cores só pelos tokens. */
+
+/* ---------- lista ---------- */
+.tabela-veiculos .col-placa { width: 1%; white-space: nowrap; }
+.tabela-veiculos .col-prop { min-width: 220px; }
+.tabela-veiculos td > span:first-child:not(.placa):not(.sinal) { display: block; }
+.tabela-veiculos .id-prop { font-weight: 500; }
+.tabela-veiculos .valor { display: block; font-weight: 500; }
+.tabela-veiculos .linha2.arr { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.tabela-veiculos .linha2.arr .sinal { height: 20px; }
+.tabela-veiculos td .sinal + .linha2 { margin-top: 4px; }
+.tabela-veiculos .placa + .linha2 { margin-top: 6px; }
+.tabela-veiculos tr.sem-linhas { cursor: default; }
+.tabela-veiculos tr.sem-linhas:hover { background: transparent; }
+.tabela-veiculos tr.sem-linhas td { padding: 12px 0; }
+.vazio-bloco .btn-texto { margin-left: auto; height: 28px; }
+
+.tabela .linha2.so-tablet, .tabela .linha2.so-celular { display: none; }
+/* componentes.css dá 13px às .linha2 de tabela (a de motorista); a lista de veículos mantém a do nilt.css */
+.tabela.tabela-veiculos td .linha2 { font-size: var(--fs-small); line-height: 16px; }
+
+@media (max-width: 1100px) {
+  .tabela .some-tablet { display: none; }
+  .tabela .linha2.so-tablet { display: block; }
+  .tabela.tabela-veiculos td .linha2.so-tablet, .tabela.tabela-veiculos td .linha2.so-celular { font-size: 13px; line-height: 18px; }
+  .tabela-veiculos .col-placa { white-space: normal; min-width: 240px; }
+}
+@media (max-width: 640px) {
+  .tabela .linha2.so-tablet { display: none; }
+  .tabela .linha2.so-celular { display: block; white-space: normal; max-width: 260px; }
+  .tabela-veiculos .col-placa { width: auto; min-width: 0; white-space: normal; }
+  .tabela-veiculos td { padding-top: 12px; padding-bottom: 12px; vertical-align: top; }
+  .ferramentas select { flex: 1; }
+}
+
+/* ---------- novo veículo ---------- */
+.entrada-placa { font-family: var(--mono); font-size: 18px; letter-spacing: 0.08em; text-transform: uppercase; }
+.campo .entrada-placa::placeholder { letter-spacing: 0.08em; }
+.previa-placa { display: flex; align-items: center; gap: 16px; align-self: end; min-height: 64px; padding-bottom: 6px; }
+.placa .vaga { display: inline-block; width: 0.6em; height: 2px; margin: 0 0.04em 0 0.04em; background: var(--control); vertical-align: middle; }
+.previa-txt { display: grid; line-height: 18px; }
+.previa-txt b { font-weight: 600; }
+.previa-txt span { color: var(--muted); font-size: 13px; }
+.ja-existe { align-items: center; }
+.ja-existe > div { flex: 1; }
+.ja-existe .btn { flex: none; }
+
+fieldset.resto { border: 0; padding: 0; margin: 0; min-width: 0; }
+.trava { display: none; }
+fieldset.resto[disabled] .trava { display: flex; gap: 10px; align-items: center; color: var(--muted); padding: 14px 0 0; border-top: 1px solid var(--rule); }
+.trava svg { width: 16px; height: 16px; flex: none; }
+fieldset.resto[disabled] .secao:first-of-type { border-top: 0; }
+fieldset.resto[disabled] .campo input, fieldset.resto[disabled] .campo select { background: var(--raised); color: var(--faint); cursor: not-allowed; }
+fieldset.resto[disabled] .campo label { color: var(--muted); }
+fieldset.resto .secao:first-of-type { padding-top: 24px; border-top: 1px solid var(--rule); }
+
+.tipo-resumo { background: var(--raised); border-radius: var(--radius-card); padding: 12px 16px; align-self: start; min-height: 38px; }
+.tipo-resumo .kv { row-gap: 6px; }
+.eixos-linha { display: flex; align-items: center; gap: 12px; }
+.eixos-linha .peca-eixos { padding-left: 0; }
+.peca-eixos i { flex: none; }
+
+.erro-suave { color: var(--laranja-tinta); }
+.arrendamento { display: grid; gap: 12px; }
+.upload { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px dashed var(--control); border-radius: var(--radius-card); }
+.upload.com-arquivo { border-style: solid; border-color: var(--border); }
+.upload > svg { width: 20px; height: 20px; color: var(--muted); flex: none; }
+.upload.com-arquivo > svg { color: var(--verde); }
+.upload-txt { display: grid; flex: 1; min-width: 0; line-height: 18px; }
+.upload-txt b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upload-txt span { color: var(--muted); font-size: 13px; }
+.sem-contrato { color: var(--laranja-tinta); }
+
+.rodape-form { display: flex; align-items: center; gap: 12px; padding: 20px 0 4px; border-top: 1px solid var(--rule); margin-top: 8px; }
+.rodape-form .falta { margin-right: auto; color: var(--muted); max-width: 64ch; }
+@media (max-width: 640px) {
+  .previa-placa { min-height: 0; }
+  .rodape-form { flex-wrap: wrap; }
+  .rodape-form .falta { width: 100%; }
+  .rodape-form .btn-primario { flex: 1; }
+  .ja-existe { flex-wrap: wrap; }
+  .upload { flex-wrap: wrap; }
+}
+
+/* ---------- ficha do veículo ---------- */
+.cab-veiculo { align-items: flex-end; }
+.cab-id { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; min-width: 0; }
+.cab-id .migalha { flex-wrap: nowrap; }
+.cab-id .migalha h1 { display: flex; line-height: 0; }
+.cab-txt { display: grid; gap: 2px; min-width: 0; }
+.cab-tipo { font-size: 16px; font-weight: 600; line-height: 22px; }
+.cab-modelo { color: var(--muted); }
+.sinais { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.abas .n:not(:empty) { margin-left: 6px; }
+
+.nota-arq { display: flex; gap: 6px; align-items: flex-start; margin-top: 12px; color: var(--muted); }
+.nota-arq svg { width: 14px; height: 14px; flex: none; margin-top: 1px; }
+.nota-arq.falta-arq { color: var(--laranja-tinta); }
+.campo textarea { border: 1px solid var(--border); }
+.campo input.cod { font-size: 14px; }
+.campo input.sr-only { width: 1px; height: 1px; padding: 0; border: 0; }
+[data-painel] > .secao:last-child { padding-bottom: 0; }
+
+/* posse x ANTT lado a lado */
+.bloco-donos { margin-bottom: 8px; padding-bottom: 24px; display: grid; gap: 16px; }
+.donos { display: grid; grid-template-columns: minmax(0, 1fr) 88px minmax(0, 1fr); align-items: stretch; }
+.dono { border: 1px solid var(--border); border-radius: var(--radius-card); padding: 16px 20px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.dono h3 { font-size: 14px; font-weight: 500; color: var(--muted); line-height: 18px; }
+.dono-nome { font-size: 16px; font-weight: 600; line-height: 22px; }
+.dono .kv { margin-top: 4px; row-gap: 8px; }
+.com-sinal { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.donos-meio { display: grid; place-content: center; justify-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
+.donos-meio svg { width: 20px; height: 20px; }
+.donos.diferentes .donos-meio { color: var(--azul-tinta); }
+.donos.diferentes .donos-meio svg { color: var(--azul); }
+.arrendamento .aviso .sinal { margin-left: 4px; vertical-align: middle; }
+.arrendamento .aviso-pendente { align-items: center; }
+.arrendamento .aviso-pendente > div { flex: 1; }
+.arrendamento .aviso-pendente .btn { flex: none; }
+
+/* capacidade desenhada em escala */
+.cap-expl { color: var(--muted); }
+.cap-expl b { color: var(--ink); font-weight: 600; }
+.cap-expl .passa, .erro-texto { color: var(--vermelho-tinta); }
+.balanca-tit { font-size: 14px; font-weight: 600; margin: 24px 0 10px; }
+.balanca { display: grid; gap: 6px; }
+.balanca-trilho { position: relative; height: 22px; border-radius: 4px; background: var(--rule); overflow: hidden; }
+.balanca-trilho .seg { position: absolute; top: 0; bottom: 0; border-right: 2px solid var(--sheet); }
+.seg.tara, .seg-chave.tara { background: var(--faint); }
+.seg.tara-pecas, .seg-chave.tara-pecas { background: #9aa29d; }
+.seg.carga, .seg-chave.carga { background: var(--verde); }
+.seg.neutra, .seg-chave.neutra { background: var(--control); }
+.seg.livre, .seg-chave.livre { background: var(--rule); }
+.seg-chave.livre { box-shadow: inset 0 0 0 1px var(--control); }
+.seg.excede, .seg-chave.excede { background: var(--vermelho); }
+.balanca-regua { position: relative; height: 18px; border-top: 1px solid var(--control); }
+.balanca-regua span { position: absolute; top: 0; transform: translateX(-50%); padding-top: 4px; font-size: 11px; line-height: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.balanca-regua span::before { content: ""; position: absolute; left: 50%; top: -1px; width: 1px; height: 4px; background: var(--control); }
+.balanca-regua span:first-child { transform: none; }
+.balanca-regua span:first-child::before { left: 0; }
+.balanca-legenda { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 6px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.balanca-legenda > span { display: inline-flex; align-items: center; gap: 6px; }
+.balanca-legenda b { color: var(--ink); font-weight: 600; }
+.balanca-legenda .fim { margin-left: auto; }
+.seg-chave { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+/* seguro como marco de quilômetro */
+.marco-campo { align-self: end; }
+.marco-unico { display: grid; grid-template-columns: minmax(80px, 1fr) auto; align-items: center; gap: 16px; min-height: 38px; }
+.marco-unico .dias { font-variant-numeric: tabular-nums; color: var(--muted); }
+.marco-unico .dias b { color: var(--ink); font-weight: 600; font-size: 15px; margin-right: 4px; }
+.marco-unico .dias.vencido b { color: var(--vermelho-tinta); }
+
+/* documentos */
+.falta-doc { margin-bottom: 12px; }
+.falta-doc svg { width: 16px; height: 16px; flex: none; }
+.falta-doc b { color: var(--ink); font-weight: 600; }
+.tabela-hist tbody tr { cursor: default; }
+
+/* conjunto */
+.bloco-sec { display: grid; gap: 12px; margin-bottom: 32px; }
+.bloco-sec h2 { font-size: var(--fs-section); line-height: 24px; }
+.sub-sec { margin-top: -6px; }
+.conjunto-atual { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--gap); align-items: start; border: 1px solid var(--border); border-radius: var(--radius-card); padding: 20px; }
+.conj-desenho { min-width: 0; padding-top: 8px; }
+.conj-dados { display: grid; gap: 14px; justify-items: start; }
+.conj-dados .capacidade { width: 100%; }
+.peca.atual .peca-corpo { box-shadow: 0 0 0 2px var(--sheet), 0 0 0 4px var(--azul); }
+
+
+.nao-achou svg { width: 18px; height: 18px; flex: none; }
+.nao-achou .btn { margin-left: auto; flex: none; }
+.atalhos { margin-top: 32px; }
+
+@media (max-width: 1100px) {
+  .conjunto-atual { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .cab-veiculo .acoes { flex-wrap: wrap; }
+  .cab-id { gap: 12px; }
+  .donos { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .donos-meio { grid-auto-flow: column; gap: 8px; padding: 4px 0; }
+  .balanca-legenda .fim { margin-left: 0; }
+  .marco-unico { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .arrendamento .aviso-pendente, .nao-achou { flex-wrap: wrap; }
+}
+
+/* escolha de proprietário/motorista por busca (SeletorPessoa): a lista reaproveita .busca-resultados */
+.seletor { position: relative; }
+.seletor input[role="combobox"] { width: 100%; }
+.seletor:has(.seletor-tirar) input[role="combobox"] { padding-right: 64px; }
+.seletor-tirar { position: absolute; right: 4px; top: 5px; height: 28px; }
+.busca-resultados.seletor-lista { top: calc(100% + 4px); max-height: 288px; overflow-y: auto; }
+.seletor-opcao { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+.seletor-opcao:hover, .seletor-opcao[aria-selected="true"] { background: var(--raised); }
+.seletor-opcao > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ficha: o fieldset só existe para desligar os campos de quem não edita */
+fieldset.ficha-campos { border: 0; padding: 0; margin: 0; min-width: 0; }
+fieldset.ficha-campos:disabled .campo input:not([type="radio"]):not([type="checkbox"]),
+fieldset.ficha-campos:disabled .campo select,
+fieldset.ficha-campos:disabled .campo textarea { background: var(--raised); color: var(--ink); cursor: default; }
