@@ -1,0 +1,389 @@
+<title>Entrevista Operação ATUA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: ficha de levantamento — índice fixo de seções à esquerda, perguntas em blocos numerados como campos de um formulário de transporte */
+:root{
+  --bg:#f3f5f2; --surface:#ffffff; --fg:#18201c; --muted:#5b665f; --line:#d6ddd8;
+  --accent:#17663f; --accent-soft:#e2efe6; --amber:#a86a00; --amber-soft:#fbefd6;
+  --danger:#a3332a;
+  --f-display:"Barlow Semi Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111613; --surface:#18201b; --fg:#e4ebe6; --muted:#9aa79f; --line:#2c3730;
+  --accent:#4fb27f; --accent-soft:#1d3226; --amber:#e0a83a; --amber-soft:#3a2d12; --danger:#e07a70; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111613; --surface:#18201b; --fg:#e4ebe6; --muted:#9aa79f; --line:#2c3730;
+  --accent:#4fb27f; --accent-soft:#1d3226; --amber:#e0a83a; --amber-soft:#3a2d12; --danger:#e07a70; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+.wrap{max-width:1120px;margin:0 auto}
+header.top{padding-block:32px 20px;display:grid;gap:12px;border-bottom:2px solid var(--fg);margin-bottom:24px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(30px,5vw,44px);line-height:1.05;margin:0;text-wrap:balance}
+.lead{max-width:68ch;margin:0;color:var(--muted)}
+.bar{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;font-size:14px}
+.save{font-family:var(--f-mono);font-size:12px;padding:4px 10px;border-radius:4px;background:var(--accent-soft);color:var(--accent)}
+.save.warn{background:var(--amber-soft);color:var(--amber)}
+.save.err{background:var(--amber-soft);color:var(--danger)}
+.meter{flex:1 1 220px;display:flex;align-items:center;gap:10px;min-width:0}
+.meter .track{flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.meter .fill{height:100%;background:var(--accent);width:0;transition:width .3s}
+.meter span{font-family:var(--f-mono);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:32px;align-items:start}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);display:grid;gap:2px}
+nav.toc a{display:grid;grid-template-columns:28px 1fr auto;gap:6px;align-items:baseline;padding:6px 8px;border-radius:4px;color:var(--fg);text-decoration:none;font-size:14px}
+nav.toc a:hover{background:var(--accent-soft)}
+nav.toc a.done .n{color:var(--accent)}
+nav.toc .n{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+nav.toc .c{font-family:var(--f-mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.mobnav{display:none}
+section.sec{background:var(--surface);border:1px solid var(--line);border-radius:6px;margin-bottom:24px;scroll-margin-top:16px}
+.sec-h{display:flex;gap:14px;align-items:baseline;padding:18px 20px;border-bottom:1px solid var(--line)}
+.sec-h .code{font-family:var(--f-mono);font-size:12px;color:var(--accent);border:1px solid var(--accent);border-radius:3px;padding:1px 6px}
+.sec-h h2{font-family:var(--f-display);font-weight:600;font-size:24px;margin:0;line-height:1.15}
+.sec-h p{margin:4px 0 0;color:var(--muted);font-size:14px;max-width:70ch}
+.q{display:grid;grid-template-columns:52px minmax(0,1fr);border-bottom:1px solid var(--line)}
+.q:last-child{border-bottom:0}
+.q .qn{font-family:var(--f-mono);font-size:11px;color:var(--muted);padding:16px 0 0 20px;font-variant-numeric:tabular-nums}
+.q .qb{padding:14px 20px 16px 0;display:grid;gap:8px;min-width:0}
+.q label.qt{font-weight:600;font-size:15px}
+.q .help{font-size:13px;color:var(--muted);margin-top:-4px}
+textarea,input[type=text],input[type=number]{width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:9px 11px}
+textarea{min-height:84px;resize:vertical}
+textarea:focus,input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+.opts{display:flex;flex-wrap:wrap;gap:6px}
+.opt{position:relative}
+.opt input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.opt span{display:inline-block;padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:14px;background:var(--bg);cursor:pointer}
+.opt input:checked + span{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.opt input:focus-visible + span{outline:2px solid var(--accent);outline-offset:2px}
+.qfoot{display:flex;justify-content:flex-end}
+.na{font:inherit;font-size:12px;color:var(--muted);background:none;border:0;padding:2px 0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.na:focus-visible{outline:2px solid var(--accent)}
+.q.answered .qn{color:var(--accent)}
+.ro{background:var(--amber-soft);color:var(--amber);padding:10px 14px;border-radius:4px;font-size:14px}
+.finish{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:20px;display:grid;gap:12px}
+.finish h2{font-family:var(--f-display);font-size:24px;margin:0}
+button.primary{font:inherit;font-weight:600;background:var(--accent);color:var(--surface);border:0;border-radius:4px;padding:10px 18px;cursor:pointer;justify-self:start}
+button.primary:disabled{opacity:.5;cursor:default}
+button.primary:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.done-msg{color:var(--accent);font-weight:600}
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  nav.toc{display:none}
+  .mobnav{display:block;position:sticky;top:env(safe-area-inset-top,0px);z-index:2;background:var(--bg);padding-block:8px}
+  .mobnav select{width:100%;font:inherit;padding:8px;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--fg)}
+  .q{grid-template-columns:40px minmax(0,1fr)}
+  .q .qn{padding-left:14px}
+  .q .qb{padding-right:14px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Prisa Logística · levantamento para o sistema próprio</div>
+    <h1>Como a operação usa o ATUA hoje</h1>
+    <p class="lead">Vamos substituir o ATUA por um sistema próprio. Você usa o ATUA todo dia, então é quem melhor sabe o que ele precisa fazer. Responda com as suas palavras, do jeito que explicaria para um colega novo. Pode responder aos poucos: tudo é salvo sozinho enquanto você digita. Se algo não se aplica, toque em "Não usamos".</p>
+    <div class="bar">
+      <span id="save" class="save warn">Conectando…</span>
+      <div class="meter"><div class="track"><div class="fill" id="fill"></div></div><span id="count">0 de 0 respondidas</span></div>
+    </div>
+    <div id="ro" class="ro" hidden></div>
+  </header>
+
+  <div class="mobnav"><label for="jump" class="eyebrow">Ir para a seção</label><select id="jump"></select></div>
+
+  <div class="layout">
+    <nav class="toc" id="toc" aria-label="Seções"></nav>
+    <main id="main"></main>
+  </div>
+</div>
+
+<script>
+const SECTIONS = [
+ {id:"sobre", title:"Quem responde", desc:"Para saber de que ponto de vista vêm as respostas.", qs:[
+  {id:"nome",t:"text",q:"Seu nome"},
+  {id:"funcao",t:"text",q:"Sua função na Prisa"},
+  {id:"tempo",t:"one",q:"Há quanto tempo você usa o ATUA?",o:["Menos de 6 meses","6 meses a 2 anos","2 a 5 anos","Mais de 5 anos"]},
+  {id:"menus",t:"many",q:"Quais menus do ATUA você usa pelo menos uma vez por semana?",o:["Mais Frete","Agregado","Cadastro","Emis. Doc. Internac.","Emissão Doc.","Financeiro","Fiscal","Frota","Gerencial","Nota Fiscal","Oficina","RH","Rastreamento","Relatório","Segurança","Útil"]},
+  {id:"dia",t:"long",q:"Descreva um dia normal de trabalho no ATUA, do começo ao fim.",h:"O que você abre primeiro, o que faz em seguida, o que repete várias vezes por dia."},
+  {id:"outros",t:"long",q:"Quem mais usa o ATUA na Prisa e para quê?",h:"Função, se trabalha no escritório ou fora, e o que cada pessoa faz no sistema."}
+ ]},
+ {id:"motorista", title:"Cadastro de motorista", desc:"Como um motorista novo entra no sistema e como vocês mantêm o cadastro em dia.", qs:[
+  {id:"mot_quem",t:"long",q:"Quem cadastra o motorista e em que momento?",h:"Antes da primeira carga, no dia do carregamento, depois de aprovado pela gerenciadora de risco…"},
+  {id:"mot_docs",t:"many",q:"Quais documentos vocês pedem do motorista?",o:["CNH","Comprovante de residência","RG / CPF","Foto do motorista","Referências pessoais","Referências comerciais","Consulta na gerenciadora de risco","Dados bancários","Outros"]},
+  {id:"mot_recebe",t:"one",q:"Como os documentos chegam até vocês?",o:["WhatsApp","E-mail","Papel / pessoalmente","Aplicativo","Misto"]},
+  {id:"mot_ref",t:"long",q:"Como vocês checam as referências?",h:"Quantas pedem, quem liga, o que perguntam, onde anotam o resultado."},
+  {id:"mot_venc",t:"long",q:"O que acontece quando a CNH ou outro documento do motorista vence?",h:"O ATUA avisa? Bloqueia a emissão? Alguém confere manualmente?"},
+  {id:"mot_bloq",t:"long",q:"Vocês já bloquearam algum motorista? Por quê e como?",h:"Regras de bloqueio, clientes que não aceitam determinado motorista."},
+  {id:"mot_verif",t:"one",q:"Vocês usam o botão Verificar (CPF / CNH) ou o Cadastro Centralizado do ATUA?",o:["Sim, sempre","Às vezes","Não","Não sei"]},
+  {id:"mot_inuteis",t:"long",q:"Quais campos do cadastro de motorista vocês nunca preenchem?"},
+  {id:"mot_fora",t:"long",q:"Que informação sobre o motorista vocês anotam fora do ATUA porque não tem lugar no sistema?",h:"Planilha, caderno, grupo de WhatsApp."},
+  {id:"mot_qtd",t:"num",q:"Quantos motoristas novos vocês cadastram por mês, mais ou menos?"}
+ ]},
+ {id:"proprietario", title:"Proprietário do veículo", desc:"Dono do caminhão, pessoa física ou empresa.", qs:[
+  {id:"prop_tipo",t:"one",q:"A maioria dos proprietários é:",o:["Pessoa física (autônomo)","Empresa (CNPJ)","Metade a metade"]},
+  {id:"prop_docs",t:"many",q:"Quais documentos vocês exigem do proprietário?",o:["Cartão CNPJ","Contrato social","RNTRC / ANTT","Comprovante de endereço","Documento pessoal do dono ou sócio","Comprovante da conta bancária","Outros"]},
+  {id:"prop_conta",t:"long",q:"Como vocês confirmam que a conta bancária ou o Pix é mesmo do proprietário?"},
+  {id:"prop_contato",t:"long",q:"Quando o proprietário é empresa, quem é o contato e como vocês registram isso hoje?",h:"Nome do responsável, telefone, WhatsApp, e-mail."},
+  {id:"prop_inss",t:"long",q:"Para proprietário pessoa física: como funcionam os descontos de INSS, SEST/SENAT e imposto de renda no pagamento?"},
+  {id:"prop_extras",t:"long",q:"Vocês usam a aba Dados Extras do proprietário? Para quê?",h:"Taxa administrativa, limite de adiantamento, regra de peso para pagar o frete."}
+ ]},
+ {id:"veiculo", title:"Veículos e conjunto", desc:"Cavalo, carreta, dolly, e como eles viram um conjunto.", qs:[
+  {id:"vei_config",t:"many",q:"Quais configurações de caminhão rodam com a Prisa?",o:["Toco","Truck","Bitruck","Cavalo simples + carreta","Cavalo trucado + carreta","Bitrem","Rodotrem (com dolly)","Vanderleia","Outros"]},
+  {id:"vei_carroceria",t:"many",q:"Quais tipos de carreta?",o:["Basculante","Graneleiro","Baú","Sider","Slider","Grade baixa","Porta-contêiner","Prancha","Tanque","Outros"]},
+  {id:"vei_passo",t:"long",q:"Passo a passo de cadastrar uma placa nova.",h:"De onde vem cada informação: documento do veículo (CRLV), ANTT, o próprio motorista."},
+  {id:"vei_agregado",t:"long",q:"Na prática, qual a diferença entre cadastrar em Cadastro > Veículo e em Agregado > Veículo Agregado? Quando usa cada um?"},
+  {id:"vei_conjunto",t:"long",q:"Como você monta o conjunto (cavalo + carretas + dolly)? Com que frequência ele muda?"},
+  {id:"vei_arrendado",t:"long",q:"Quando o caminhão é arrendado: o que você cadastra, quais documentos pede e quem recebe o pagamento?"},
+  {id:"vei_capacidade",t:"long",q:"Como vocês sabem quanto cada conjunto pode carregar?",h:"CMT, peso bruto, tara, lotação. Onde anotam e quem confere."},
+  {id:"vei_tag",t:"long",q:"Como funciona a TAG de pedágio e o vale-pedágio?",h:"Quem fornece a TAG, para que vocês usam o número, como compram o vale-pedágio."},
+  {id:"vei_rastreador",t:"long",q:"Rastreador: vocês cadastram empresa e número? Quem consulta a posição do caminhão?"},
+  {id:"vei_frota",t:"one",q:"A Prisa tem frota própria?",o:["Sim","Não","Poucos veículos"]}
+ ]},
+ {id:"risco", title:"Gerenciadora de risco", desc:"Consultas de motorista e veículo, e monitoramento da viagem.", qs:[
+  {id:"gr_quais",t:"long",q:"Quais gerenciadoras de risco vocês usam e para quais clientes ou seguradoras?"},
+  {id:"gr_fluxo",t:"long",q:"Passo a passo de uma consulta.",h:"Quem pede, por onde (ATUA, site da gerenciadora, e-mail), quanto tempo demora, onde aparece o resultado."},
+  {id:"gr_validade",t:"long",q:"Por quanto tempo vale uma consulta aprovada? O ATUA controla isso?"},
+  {id:"gr_sm",t:"long",q:"Vocês abrem solicitação de monitoramento (SM) da viagem? Em qual sistema?"},
+  {id:"gr_reprova",t:"long",q:"O que acontece quando o motorista ou o veículo é reprovado?"},
+  {id:"gr_regras",t:"long",q:"Existem exigências por cliente?",h:"Por exemplo: cliente que só aceita motorista com histórico, veículo com rastreador, idade máxima do caminhão."}
+ ]},
+ {id:"carga", title:"Pedido, coleta e carregamento", desc:"Do pedido do cliente até o caminhão carregado.", qs:[
+  {id:"col_pedido",t:"long",q:"Como chega um pedido de frete do cliente e onde ele é lançado?",h:"E-mail, WhatsApp, arquivo EDI, portal do cliente."},
+  {id:"col_telas",t:"long",q:"Quais telas do ATUA vocês usam nessa etapa e em que ordem?",h:"Ordem de Carregamento, Coleta, Lote de Carregamento, Agendamento de Frete, Embarque."},
+  {id:"col_negocia",t:"long",q:"Como é negociado o frete com o motorista e onde fica registrado?",h:"Por tonelada, por viagem, tabela fixa."},
+  {id:"col_qtd",t:"num",q:"Quantas viagens vocês fazem por mês, em média?"}
+ ]},
+ {id:"cte", title:"CT-e e MDF-e", desc:"A parte fiscal. Quanto mais detalhe, melhor: é a parte mais delicada de substituir.", qs:[
+  {id:"cte_quem",t:"long",q:"Quem emite o CT-e e em que momento?",h:"Antes de carregar, depois da pesagem, no dia seguinte."},
+  {id:"cte_passo",t:"long",q:"Passo a passo da emissão de um CT-e no ATUA, tela por tela."},
+  {id:"cte_tipos",t:"many",q:"Quais tipos de documento vocês emitem?",o:["CT-e normal","CT-e complementar","Anulação","Substituição","Subcontratação / redespacho","Carta de correção","NFS-e (serviço municipal)","CT-e OS","Não sei"]},
+  {id:"cte_qtd",t:"num",q:"Quantos CT-e por mês, em média?"},
+  {id:"cte_valor",t:"long",q:"Como é calculado o valor do frete cobrado do cliente?",h:"Tarifas de Frete do ATUA, tabela por produto, valor digitado na hora."},
+  {id:"cte_icms",t:"long",q:"Em quais estados vocês operam? Conhece algum caso especial de ICMS (isenção, substituição tributária, crédito presumido)?"},
+  {id:"cte_seguro",t:"long",q:"Seguro da carga: qual seguradora e como é feita a averbação?",h:"Automática pelo ATUA, manual no site da seguradora, outro sistema."},
+  {id:"cte_cert",t:"long",q:"Quem cuida do certificado digital da empresa e quando ele vence?"},
+  {id:"cte_erros",t:"long",q:"Quais rejeições da SEFAZ ou erros de emissão são mais comuns, e como vocês resolvem?"},
+  {id:"cte_cancel",t:"long",q:"Com que frequência vocês cancelam, corrigem ou anulam CT-e? Por quais motivos?"},
+  {id:"mdfe",t:"long",q:"MDF-e: quem emite, quando, e quem encerra?",h:"Já aconteceu de ficar MDF-e aberto por esquecimento?"},
+  {id:"cte_envio",t:"long",q:"Vocês imprimem o DACTE e o DAMDFE ou enviam por e-mail? Para quem?"},
+  {id:"cte_terceiros",t:"long",q:"Vocês recebem CT-e de outras transportadoras ou usam o Acompanhamento Solicitações Contra-CTe?"}
+ ]},
+ {id:"contrato", title:"Contrato de frete e pagamento ao motorista", desc:"Como o motorista ou o proprietário recebe pela viagem.", qs:[
+  {id:"cf_fluxo",t:"long",q:"Como funciona o contrato de frete: quando é gerado, o que contém, quem recebe uma via?"},
+  {id:"cf_ciot",t:"long",q:"Vocês geram CIOT? Por qual administradora de pagamento (PAMCARD, Repom, outra)?"},
+  {id:"cf_adiant",t:"long",q:"Adiantamento e saldo: qual percentual, quando pagam cada parte e por qual meio?",h:"Cartão, Pix, transferência."},
+  {id:"cf_desconto",t:"long",q:"Como vocês calculam quebra de peso, avaria e outros descontos?"},
+  {id:"cf_pedagio",t:"long",q:"Vale-pedágio: como compram e ligam à viagem?"},
+  {id:"cf_canhoto",t:"long",q:"Como o motorista entrega o comprovante de entrega (canhoto) e como isso libera o saldo?"}
+ ]},
+ {id:"financeiro", title:"Financeiro e fiscal", desc:"Faturamento, contas e contabilidade.", qs:[
+  {id:"fin_usa",t:"many",q:"O que vocês fazem no ATUA nessa área?",o:["Faturamento de clientes","Boletos","Contas a receber","Contas a pagar","Conciliação bancária","Fluxo de caixa","Comissões","Nada disso","Outro"]},
+  {id:"fin_fatura",t:"long",q:"Como é faturado o cliente?",h:"Por CT-e, fatura semanal ou mensal, prazo de pagamento, envio da cobrança."},
+  {id:"fin_contab",t:"long",q:"O que vai para a contabilidade e como?",h:"Arquivos XML, relatórios, exportação. Qual escritório atende a Prisa."},
+  {id:"fin_fiscal",t:"long",q:"Vocês usam os menus Nota Fiscal ou Fiscal? Para quê?",h:"Notas de entrada, SPED, livros fiscais."}
+ ]},
+ {id:"frota", title:"Frota, oficina e pneus", desc:"Custos e manutenção dos veículos.", qs:[
+  {id:"fro_custos",t:"long",q:"Quais custos de frota vocês registram e onde?",h:"Combustível, manutenção, pneus, IPVA, seguro, financiamento."},
+  {id:"fro_abast",t:"long",q:"Abastecimento: postos conveniados, cartão combustível, como registram litros e média de consumo?"},
+  {id:"fro_oficina",t:"long",q:"Vocês usam o menu Oficina? Ordens de serviço, peças, estoque?"},
+  {id:"fro_pneus",t:"long",q:"Pneus: controlam número de fogo, posição no veículo, recapagem, quilometragem?"},
+  {id:"fro_cc",t:"long",q:"Centro de custo e unidade operacional: como vocês dividem e o que querem enxergar por centro de custo?",h:"Hoje aparecem unidades como Frota Própria, Prisa Apucarana e Terceirização."},
+  {id:"fro_venc",t:"long",q:"Como vocês controlam vencimentos de IPVA, licenciamento, tacógrafo e seguro?"}
+ ]},
+ {id:"agregado", title:"Agregados", desc:"Viagens e fechamento de veículos agregados.", qs:[
+  {id:"agr_fluxo",t:"long",q:"Como funciona a viagem e o fechamento de agregado? Qual a diferença para o terceiro avulso?"},
+  {id:"agr_rel",t:"long",q:"Quais relatórios de agregado vocês usam e para quê?"}
+ ]},
+ {id:"rastreio", title:"Rastreamento e ocorrências", desc:"Acompanhamento da carga durante a viagem.", qs:[
+  {id:"ras_usa",t:"long",q:"Como vocês acompanham a carga e informam o cliente?",h:"O que fazem no menu Rastreamento, se usam outro sistema."},
+  {id:"ras_ocorr",t:"long",q:"Como registram ocorrências na viagem?",h:"Atraso, avaria, sinistro, recusa na entrega."}
+ ]},
+ {id:"app", title:"App do motorista", desc:"O sistema novo terá um aplicativo para o motorista acompanhar a viagem.", qs:[
+  {id:"app_hoje",t:"long",q:"Hoje os motoristas usam algum app com a Prisa? Para quê?",h:"Mais Frete App, WhatsApp, app da administradora de pagamento."},
+  {id:"app_viagem",t:"long",q:"Do ponto de vista do motorista, o que acontece desde que ele é chamado para carregar até receber o saldo?",h:"Descreva cada passo e onde ele mais precisa ligar ou mandar mensagem para vocês."},
+  {id:"app_ver",t:"many",q:"O que o motorista deveria ver no app?",o:["Dados da carga e do destino","Valor do frete, adiantamento e saldo","Documentos da viagem (CT-e, MDF-e, contrato)","Endereços com mapa","Situação do pagamento","Vencimento dos documentos dele","Histórico de viagens","Outro"]},
+  {id:"app_fazer",t:"many",q:"O que o motorista deveria conseguir fazer pelo app?",o:["Enviar fotos dos documentos para o cadastro","Aceitar ou recusar uma carga","Avisar chegada no carregamento e na descarga","Enviar foto do canhoto","Registrar ocorrência","Compartilhar localização","Falar com a operação","Outro"]},
+  {id:"app_celular",t:"one",q:"Que celular a maioria dos motoristas usa?",o:["Android","iPhone","Misto","Não sei"]}
+ ]},
+ {id:"relatorios", title:"Relatórios", desc:"O que vocês acompanham em números.", qs:[
+  {id:"rel_quais",t:"long",q:"Quais relatórios vocês tiram toda semana ou todo mês, e para quem?"},
+  {id:"rel_falta",t:"long",q:"Que número ou relatório vocês gostariam de ter e hoje não conseguem?"}
+ ]},
+ {id:"integracoes", title:"Integrações e comunicação", desc:"Outros sistemas e mensagens automáticas.", qs:[
+  {id:"int_edi",t:"long",q:"Algum cliente troca arquivos EDI com vocês (Proceda, Notfis, Conemb, Ocoren)? Quais clientes?"},
+  {id:"int_msg",t:"long",q:"O ATUA envia e-mails ou WhatsApp automáticos? Para quem e com quê?"},
+  {id:"int_outros",t:"long",q:"Quais outros sistemas a Prisa usa junto com o ATUA?",h:"Banco, contabilidade, gerenciadora de risco, administradora de pagamento, planilhas."}
+ ]},
+ {id:"acessos", title:"Usuários, acessos e histórico", desc:"Quem pode fazer o quê, e o que precisa ser levado para o sistema novo.", qs:[
+  {id:"usu_perm",t:"long",q:"Quem pode fazer o quê no ATUA hoje? Existe algo que só uma pessoa pode fazer?"},
+  {id:"usu_externo",t:"long",q:"O que a equipe externa faz no sistema, e por qual aparelho (celular, notebook)?"},
+  {id:"hist",t:"long",q:"Que histórico precisa vir para o sistema novo, e desde quando?",h:"Cadastros, CT-e emitidos, viagens, financeiro."}
+ ]},
+ {id:"fechamento", title:"Para fechar", desc:"Sua opinião sincera conta muito aqui.", qs:[
+  {id:"dores",t:"long",q:"As três coisas que mais atrapalham você no ATUA."},
+  {id:"bom",t:"long",q:"O que o ATUA faz bem e não pode piorar no sistema novo."},
+  {id:"extra",t:"long",q:"Algo importante que não perguntamos."}
+ ]}
+];
+
+const NA = "Não usamos";
+const state = {}; SECTIONS.forEach(s => state[s.id] = {});
+const dirty = new Set();
+let db = null, canWrite = true, finished = false;
+
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2, "0");
+function isAnswered(v){ return Array.isArray(v) ? v.length > 0 : (v !== undefined && v !== null && String(v).trim() !== ""); }
+
+function setSave(text, kind){ const el = $("#save"); el.textContent = text; el.className = "save" + (kind ? " " + kind : ""); }
+
+function loadDraft(){ try { const d = JSON.parse(localStorage.getItem("entrevista-atua-rascunho") || "{}"); for (const k in d) if (state[k]) Object.assign(state[k], d[k]); } catch(e){} }
+function saveDraft(){ try { localStorage.setItem("entrevista-atua-rascunho", JSON.stringify(state)); } catch(e){} }
+
+function build(){
+  const main = $("#main"), toc = $("#toc"), jump = $("#jump");
+  SECTIONS.forEach((s, si) => {
+    const code = pad(si + 1);
+    const a = document.createElement("a"); a.href = "#" + s.id; a.id = "toc-" + s.id;
+    a.innerHTML = `<span class="n">${code}</span><span></span><span class="c"></span>`;
+    a.children[1].textContent = s.title; toc.appendChild(a);
+    const op = document.createElement("option"); op.value = s.id; op.textContent = code + " · " + s.title; jump.appendChild(op);
+
+    const sec = document.createElement("section"); sec.className = "sec"; sec.id = s.id;
+    sec.innerHTML = `<div class="sec-h"><span class="code">${code}</span><div><h2></h2><p></p></div></div>`;
+    sec.querySelector("h2").textContent = s.title; sec.querySelector("p").textContent = s.desc;
+    s.qs.forEach((q, qi) => sec.appendChild(buildQ(s, q, code + "." + pad(qi + 1))));
+    main.appendChild(sec);
+  });
+  const fin = document.createElement("div"); fin.className = "finish"; fin.id = "finish";
+  fin.innerHTML = `<h2>Terminou?</h2><p class="lead">Quando achar que respondeu o que sabia, marque como concluída. Dá para voltar e completar depois, mesmo marcada.</p><button class="primary" id="btn-finish" type="button">Marcar entrevista como concluída</button><div id="finish-msg" class="done-msg" hidden></div>`;
+  main.appendChild(fin);
+  $("#btn-finish").addEventListener("click", markFinished);
+  jump.addEventListener("change", () => { const t = document.getElementById(jump.value); if (t) t.scrollIntoView({behavior:"smooth"}); });
+}
+
+function buildQ(s, q, num){
+  const wrap = document.createElement("div"); wrap.className = "q"; wrap.id = "q-" + q.id;
+  const fid = "f-" + q.id;
+  wrap.innerHTML = `<div class="qn">${num}</div><div class="qb"></div>`;
+  const b = wrap.querySelector(".qb");
+  const lab = document.createElement(q.t === "one" || q.t === "many" ? "div" : "label");
+  lab.className = "qt"; lab.textContent = q.q; if (lab.tagName === "LABEL") lab.htmlFor = fid; b.appendChild(lab);
+  if (q.h){ const h = document.createElement("div"); h.className = "help"; h.textContent = q.h; b.appendChild(h); }
+  if (q.t === "long"){ const el = document.createElement("textarea"); el.id = fid; el.rows = 3; el.addEventListener("input", () => change(s.id, q.id, el.value)); b.appendChild(el); }
+  else if (q.t === "text" || q.t === "num"){ const el = document.createElement("input"); el.type = q.t === "num" ? "number" : "text"; el.id = fid; if (q.t === "num") el.min = "0"; el.addEventListener("input", () => change(s.id, q.id, el.value)); b.appendChild(el); }
+  else {
+    const box = document.createElement("div"); box.className = "opts"; box.setAttribute("role", q.t === "one" ? "radiogroup" : "group"); box.setAttribute("aria-label", q.q);
+    q.o.forEach((o, i) => {
+      const l = document.createElement("label"); l.className = "opt";
+      const inp = document.createElement("input"); inp.type = q.t === "one" ? "radio" : "checkbox"; inp.name = fid; inp.id = fid + "-" + i; inp.value = o;
+      const sp = document.createElement("span"); sp.textContent = o;
+      inp.addEventListener("change", () => {
+        if (q.t === "one") change(s.id, q.id, o);
+        else change(s.id, q.id, [...box.querySelectorAll("input:checked")].map(x => x.value));
+      });
+      l.append(inp, sp); box.appendChild(l);
+    });
+    b.appendChild(box);
+  }
+  const foot = document.createElement("div"); foot.className = "qfoot";
+  const na = document.createElement("button"); na.type = "button"; na.className = "na"; na.textContent = NA;
+  na.addEventListener("click", () => { change(s.id, q.id, q.t === "many" ? [NA] : NA); fill(s.id, q.id); });
+  foot.appendChild(na); b.appendChild(foot);
+  return wrap;
+}
+
+function fill(sid, qid){
+  const s = SECTIONS.find(x => x.id === sid), q = s.qs.find(x => x.id === qid), v = state[sid][qid];
+  const fid = "f-" + qid;
+  if (q.t === "long" || q.t === "text" || q.t === "num"){ const el = document.getElementById(fid); if (el && document.activeElement !== el) el.value = v ?? ""; }
+  else document.querySelectorAll(`input[name="${fid}"]`).forEach(inp => { inp.checked = Array.isArray(v) ? v.includes(inp.value) : v === inp.value; });
+  document.getElementById("q-" + qid).classList.toggle("answered", isAnswered(v));
+}
+function fillAll(){ SECTIONS.forEach(s => s.qs.forEach(q => fill(s.id, q.id))); progress(); }
+
+function progress(){
+  let total = 0, done = 0;
+  SECTIONS.forEach(s => {
+    const n = s.qs.filter(q => isAnswered(state[s.id][q.id])).length;
+    total += s.qs.length; done += n;
+    const a = document.getElementById("toc-" + s.id); a.querySelector(".c").textContent = n + "/" + s.qs.length; a.classList.toggle("done", n === s.qs.length);
+  });
+  $("#count").textContent = done + " de " + total + " respondidas";
+  $("#fill").style.width = (total ? Math.round(done / total * 100) : 0) + "%";
+}
+
+const timers = {};
+function change(sid, qid, v){
+  if (!canWrite) return;
+  state[sid][qid] = v; dirty.add(sid); saveDraft();
+  document.getElementById("q-" + qid).classList.toggle("answered", isAnswered(v));
+  progress();
+  setSave(db ? "Salvando…" : "Guardado só neste navegador", db ? "" : "warn");
+  clearTimeout(timers[sid]); timers[sid] = setTimeout(() => flush(sid), 1200);
+}
+
+const writing = {};
+async function flush(sid){
+  if (!db) return;
+  if (writing[sid]) { timers[sid] = setTimeout(() => flush(sid), 600); return; }
+  writing[sid] = true; dirty.delete(sid);
+  try {
+    await db.doc("respostas/" + sid).set({ respostas: { ...state[sid] }, atualizadoEm: new Date().toISOString() });
+    const t = new Date(); setSave("Salvo às " + pad(t.getHours()) + ":" + pad(t.getMinutes()));
+  } catch (e) {
+    dirty.add(sid);
+    if (e && e.code === "invalid_argument") { readOnly("Você pode ler a entrevista, mas não tem permissão para responder. Peça para quem enviou o link liberar acesso de colaborador."); }
+    else if (e && e.code === "quota_exceeded") setSave("Limite de armazenamento atingido", "err");
+    else { setSave("Sem conexão: guardado neste navegador, tentando de novo", "warn"); timers[sid] = setTimeout(() => flush(sid), 5000); }
+  } finally { writing[sid] = false; }
+}
+
+function readOnly(msg){
+  canWrite = false; const r = $("#ro"); r.textContent = msg; r.hidden = false;
+  document.querySelectorAll("textarea,input,.na,#btn-finish").forEach(el => el.disabled = true);
+  setSave("Somente leitura", "warn");
+}
+
+async function markFinished(){
+  if (!db) { $("#finish-msg").textContent = "Sem conexão com o servidor. Tente de novo em instantes."; $("#finish-msg").hidden = false; return; }
+  const btn = $("#btn-finish"); btn.disabled = true;
+  try {
+    for (const sid of [...dirty]) await flush(sid);
+    await db.doc("status/entrevista").set({ concluida: true, em: new Date().toISOString() });
+    finished = true; showFinished();
+  } catch (e) { $("#finish-msg").textContent = "Não foi possível marcar agora. Suas respostas continuam salvas."; $("#finish-msg").hidden = false; }
+  btn.disabled = false;
+}
+function showFinished(){ const m = $("#finish-msg"); m.textContent = "Entrevista marcada como concluída. Obrigado! Se lembrar de mais alguma coisa, é só voltar e completar."; m.hidden = false; $("#btn-finish").textContent = "Concluída"; }
+
+build(); loadDraft(); fillAll();
+
+(async () => {
+  const user = window.claude ? await window.claude.use("user").catch(() => null) : null;
+  if (user) { const c = await user.can("data.write").catch(() => null); if (c === false) readOnly("Você pode ler a entrevista, mas não tem permissão para responder. Peça para quem enviou o link liberar acesso de colaborador."); }
+  db = window.claude ? await window.claude.use("db").catch(() => null) : null;
+  if (!db) { setSave("Sem conexão: respostas guardadas só neste navegador", "warn"); return; }
+  setSave("Conectado");
+  let first = true;
+  db.collection("respostas").onSnapshot(snap => {
+    snap.docs.forEach(d => {
+      const sid = d.id; if (!state[sid] || dirty.has(sid) || writing[sid]) return;
+      const r = (d.data() || {}).respostas || {};
+      if (first) state[sid] = { ...r, ...state[sid] }; else state[sid] = { ...r };
+    });
+    if (first) { SECTIONS.forEach(s => { const local = Object.keys(state[s.id]).length; const remote = snap.docs.some(d => d.id === s.id); if (canWrite && local && !remote) { dirty.add(s.id); flush(s.id); } }); }
+    first = false; saveDraft(); fillAll();
+  }, () => setSave("Conexão perdida: guardado neste navegador", "warn"));
+  db.doc("status/entrevista").onSnapshot(d => { if (d.exists && (d.data() || {}).concluida) { finished = true; showFinished(); } }, () => {});
+})();
+</script>

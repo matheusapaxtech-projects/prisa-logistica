@@ -1,0 +1,5 @@
+.superpowers/
+re-atua-mais-frete/
+*.zip
+node_modules/
+.env*
