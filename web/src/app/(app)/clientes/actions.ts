@@ -6,6 +6,18 @@ import { comSessao, type ResultadoAcao } from "@/lib/acao";
 import { tipado } from "@/lib/banco";
 import { mensagemDeErro } from "@/lib/erros";
 import { validacao } from "@/lib/validacao";
+import {
+  CNPJ_INVALIDO,
+  CPF_INVALIDO,
+  data,
+  esquemaPessoaPf,
+  esquemaPessoaPj,
+  pessoaPfParaBanco,
+  pessoaPjParaBanco,
+  texto as textoMax,
+  uf,
+  vazioOuNulo,
+} from "../_pessoa/dados-pessoa";
 import { errosDoZod, lerForm, RE_ID, type ResultadoForm } from "../_pessoa/formulario";
 import { UFS } from "../_pessoa/rotulos";
 import { esquemaFaturamento, esquemaLocal, NAO_ACHADO } from "./regras";
@@ -15,13 +27,9 @@ import { esquemaFaturamento, esquemaLocal, NAO_ACHADO } from "./regras";
 
 const so = validacao.soDigitos;
 const SEM_PERMISSAO = { code: "42501", message: "row-level security" };
-const CPF_INVALIDO = "CPF inválido: os dois últimos dígitos não conferem. Copie de novo do documento.";
-const CNPJ_INVALIDO = "CNPJ inválido: os dois últimos dígitos não conferem. Copie de novo do cartão CNPJ.";
 
-const data = z.union([z.literal(""), z.iso.date("Data inválida.")]);
-const texto = (max: number) => z.string().max(max, `Até ${max} caracteres.`).default("");
-const nulo = (v: string | undefined) => (v ? v : null);
-const uf = z.union([z.literal(""), z.enum(UFS)]);
+const texto = (max: number) => textoMax(max).default("");
+const nulo = vazioOuNulo;
 
 function revalidarCliente(id: string) {
   revalidatePath("/clientes");
@@ -72,10 +80,14 @@ const SEM_PAPEL = (nome: string, motivo: string, doc: "CPF" | "CNPJ") => ({
     `Para completar, digite o ${doc} de novo nesta tela e use “Cadastrar também como cliente”.`,
 });
 
+/** Cliente criado: o id da pessoa e se o endereço da sede (PJ) ficou sem gravar. */
+export type Criado = { id: string; semEndereco: boolean };
+
 /** Cria o cliente: a pessoa (PF ou PJ) e o papel de cliente, ou só o papel para quem já está no NILT
    (`modo=ligar`). Faturamento e exigências nascem no padrão (por CT-e, sem exigências) e são
-   completados na ficha. Devolve o id da pessoa. */
-export async function salvarCliente(_antes: ResultadoForm<string> | null, form: FormData): Promise<ResultadoForm<string>> {
+   completados na ficha. Devolve o id da pessoa e se o endereço da sede deixou de ser gravado (o
+   cliente fica criado; a ficha avisa para incluir o endereço em Contatos). */
+export async function salvarCliente(_antes: ResultadoForm<Criado> | null, form: FormData): Promise<ResultadoForm<Criado>> {
   const bruto = lerForm(form);
   const modo = bruto.modo;
 
@@ -91,7 +103,7 @@ export async function salvarCliente(_antes: ResultadoForm<string> | null, form: 
       const { error } = await db.from("cliente").insert({ pessoa_id: id });
       if (error) throw error;
       revalidarCliente(id);
-      return id;
+      return { id, semEndereco: false };
     });
   }
 
@@ -111,7 +123,7 @@ export async function salvarCliente(_antes: ResultadoForm<string> | null, form: 
       const cl = await db.from("cliente").insert({ pessoa_id: id });
       if (cl.error) throw SEM_PAPEL(n.nome, mensagemDeErro(cl.error), "CPF");
       revalidarCliente(id);
-      return id;
+      return { id, semEndereco: false };
     });
   }
 
@@ -142,9 +154,11 @@ export async function salvarCliente(_antes: ResultadoForm<string> | null, form: 
     if (cl.error) throw SEM_PAPEL(n.nome, mensagemDeErro(cl.error), "CNPJ");
     revalidarCliente(id);
 
-    // Endereço da sede (o da Receita): fica nos Contatos. Falhar aqui não desfaz o cliente.
+    // Endereço da sede (o da Receita): fica nos Contatos. Falhar aqui não desfaz o cliente, mas a
+    // tela avisa (`semEndereco`) para incluir o endereço à mão.
+    let semEndereco = false;
     if (n.cidade) {
-      await db.from("pessoa_endereco").insert({
+      const end = await db.from("pessoa_endereco").insert({
         pessoa_id: id,
         tipo: "comercial",
         cep: nulo(so(n.cep)),
@@ -156,8 +170,36 @@ export async function salvarCliente(_antes: ResultadoForm<string> | null, form: 
         uf: n.uf as (typeof UFS)[number],
         principal: true,
       });
+      semEndereco = !!end.error;
     }
-    return id;
+    return { id, semEndereco };
+  });
+}
+
+/* ---------- dados da pessoa (aba Dados) ---------- */
+
+/** Grava a identificação e as inscrições da pessoa do cliente (os mesmos campos e regras da ficha de
+   proprietário, de `_pessoa/dados-pessoa`). O tipo (PF/PJ) vem do banco, nunca do formulário. */
+export async function salvarDadosCliente(_antes: ResultadoForm | null, form: FormData): Promise<ResultadoForm> {
+  const bruto = lerForm(form);
+  const id = bruto.pessoa_id ?? "";
+  if (!RE_ID.test(id)) return { ok: false, erro: NAO_ACHADO };
+  const tipo = await comSessao(async ({ supabase }) => {
+    const atual = await tipado(supabase).from("pessoa").select("tipo, cliente(pessoa_id)").eq("id", id).maybeSingle();
+    if (atual.error) throw atual.error;
+    if (!atual.data?.cliente) throw { code: "P0001", message: NAO_ACHADO };
+    return atual.data.tipo;
+  });
+  if (!tipo.ok) return tipo;
+  const pj = tipo.dados === "pj";
+  const v = (pj ? esquemaPessoaPj : esquemaPessoaPf).safeParse(bruto);
+  if (!v.success) return errosDoZod(v.error);
+  const dados = pj ? pessoaPjParaBanco(v.data as z.infer<typeof esquemaPessoaPj>) : pessoaPfParaBanco(v.data as z.infer<typeof esquemaPessoaPf>);
+  return comSessao(async ({ supabase }) => {
+    const r = await tipado(supabase).from("pessoa").update(dados).eq("id", id).select("id");
+    if (r.error) throw r.error;
+    if (!r.data?.length) throw SEM_PERMISSAO;
+    revalidarCliente(id);
   });
 }
 

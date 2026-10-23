@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { esquemaPessoaPf, esquemaPessoaPj, pessoaPfParaBanco, pessoaPjParaBanco } from "@/app/(app)/_pessoa/dados-pessoa";
 import { esquemaFaturamento, esquemaLocal } from "@/app/(app)/clientes/regras";
 
 /** Primeira mensagem do zod para o campo (o que a tela mostra ao lado dele). */
@@ -103,5 +104,49 @@ describe("esquemaLocal (salvarLocal)", () => {
   it("id de edição precisa ser um id válido", () => {
     expect(esquemaLocal.safeParse({ ...base, id: "abc" }).success).toBe(false);
     expect(esquemaLocal.safeParse({ ...base, id: "22222222-2222-2222-2222-222222222222" }).success).toBe(true);
+  });
+});
+
+describe("dados da pessoa (_pessoa/dados-pessoa, aba Dados de proprietário e cliente)", () => {
+  it("PJ: limpa nome e CNPJ, isenção zera a IE, Simples sim/não, consulta à Receita só quando marcada", () => {
+    const f = esquemaPessoaPj.parse({
+      nome: "  Empresa   Teste  Ltda ",
+      cnpj: "90.765.431/0001-31",
+      nome_fantasia: "",
+      optante_simples: "sim",
+      inscricao_estadual_isento: "on",
+      inscricao_estadual: "123",
+      receita_consultada: "1",
+    });
+    expect(pessoaPjParaBanco(f, () => "2026-10-23T12:00:00.000Z")).toEqual({
+      nome: "Empresa Teste Ltda",
+      inscricao_estadual_isento: true,
+      inscricao_estadual: null,
+      inscricao_municipal: null,
+      cnae_principal: null,
+      cnpj: "90765431000131",
+      nome_fantasia: null,
+      fundacao: null,
+      natureza_juridica: null,
+      optante_simples: true,
+      dt_consulta_simples: null,
+      dt_consulta_brasilapi: "2026-10-23T12:00:00.000Z",
+    });
+    expect(pessoaPjParaBanco(esquemaPessoaPj.parse({ nome: "X", cnpj: "90765431000131" }))).not.toHaveProperty("dt_consulta_brasilapi");
+  });
+
+  it("PF: CPF só dígitos, vazios viram nulo e nada de INSS", () => {
+    const b = pessoaPfParaBanco(esquemaPessoaPf.parse({ nome: "Maria Teste", cpf: "529.982.247-25", sexo: "feminino", naturalidade_uf: "PR" }));
+    expect(b).toMatchObject({ nome: "Maria Teste", cpf: "52998224725", sexo: "feminino", naturalidade_uf: "PR", apelido: null, rg: null });
+    expect(b).not.toHaveProperty("nr_inss");
+  });
+
+  it("mesmas mensagens da ficha de proprietário", () => {
+    const pj = esquemaPessoaPj.safeParse({ nome: "", cnpj: "90765431000132" });
+    expect(pj.error?.issues.map((i) => [i.path[0], i.message])).toEqual([
+      ["nome", "Informe a razão social, como está no cartão CNPJ."],
+      ["cnpj", "CNPJ inválido: os dois últimos dígitos não conferem. Copie de novo do cartão CNPJ."],
+    ]);
+    expect(esquemaPessoaPf.safeParse({ nome: "A", cpf: "52998224724" }).error?.issues[0].message).toMatch(/^CPF inválido/);
   });
 });

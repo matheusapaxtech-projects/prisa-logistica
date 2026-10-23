@@ -96,7 +96,7 @@ function FormularioTipo({ tipo, documentoInicial }: { tipo: Tipo; documentoInici
     if (!estado) return;
     if (estado.ok) {
       toast(pessoa ? `${pessoa.nome} agora também é cliente. Abrindo a ficha…` : "Cliente criado. Abrindo a ficha…");
-      router.push(`/clientes/${estado.dados}?criado=1`);
+      router.push(`/clientes/${estado.dados.id}?criado=1${estado.dados.semEndereco ? "&sem_endereco=1" : ""}`);
       return;
     }
     if ("campos" in estado) {

@@ -1,8 +1,7 @@
-import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Check, Link2 } from "lucide-react";
+import { Check, Link2, TriangleAlert } from "lucide-react";
 import { Abas, type Aba } from "@/components/Abas";
 import { Sinal } from "@/components/Sinal";
 import { tipado } from "@/lib/banco";
@@ -11,9 +10,9 @@ import { getPerfil, pode } from "@/lib/permissoes";
 import { createClient } from "@/lib/supabase/server";
 import { Contatos } from "../../_pessoa/Contatos";
 import { RE_ID } from "../../_pessoa/formulario";
-import { Dash } from "../../_pessoa/partes";
-import { carregarFicha, type PessoaRow } from "../consultas";
+import { carregarFicha } from "../consultas";
 import { CONDICOES } from "../regras";
+import { AbaDados } from "./aba-dados";
 import { AbaFaturamento } from "./aba-faturamento";
 import { AbaLocais } from "./aba-locais";
 import "@/styles/paginas/pessoa.css";
@@ -39,48 +38,6 @@ function Migalha({ titulo }: { titulo: string }) {
       </span>
       <h1>{titulo}</h1>
     </nav>
-  );
-}
-
-function Valor({ children }: { children: ReactNode }) {
-  return <dd>{children || <Dash />}</dd>;
-}
-
-/** Aba "Dados": a identificação da pessoa (como está no cadastro) e os contatos compartilhados. */
-function Identificacao({ p, outros }: { p: PessoaRow; outros: ReactNode }) {
-  const pj = p.tipo === "pj";
-  return (
-    <section className="secao" aria-labelledby="h-ident">
-      <div className="secao-rotulo">
-        <h2 id="h-ident">{pj ? "Empresa" : "Pessoa física"}</h2>
-        <p>
-          {pj
-            ? "Como está na Receita. Endereços, telefones e e-mails ficam logo abaixo, nos contatos."
-            : "Como está no CPF. Endereços, telefones e e-mails ficam logo abaixo, nos contatos."}
-        </p>
-      </div>
-      <div>
-        <dl className="kv">
-          <dt>{pj ? "Razão social" : "Nome"}</dt>
-          <Valor>{p.nome}</Valor>
-          <dt>{pj ? "CNPJ" : "CPF"}</dt>
-          <dd className="cod">{formato.doc(p)}</dd>
-          {pj && (
-            <>
-              <dt>Nome fantasia</dt>
-              <Valor>{p.nome_fantasia}</Valor>
-              <dt>Inscrição estadual</dt>
-              <Valor>{p.inscricao_estadual_isento ? "Isento" : p.inscricao_estadual}</Valor>
-              <dt>Atividade principal</dt>
-              <Valor>{p.cnae_principal}</Valor>
-              <dt>Consulta à Receita</dt>
-              <Valor>{p.dt_consulta_brasilapi ? formato.dataHora(p.dt_consulta_brasilapi) : null}</Valor>
-            </>
-          )}
-        </dl>
-        {outros}
-      </div>
-    </section>
   );
 }
 
@@ -132,11 +89,11 @@ export default async function FichaClientePage({ params, searchParams }: Params)
 
   const outrosPapeis =
     f.tambemMotorista || f.tambemProprietario ? (
-      <p className="explica" style={{ marginTop: 16 }}>
+      <p className="explica" style={{ marginBottom: 16 }}>
         Também é{" "}
         {f.tambemProprietario && <Link href={`/proprietarios/${id}`}>proprietário</Link>}
         {f.tambemProprietario && f.tambemMotorista && " e "}
-        {f.tambemMotorista && <Link href={`/motoristas/${id}`}>motorista</Link>}: dados e contatos são os mesmos nas fichas.
+        {f.tambemMotorista && <Link href={`/motoristas/${id}`}>motorista</Link>}: dados e contatos são os mesmos nas fichas; o que mudar aqui muda lá.
       </p>
     ) : null;
 
@@ -149,6 +106,12 @@ export default async function FichaClientePage({ params, searchParams }: Params)
             <b>Cliente criado.</b> Complete a ficha: os locais de coleta e descarga e, em Faturamento e exigências, a condição de faturamento e o
             que o cliente exige.
           </span>
+        </div>
+      )}
+      {um(sp.sem_endereco) && (
+        <div className="aviso aviso-pendente aviso-criado" role="alert">
+          <TriangleAlert size={16} strokeWidth={1.6} aria-hidden="true" />
+          <span>O cliente foi criado, mas o endereço da sede não foi salvo. Inclua em Contatos, na aba Dados.</span>
         </div>
       )}
       <div className="cab-ficha">
@@ -174,8 +137,11 @@ export default async function FichaClientePage({ params, searchParams }: Params)
 
       {aba === "dados" && (
         <>
-          <Identificacao p={p} outros={outrosPapeis} />
-          <Contatos pessoaId={id} podeEditar={podeEditar} revalidar={[`/clientes/${id}`, "/clientes"]} />
+          {outrosPapeis}
+          <AbaDados key={p.updated_at} pessoa={p} podeEditar={podeEditar} />
+          <div style={{ marginTop: 32 }}>
+            <Contatos pessoaId={id} podeEditar={podeEditar} revalidar={[`/clientes/${id}`, "/clientes"]} />
+          </div>
         </>
       )}
       {aba === "locais" && <AbaLocais pessoaId={id} locais={locais} podeEditar={podeEditar} podeApagar={pode(perfil, "admin")} />}
