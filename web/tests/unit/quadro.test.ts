@@ -238,36 +238,79 @@ describe("estado da conexão", () => {
     const inicio: EstadoConexao = { tipo: "conectando" };
     expect(textoConexao(inicio)).toBe("Conectando…");
     const inscrito = proximoEstado(inicio, { tipo: "inscrito", em: as1432 });
-    expect(inscrito).toEqual({ tipo: "conectando" });
+    expect(inscrito.tipo).toBe("conectando");
+    expect(textoConexao(inscrito)).toBe("Conectando…");
     const vivo = proximoEstado(inscrito, { tipo: "recarregou", em: as1432 });
     expect(vivo).toEqual({ tipo: "ao_vivo", atualizadoEm: as1432 });
     expect(textoConexao(vivo)).toBe("Ao vivo");
   });
 
-  it("erro ou queda ao vivo vira desatualizado desde a última atualização", () => {
-    const vivo: EstadoConexao = { tipo: "ao_vivo", atualizadoEm: as1432 };
-    const e = proximoEstado(vivo, { tipo: "erro", em: as1500 });
-    expect(e).toEqual({ tipo: "desatualizado", desde: as1432 });
-    expect(textoConexao(e)).toBe("Desatualizado desde 14:32");
-    expect(proximoEstado(vivo, { tipo: "fechado", em: as1500 })).toEqual({ tipo: "desatualizado", desde: as1432 });
+  it("conectando + recarregou (sem inscrito) continua conectando", () => {
+    const e = proximoEstado({ tipo: "conectando" }, { tipo: "recarregou", em: as1432 });
+    expect(e).toEqual({ tipo: "conectando" });
+    expect(textoConexao(e)).toBe("Conectando…");
   });
 
-  it("desatualizado continua assim com inscrito, e volta ao vivo com recarregou", () => {
-    const des: EstadoConexao = { tipo: "desatualizado", desde: as1432 };
-    expect(proximoEstado(des, { tipo: "inscrito", em: as1500 })).toEqual(des);
-    expect(proximoEstado(des, { tipo: "erro", em: as1500 })).toEqual(des);
-    expect(proximoEstado(des, { tipo: "fechado", em: as1500 })).toEqual(des);
-    expect(proximoEstado(des, { tipo: "recarregou", em: as1500 })).toEqual({ tipo: "ao_vivo", atualizadoEm: as1500 });
-  });
-
-  it("falha ainda conectando vira desatualizado desde o momento do erro", () => {
-    expect(proximoEstado({ tipo: "conectando" }, { tipo: "erro", em: as1500 })).toEqual({
-      tipo: "desatualizado",
-      desde: as1500,
+  it("conectando + inscrito + recarregou vira ao vivo", () => {
+    const inscrito = proximoEstado({ tipo: "conectando" }, { tipo: "inscrito", em: as1432 });
+    expect(proximoEstado(inscrito, { tipo: "recarregou", em: as1500 })).toEqual({
+      tipo: "ao_vivo",
+      atualizadoEm: as1500,
     });
   });
 
-  it("ao vivo + recarregou só renova o horário; ao vivo + inscrito não muda", () => {
+  it("erro ou queda ao vivo vira desatualizado desde a última atualização", () => {
+    const vivo: EstadoConexao = { tipo: "ao_vivo", atualizadoEm: as1432 };
+    const e = proximoEstado(vivo, { tipo: "erro", em: as1500 });
+    expect(e).toEqual({ tipo: "desatualizado", desde: as1432, inscrito: false });
+    expect(textoConexao(e)).toBe("Desatualizado desde 14:32");
+    expect(proximoEstado(vivo, { tipo: "fechado", em: as1500 })).toEqual({
+      tipo: "desatualizado",
+      desde: as1432,
+      inscrito: false,
+    });
+  });
+
+  it("desatualizado + recarregou (sem inscrito) continua desatualizado desde 14:32", () => {
+    // ex.: recarga ao focar a janela com o canal ainda fora do ar
+    const des: EstadoConexao = { tipo: "desatualizado", desde: as1432, inscrito: false };
+    const e = proximoEstado(des, { tipo: "recarregou", em: as1500 });
+    expect(e).toEqual(des);
+    expect(textoConexao(e)).toBe("Desatualizado desde 14:32");
+  });
+
+  it("desatualizado + inscrito não vira ao vivo; + recarregou vira", () => {
+    const des: EstadoConexao = { tipo: "desatualizado", desde: as1432, inscrito: false };
+    const inscrito = proximoEstado(des, { tipo: "inscrito", em: as1500 });
+    expect(inscrito).toEqual({ tipo: "desatualizado", desde: as1432, inscrito: true });
+    expect(textoConexao(inscrito)).toBe("Desatualizado desde 14:32");
+    expect(proximoEstado(inscrito, { tipo: "recarregou", em: as1500 })).toEqual({
+      tipo: "ao_vivo",
+      atualizadoEm: as1500,
+    });
+  });
+
+  it("erro ou queda desatualizado mantém o desde e derruba o inscrito", () => {
+    const des: EstadoConexao = { tipo: "desatualizado", desde: as1432, inscrito: true };
+    const esperado = { tipo: "desatualizado", desde: as1432, inscrito: false };
+    expect(proximoEstado(des, { tipo: "erro", em: as1500 })).toEqual(esperado);
+    expect(proximoEstado(des, { tipo: "fechado", em: as1500 })).toEqual(esperado);
+    // e sem o canal, recarregar de novo não volta ao vivo
+    expect(proximoEstado(proximoEstado(des, { tipo: "erro", em: as1500 }), { tipo: "recarregou", em: as1500 })).toEqual(
+      esperado,
+    );
+  });
+
+  it("falha ainda conectando vira desatualizado desde o momento do erro", () => {
+    const inscrito = proximoEstado({ tipo: "conectando" }, { tipo: "inscrito", em: as1432 });
+    expect(proximoEstado(inscrito, { tipo: "erro", em: as1500 })).toEqual({
+      tipo: "desatualizado",
+      desde: as1500,
+      inscrito: false,
+    });
+  });
+
+  it("ao vivo + recarregou renova o horário; ao vivo + inscrito não muda", () => {
     const vivo: EstadoConexao = { tipo: "ao_vivo", atualizadoEm: as1432 };
     expect(proximoEstado(vivo, { tipo: "recarregou", em: as1500 })).toEqual({ tipo: "ao_vivo", atualizadoEm: as1500 });
     expect(proximoEstado(vivo, { tipo: "inscrito", em: as1500 })).toEqual(vivo);
