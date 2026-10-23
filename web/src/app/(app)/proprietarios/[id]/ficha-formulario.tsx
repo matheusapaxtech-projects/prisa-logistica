@@ -8,6 +8,7 @@ import { Campo } from "@/components/Campo";
 import { toast } from "@/components/Toast";
 import type { DadosCnpj } from "@/lib/brasilapi";
 import { hojeISO } from "@/lib/datas";
+import { MSG_SESSAO_EXPIRADA } from "@/lib/erros";
 import { formato } from "@/lib/formato";
 import { validacao } from "@/lib/validacao";
 import { MSG_FALTAM_DADOS } from "../../_pessoa/formulario";
@@ -316,6 +317,7 @@ export function FichaFormulario({ pessoa: p, proprietario: pr, aba, podeEditar, 
       const r = await fetch(`/api/cnpj/${d}`, { cache: "no-store" });
       const x = (await r.json().catch(() => ({}))) as DadosCnpj & { erro?: string };
       if (!atual()) return;
+      if (r.status === 401) throw new Error(MSG_SESSAO_EXPIRADA);
       if (r.status === 404) throw new Error(MSG_404);
       if (!r.ok || x.erro) throw new Error(MSG_FALHOU);
       let mudou = 0;
@@ -350,7 +352,8 @@ export function FichaFormulario({ pessoa: p, proprietario: pr, aba, podeEditar, 
       f.dispatchEvent(new Event("input", { bubbles: true }));
     } catch (e) {
       if (!atual()) return;
-      setMsgReceita({ ok: false, texto: (e as Error).message === MSG_404 ? MSG_404 : MSG_FALHOU, tentarDeNovo: true });
+      const m = (e as Error).message;
+      setMsgReceita({ ok: false, texto: m === MSG_404 || m === MSG_SESSAO_EXPIRADA ? m : MSG_FALHOU, tentarDeNovo: true });
     } finally {
       if (minha === buscaReceita.current) setBuscando(false);
     }

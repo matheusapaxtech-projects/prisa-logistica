@@ -37,4 +37,8 @@ describe("_pessoa: apoio aos formulários", () => {
     expect(lerForm(f)).toEqual({ nome: "Ana", principal: "on" });
     expect(caminhosValidos(["/motoristas", "/motoristas/abc-1", "https://x.com", "//x", "/a b"])).toEqual(["/motoristas", "/motoristas/abc-1"]);
   });
+
+  it("caminhosValidos ignora o que não é lista (argumento vindo do navegador), sem lançar", () => {
+    for (const v of [null, undefined, "/motoristas", 42, { 0: "/motoristas" }]) expect(caminhosValidos(v)).toEqual([]);
+  });
 });

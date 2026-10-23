@@ -25,9 +25,13 @@ export function lerForm(form: FormData): Record<string, string> {
   return o;
 }
 
-/** Caminhos que a ação pode revalidar: só rotas internas do app. */
-export function caminhosValidos(revalidar: string[]): string[] {
-  return revalidar.filter((c) => typeof c === "string" && /^\/(?!\/)[a-z0-9/_-]*$/i.test(c));
+/**
+ * Caminhos que a ação pode revalidar: só rotas internas do app. O valor vem do navegador (argumento
+ * de Server Action), então qualquer coisa que não seja uma lista vira lista vazia, sem lançar.
+ */
+export function caminhosValidos(revalidar: unknown): string[] {
+  if (!Array.isArray(revalidar)) return [];
+  return revalidar.filter((c): c is string => typeof c === "string" && /^\/(?!\/)[a-z0-9/_-]*$/i.test(c));
 }
 
 /** Id de registro (formato 8-4-4-4-12 sem exigir versão: as seeds usam ids fora da RFC). */

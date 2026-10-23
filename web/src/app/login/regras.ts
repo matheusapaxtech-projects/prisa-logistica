@@ -1,6 +1,8 @@
 // Regras do formulário de entrada (mesmos textos de prototipo/login.html), usadas no navegador e na action.
 
 export const MSG_CREDENCIAIS = "E-mail ou senha incorretos. Confira e tente de novo.";
+export const MSG_EMAIL_NAO_CONFIRMADO =
+  "Seu e-mail ainda não foi confirmado. Peça ao administrador para confirmar sua conta.";
 
 export type ErrosEntrada = { email?: string; senha?: string };
 

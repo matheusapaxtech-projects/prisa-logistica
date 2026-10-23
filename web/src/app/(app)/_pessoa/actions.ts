@@ -23,8 +23,8 @@ function idValido(id: string): boolean {
   return RE_ID.test(id);
 }
 
-function revalidarTudo(revalidar: string[]) {
-  for (const c of caminhosValidos(revalidar)) revalidatePath(c);
+function revalidarTudo(caminhos: string[]) {
+  for (const c of caminhos) revalidatePath(c);
 }
 
 /** Inclui com "principal" sem perder o principal anterior (ordem e motivo em ./principal.ts). */
@@ -51,6 +51,7 @@ const Endereco = z
 
 /** Inclui um endereço da pessoa. Coordenada aceita "lat,lon" ou um link do Google Maps com os números. */
 export async function adicionarEndereco(pessoaId: string, revalidar: string[], form: FormData): Promise<ResultadoForm> {
+  const caminhos = caminhosValidos(revalidar);
   if (!idValido(pessoaId)) return { ok: false, erro: NAO_ACHADO.message };
   const v = Endereco.safeParse(lerForm(form));
   if (!v.success) return errosDoZod(v.error);
@@ -77,7 +78,7 @@ export async function adicionarEndereco(pessoaId: string, revalidar: string[], f
       },
       marcado(e.principal),
     );
-    revalidarTudo(revalidar);
+    revalidarTudo(caminhos);
   });
 }
 
@@ -94,6 +95,7 @@ const Telefone = z.object({
 });
 
 export async function adicionarTelefone(pessoaId: string, revalidar: string[], form: FormData): Promise<ResultadoForm> {
+  const caminhos = caminhosValidos(revalidar);
   if (!idValido(pessoaId)) return { ok: false, erro: NAO_ACHADO.message };
   const v = Telefone.safeParse(lerForm(form));
   if (!v.success) return errosDoZod(v.error);
@@ -114,7 +116,7 @@ export async function adicionarTelefone(pessoaId: string, revalidar: string[], f
       },
       marcado(t.principal),
     );
-    revalidarTudo(revalidar);
+    revalidarTudo(caminhos);
   });
 }
 
@@ -130,6 +132,7 @@ const Email = z.object({
 });
 
 export async function adicionarEmail(pessoaId: string, revalidar: string[], form: FormData): Promise<ResultadoForm> {
+  const caminhos = caminhosValidos(revalidar);
   if (!idValido(pessoaId)) return { ok: false, erro: NAO_ACHADO.message };
   const v = Email.safeParse(lerForm(form));
   if (!v.success) return errosDoZod(v.error);
@@ -147,7 +150,7 @@ export async function adicionarEmail(pessoaId: string, revalidar: string[], form
       },
       marcado(m.principal),
     );
-    revalidarTudo(revalidar);
+    revalidarTudo(caminhos);
   });
 }
 
@@ -169,6 +172,7 @@ const Conta = z.object({
 
 /** Inclui uma conta. `titular_confere` é calculado pelo banco (favorecido = CPF/CNPJ da pessoa). */
 export async function adicionarConta(pessoaId: string, revalidar: string[], form: FormData): Promise<ResultadoForm> {
+  const caminhos = caminhosValidos(revalidar);
   if (!idValido(pessoaId)) return { ok: false, erro: NAO_ACHADO.message };
   const v = Conta.safeParse(lerForm(form));
   if (!v.success) return errosDoZod(v.error);
@@ -197,7 +201,7 @@ export async function adicionarConta(pessoaId: string, revalidar: string[], form
       },
       marcado(c.principal),
     );
-    revalidarTudo(revalidar);
+    revalidarTudo(caminhos);
   });
 }
 
@@ -236,6 +240,7 @@ const Pix = z
   });
 
 export async function adicionarPix(pessoaId: string, revalidar: string[], form: FormData): Promise<ResultadoForm> {
+  const caminhos = caminhosValidos(revalidar);
   if (!idValido(pessoaId)) return { ok: false, erro: NAO_ACHADO.message };
   const v = Pix.safeParse(lerForm(form));
   if (!v.success) return errosDoZod(v.error);
@@ -266,7 +271,7 @@ export async function adicionarPix(pessoaId: string, revalidar: string[], form: 
       if ((e as { code?: string }).code === "23505") throw CHAVE_REPETIDA;
       throw e;
     }
-    revalidarTudo(revalidar);
+    revalidarTudo(caminhos);
   });
 }
 

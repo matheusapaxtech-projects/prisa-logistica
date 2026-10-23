@@ -5,6 +5,7 @@ import { Search } from "lucide-react";
 import { Campo } from "@/components/Campo";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import { Ponto } from "@/components/Ponto";
+import { MSG_SESSAO_EXPIRADA } from "@/lib/erros";
 import { formato, mascaras } from "@/lib/formato";
 import { validacao } from "@/lib/validacao";
 import { adicionarEmail, adicionarEndereco, adicionarTelefone } from "./actions";
@@ -289,11 +290,18 @@ function DialogoEndereco({
     // Resposta de uma busca mais velha (ou de um CEP que já não está no campo) não vale: descarta.
     const minha = ++buscaCep.current;
     const atual = () => minha === buscaCep.current && validacao.soDigitos(el.value) === d;
+    // Resposta descartada porque o CEP mudou: sem busca mais nova em andamento, o aviso volta ao
+    // início em vez de ficar preso em "Consultando o CEP…".
+    const descartar = () => {
+      if (minha === buscaCep.current) setCep(CEP_INICIO);
+    };
     try {
       const r = await fetch(`/api/cep/${d}`, { cache: "no-store" });
       const j = (await r.json().catch(() => ({}))) as { erro?: string; logradouro?: string; bairro?: string; cidade?: string; uf?: string };
-      if (!atual()) return;
-      // 404 = o CEP não existe ("CEP não encontrado."); qualquer outra falha = a consulta não respondeu.
+      if (!atual()) return descartar();
+      // 401 = a sessão expirou (o diálogo continua com o que foi digitado); 404 = o CEP não existe
+      // ("CEP não encontrado."); qualquer outra falha = a consulta não respondeu.
+      if (r.status === 401) throw new Error(MSG_SESSAO_EXPIRADA);
       if (r.status === 404) throw new Error(j.erro || "CEP não encontrado.");
       if (!r.ok || j.erro) throw new Error("A consulta não respondeu.");
       for (const k of ["logradouro", "bairro", "cidade"] as const) {
@@ -306,6 +314,7 @@ function DialogoEndereco({
       (form.elements.namedItem("numero") as HTMLInputElement | null)?.focus();
     } catch (e) {
       if (atual()) setCep({ tipo: "erro", texto: (e as Error).message || "A consulta não respondeu." });
+      else descartar();
     }
   }
 
@@ -314,6 +323,11 @@ function DialogoEndereco({
     el.value = mascaras.cep(el.value);
     if (erroCep) setErroCep(null);
     if (validacao.soDigitos(el.value).length === 8) void buscar(el.form);
+    else if (cep.tipo === "buscando") {
+      // Apagou um dígito no meio da consulta: a resposta que chegar não vale mais.
+      buscaCep.current++;
+      setCep(CEP_INICIO);
+    }
   }
 
   return (

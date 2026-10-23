@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { mensagemDeErro } from "@/lib/erros";
-import { MSG_CREDENCIAIS, validarEntrada, type ErrosEntrada } from "./regras";
+import { MSG_CREDENCIAIS, MSG_EMAIL_NAO_CONFIRMADO, validarEntrada, type ErrosEntrada } from "./regras";
 
 export type EstadoEntrada = { erro?: string; campos?: ErrosEntrada } | null;
 
@@ -18,7 +18,9 @@ export async function entrar(_antes: EstadoEntrada, form: FormData): Promise<Est
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
   if (error) {
-    // 400 invalid_credentials (e e-mail não confirmado) → a frase do protótipo; o resto, a genérica.
+    // E-mail não confirmado: a conta existe, mas o administrador precisa confirmá-la (frase própria).
+    if (error.code === "email_not_confirmed") return { erro: MSG_EMAIL_NAO_CONFIRMADO };
+    // 400 invalid_credentials (e outros 400 de credencial) → a frase do protótipo; o resto, a genérica.
     const credencial = error.code === "invalid_credentials" || error.status === 400;
     return { erro: credencial ? MSG_CREDENCIAIS : mensagemDeErro(error) };
   }

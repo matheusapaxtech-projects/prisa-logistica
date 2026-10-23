@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { LogOut } from "lucide-react";
+import { KeyRound, LogOut } from "lucide-react";
 import { sair } from "@/app/login/actions";
 import { pode, type Papel, type Perfil } from "@/lib/papeis";
 import { Avatar } from "@/components/Avatar";
@@ -56,7 +56,16 @@ export function Shell({ perfil, badgePendencias, children }: Props) {
             <b>{perfil.nome}</b>
             <span>{PAPEL[perfil.papel]}</span>
           </span>
-          <form action={sair} style={{ marginLeft: "auto", display: "flex" }}>
+          <Link
+            className="btn btn-texto btn-icone"
+            href="/nova-senha"
+            aria-label="Trocar senha"
+            title="Trocar senha"
+            style={{ marginLeft: "auto" }}
+          >
+            <KeyRound size={16} strokeWidth={1.6} aria-hidden="true" />
+          </Link>
+          <form action={sair} style={{ display: "flex" }}>
             <button className="btn btn-texto btn-icone" type="submit" aria-label="Sair" title="Sair">
               <LogOut size={16} strokeWidth={1.6} aria-hidden="true" />
             </button>

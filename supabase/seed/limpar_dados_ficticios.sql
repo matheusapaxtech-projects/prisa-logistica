@@ -13,8 +13,12 @@
 --      ou criados pelos testes E2E. A parte 2 abaixo para com erro se ainda sobrar objeto.
 --   2. Crie o primeiro administrador real (supabase/criar-primeiro-admin.sql) e confira que ele
 --      entra no sistema: depois desta limpeza os usuários de teste deixam de existir.
---   3. Rode só a PARTE 1 (prévia, só leitura) e confira as contagens.
---   4. Rode a PARTE 2 inteira (uma transação: ou apaga tudo, ou nada).
+--   3. Rode o arquivo inteiro: só a PARTE 1 (prévia, só leitura) executa, porque a PARTE 2 está
+--      dentro de um comentário /* … */. Confira as contagens: "bloqueios" precisam ser 0 e
+--      "administradores reais ativos" precisa ser pelo menos 1.
+--   4. Para apagar: selecione no editor só as linhas da PARTE 2, de `begin;` até `commit;` (sem as
+--      linhas /* e */ que a cercam), e rode a seleção ("Run selected"). É uma transação: ou apaga
+--      tudo, ou nada.
 --
 -- O QUE É APAGADO
 --   Seed (supabase/seed/dev_dados_ficticios.sql, ids fixos 00000000-0000-4000-8000-<12 dígitos>):
@@ -38,6 +42,13 @@
 -- reais e os usuários reais. Se algum cadastro real apontar para um proprietário/motorista da seed
 -- (ex.: veículo real com proprietário "TSC Transportes"), a parte 2 para com erro de chave
 -- estrangeira e nada é apagado: a prévia mostra esses casos em "bloqueios".
+--
+-- TRAVAS DA PARTE 2 (param com erro e não apagam nada):
+--   - não existe administrador real ativo (perfil admin ativo fora dos 3 usuários de teste): sem ele
+--     ninguém entraria no sistema depois da limpeza;
+--   - algum conjunto da limpeza (escolhido porque o motorista é fictício) tem cavalo ou peça real:
+--     troque o motorista desse conjunto pela tela antes de limpar;
+--   - ainda há documentos destes cadastros no Storage.
 -- =============================================================================================
 
 
@@ -98,14 +109,28 @@ select o_que, quantos from (values
                                                       or v.ultimo_motorista_id in (select id from pessoas)))),
   (19, 'usuários que NÃO são de teste (ficam)', (select count(*) from auth.users where id not in (select id from usuarios))),
   (20, 'pessoas que ficam',                   (select count(*) from public.pessoa where id not in (select id from pessoas))),
-  (21, 'veículos que ficam',                  (select count(*) from public.veiculo where id not in (select id from veiculos)))
+  (21, 'veículos que ficam',                  (select count(*) from public.veiculo where id not in (select id from veiculos))),
+  (22, 'bloqueios: conjuntos da limpeza com cavalo ou peça real (deve ser 0)',
+                                              (select count(*) from conjuntos c
+                                               where c.id in (select cj.id from public.conjunto cj
+                                                              where cj.cavalo_id not in (select id from veiculos)
+                                                                 or exists (select 1 from public.conjunto_item i
+                                                                            where i.conjunto_id = cj.id
+                                                                              and i.veiculo_id not in (select id from veiculos))))),
+  (23, 'administradores reais ativos (deve ser 1 ou mais)',
+                                              (select count(*) from public.perfil_usuario p
+                                               where p.papel = 'admin' and p.ativo
+                                                 and p.user_id not in (select id from usuarios)))
 ) as t(ordem, o_que, quantos)
 order by ordem;
 
 
 -- =============================================================================================
--- PARTE 2: LIMPEZA (uma transação). Selecione daqui até o `commit;` e rode de uma vez.
+-- PARTE 2: LIMPEZA (uma transação). Fica comentada de propósito: rodar o arquivo inteiro só mostra a
+-- prévia. Para apagar, selecione de `begin;` até `commit;` (sem as linhas /* e */) e rode a seleção.
 -- =============================================================================================
+/* PARTE 2 — início do comentário
+
 begin;
 
 -- Alvos (mesmos critérios da prévia), guardados antes de apagar.
@@ -149,6 +174,35 @@ insert into limpeza_registro
   union all select 'arquivo', id::text from public.arquivo
             where pessoa_id in (select id from limpeza_pessoa) or veiculo_id in (select id from limpeza_veiculo)
   union all select 'perfil_usuario', id::text from limpeza_usuario;
+
+-- Trava: precisa existir um administrador real ativo (fora dos usuários de teste), senão ninguém entra
+-- no sistema depois da limpeza.
+do $$
+begin
+  if not exists (
+    select 1 from public.perfil_usuario p
+    where p.papel = 'admin' and p.ativo
+      and p.user_id not in (select id from limpeza_usuario)
+      and p.user_id not in ('e2e00000-0000-4000-8000-000000000001', 'e2e00000-0000-4000-8000-000000000002', 'e2e00000-0000-4000-8000-000000000003')
+  ) then
+    raise exception 'Não há administrador real ativo. Crie o primeiro administrador (supabase/criar-primeiro-admin.sql), confira que ele entra e só então rode a limpeza.';
+  end if;
+end $$;
+
+-- Trava: um conjunto entra na limpeza também quando só o motorista é fictício; se o cavalo ou alguma
+-- peça for real, apagar o conjunto apagaria um registro real. Troque o motorista pela tela antes.
+do $$
+begin
+  if exists (
+    select 1 from public.conjunto c
+    where c.id in (select id from limpeza_conjunto)
+      and (c.cavalo_id not in (select id from limpeza_veiculo)
+           or exists (select 1 from public.conjunto_item i
+                      where i.conjunto_id = c.id and i.veiculo_id not in (select id from limpeza_veiculo)))
+  ) then
+    raise exception 'Há conjunto com cavalo ou peça real e motorista fictício. Troque o motorista desse conjunto pela tela e rode de novo.';
+  end if;
+end $$;
 
 -- Trava: objetos do Storage precisam sair antes (node web/scripts/dev-seed-storage.mjs --limpar).
 do $$
@@ -198,3 +252,5 @@ begin
 end $$;
 
 commit;
+
+PARTE 2 — fim do comentário */

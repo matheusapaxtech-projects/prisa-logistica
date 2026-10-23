@@ -10,6 +10,7 @@ import { Sinal } from "@/components/Sinal";
 import { toast } from "@/components/Toast";
 import type { DadosCnpj } from "@/lib/brasilapi";
 import { hojeISO } from "@/lib/datas";
+import { MSG_SESSAO_EXPIRADA } from "@/lib/erros";
 import { formato, mascaras } from "@/lib/formato";
 import { mensagensValidacao, validacao } from "@/lib/validacao";
 import { buscarPessoa } from "../../_pessoa/actions";
@@ -227,12 +228,14 @@ function FormularioTipo({ tipo, documentoInicial }: { tipo: Tipo; documentoInici
       const r = await fetch(`/api/cnpj/${d}`, { cache: "no-store" });
       const j = (await r.json().catch(() => ({}))) as DadosCnpj & { erro?: string };
       if (!atual()) return;
+      if (r.status === 401) throw new Error(MSG_SESSAO_EXPIRADA);
       if (r.status === 404) throw new Error(MSG_RECEITA_404);
       if (!r.ok || j.erro) throw new Error(MSG_RECEITA_FALHOU);
       abrirPj({ ...j, cnpj: d, em: new Date().toISOString() });
     } catch (e) {
       if (!atual()) return;
-      setErroReceita({ texto: (e as Error).message === MSG_RECEITA_404 ? MSG_RECEITA_404 : MSG_RECEITA_FALHOU });
+      const m = (e as Error).message;
+      setErroReceita({ texto: m === MSG_RECEITA_404 || m === MSG_SESSAO_EXPIRADA ? m : MSG_RECEITA_FALHOU });
     } finally {
       if (minha === buscaReceita.current) setBuscandoReceita(false);
     }
@@ -264,6 +267,10 @@ function FormularioTipo({ tipo, documentoInicial }: { tipo: Tipo; documentoInici
       const r = await fetch(`/api/cep/${d}`, { cache: "no-store" });
       const j = (await r.json().catch(() => ({}))) as { erro?: string; logradouro?: string; bairro?: string; cidade?: string; uf?: string };
       if (!atual()) return;
+      if (r.status === 401) {
+        setErroCep(MSG_SESSAO_EXPIRADA);
+        return;
+      }
       if (r.status === 404) {
         setErroCep(MSG_CEP_404);
         return;

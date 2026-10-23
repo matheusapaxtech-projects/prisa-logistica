@@ -55,6 +55,9 @@ Outros comandos: `npm run build` (build de produção), `npm run start` (serve o
 - `npm run test:prints` fica fora da suíte padrão porque abre o protótipo por `file://`, que carrega
   os ícones (lucide) da internet. Os prints vão para `tests/e2e/prints/fase1/` (fora do git).
 - Testes do banco (pgTAP): `../supabase/tests/README.md`.
+- Quando um teste E2E falha, o Playwright grava o rastro em `web/test-results/` (fora do git). Esse
+  rastro pode conter a senha dos usuários de teste digitada no login: apague a pasta depois de ver o
+  erro e nunca a compartilhe.
 
 ## Primeiro administrador
 
@@ -65,6 +68,35 @@ Outros comandos: `npm run build` (build de produção), `npm run start` (serve o
 3. Entre no sistema com essa conta. As próximas pessoas são criadas do mesmo jeito (passo 1) e
    aparecem em **Usuários** como "Sem acesso definido": o administrador escolhe o papel ali
    (admin, operação, financeiro ou leitura).
+
+Ao criar a conta no passo 1, deixe marcado **Auto Confirm User**: sem isso a pessoa não consegue
+entrar (a tela de entrada avisa "Seu e-mail ainda não foi confirmado…").
+
+## Senha esquecida e troca de senha
+
+- **Trocar a própria senha:** logado, clique no ícone de chave ao lado do nome, no canto de baixo do
+  menu ("Trocar senha"). Abre `/nova-senha`.
+- **Esqueceu a senha:** o administrador abre **Authentication → Users** no painel do Supabase, escolhe
+  a pessoa e usa **Send password recovery**. Ela recebe um e-mail; o link passa por
+  `/auth/confirm` (que abre a sessão) e cai em `/nova-senha`. Link vencido ou já usado mostra
+  "Esse link não vale mais" com o que fazer. Cada link vale uma vez e por pouco tempo.
+
+Configuração necessária no painel do Supabase (uma vez; sem ela o link do e-mail não funciona):
+
+1. **Authentication → URL Configuration**: em **Site URL**, o endereço do sistema (ex.:
+   `https://nilt.prisalogistica.com.br`; em desenvolvimento, `http://localhost:3000`). Em
+   **Redirect URLs**, acrescente o mesmo endereço seguido de `/**` (e `http://localhost:3000/**`
+   para desenvolvimento).
+2. **Authentication → Emails → Templates → Reset Password**: troque o link do modelo por
+   `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery` (por exemplo
+   `<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery">Criar uma senha nova</a>`),
+   e, se quiser, o assunto e o texto em português.
+3. Para os e-mails chegarem de verdade (o servidor de e-mail padrão do Supabase manda poucos por
+   hora e só para a equipe do projeto), configure um SMTP próprio em **Authentication → Emails →
+   SMTP Settings**.
+
+Observação: alguns serviços de e-mail corporativo "abrem" os links para checar vírus antes da
+pessoa; isso pode gastar o link. Se acontecer, peça um link novo.
 
 ## Antes de usar com dados reais (limpeza do ambiente)
 
@@ -89,10 +121,12 @@ Para limpar, nesta ordem:
 1. Crie o primeiro administrador real (seção acima) e confira que ele entra.
 2. Dentro de `web/`: `node scripts/dev-seed-storage.mjs --limpar` — remove do Storage os PDFs da
    seed e os documentos anexados pelos testes (usa o administrador de teste, por isso vem antes).
-3. No SQL Editor do Supabase, abra `../supabase/seed/limpar_dados_ficticios.sql`: rode a **parte 1**
-   (prévia, só leitura) e confira as contagens; depois rode a **parte 2** inteira (uma transação:
-   apaga tudo ou nada; para com erro se ainda houver arquivo no Storage ou se algum cadastro real
-   depender de um registro fictício).
+3. No SQL Editor do Supabase, abra `../supabase/seed/limpar_dados_ficticios.sql` e rode o arquivo
+   inteiro: só a **parte 1** (prévia, só leitura) executa, porque a **parte 2** vem comentada. Confira
+   as contagens (bloqueios em 0, pelo menos 1 administrador real ativo). Depois selecione só a parte 2,
+   de `begin;` até `commit;`, e rode a seleção (uma transação: apaga tudo ou nada; para com erro se
+   ainda houver arquivo no Storage, se não houver administrador real ativo, se um conjunto real usar
+   motorista fictício ou se algum cadastro real depender de um registro fictício).
 4. Apague `web/.env.test.local`: as credenciais deixam de valer.
 
 ## Como o sistema se comporta (decisões aceitas)
@@ -142,8 +176,8 @@ Para limpar, nesta ordem:
 ## O que fica para depois
 
 - **Deploy na Vercel:** só com a confirmação do responsável. Configure as duas variáveis
-  `NEXT_PUBLIC_SUPABASE_*` no projeto da Vercel e acrescente a URL do site em Authentication →
-  URL Configuration no Supabase.
+  `NEXT_PUBLIC_SUPABASE_*` no projeto da Vercel e ajuste a URL do site em Authentication →
+  URL Configuration no Supabase (ver "Senha esquecida e troca de senha").
 - **Supabase CLI:** as migrations foram aplicadas pelo MCP, que grava versões com a data da
   aplicação (diferentes dos nomes em `../supabase/migrations/`). Antes de qualquer
   `supabase db push` ou outro comando do CLI, rode `supabase migration repair` para alinhar o

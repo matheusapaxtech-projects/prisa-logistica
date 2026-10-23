@@ -6,7 +6,8 @@ const CABECALHOS_CACHE = ["cache-control", "expires", "pragma"];
 /**
  * Renova a sessão do Supabase em toda requisição (padrão da documentação do Supabase para Next.js)
  * e faz o desvio de entrada:
- * - sem sessão → `/login`, exceto a própria `/login` e POSTs de Server Action (cabeçalho `Next-Action`):
+ * - sem sessão → `/login`, exceto a própria `/login`, as rotas `/auth/…` (volta do link de senha do e-mail
+ *   e o aviso de link inválido) e POSTs de Server Action (cabeçalho `Next-Action`):
  *   esses seguem para a action responder "Sua sessão expirou…" sem o formulário perder os campos
  *   (toda action confere a sessão com `comSessao`, e o RLS protege os dados de qualquer jeito).
  *   Só POST: o Next só trata como Server Action um POST com esse cabeçalho; um GET com ele é página
@@ -49,7 +50,9 @@ export async function updateSession(request: NextRequest) {
   if (request.method === "POST" && request.headers.has("next-action")) return supabaseResponse;
 
   const caminho = request.nextUrl.pathname;
-  if (!logado && caminho !== "/login") return redirecionar(request, "/login", supabaseResponse);
+  // /auth/… (volta do link de senha do e-mail e o aviso de link inválido) abre sem sessão.
+  const publica = caminho === "/login" || caminho.startsWith("/auth/");
+  if (!logado && !publica) return redirecionar(request, "/login", supabaseResponse);
   if (logado && caminho === "/login") return redirecionar(request, "/", supabaseResponse);
 
   return supabaseResponse;

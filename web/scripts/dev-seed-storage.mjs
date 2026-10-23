@@ -101,6 +101,20 @@ const bucket = supabase.storage.from("documentos");
 let ok = 0;
 let falhas = 0;
 
+/** Ids por requisição em `.in()`: a lista vai na URL, e centenas de uuids estourariam o limite dela. */
+const LOTE_IN = 100;
+
+/** `select id, storage_path from arquivo where <coluna> in (ids)`, em lotes de LOTE_IN ids. */
+async function arquivosPor(coluna, ids) {
+  const linhas = [];
+  for (let i = 0; i < ids.length; i += LOTE_IN) {
+    const { data, error } = await supabase.from("arquivo").select("id, storage_path").in(coluna, ids.slice(i, i + LOTE_IN));
+    if (error) throw new Error(error.message);
+    linhas.push(...data);
+  }
+  return linhas;
+}
+
 /** Linhas de `arquivo` dos alvos da limpeza SQL que não são do bloco da seed (ex.: anexadas pelos E2E). */
 async function arquivosDosTestes() {
   const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -113,12 +127,9 @@ async function arquivosDosTestes() {
   for (const r of [pE2e, vE2e]) if (r.error) throw new Error(r.error.message);
   const pessoas = [...pessoasSeed, ...pE2e.data.map((r) => r.id)];
   const veiculos = [...veiculosSeed, ...vE2e.data.map((r) => r.id)];
-  const [porPessoa, porVeiculo] = await Promise.all([
-    supabase.from("arquivo").select("id, storage_path").in("pessoa_id", pessoas),
-    supabase.from("arquivo").select("id, storage_path").in("veiculo_id", veiculos),
-  ]);
-  for (const r of [porPessoa, porVeiculo]) if (r.error) throw new Error(r.error.message);
-  return [...porPessoa.data, ...porVeiculo.data].filter((l) => !IDS.includes(l.id));
+  const porPessoa = await arquivosPor("pessoa_id", pessoas);
+  const porVeiculo = await arquivosPor("veiculo_id", veiculos);
+  return [...porPessoa, ...porVeiculo].filter((l) => !IDS.includes(l.id));
 }
 
 if (process.argv.includes("--limpar")) {
