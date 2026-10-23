@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ChangeEvent, type MouseEvent } from "react";
+import { useRef, useState, type ChangeEvent, type MouseEvent } from "react";
 import { Search } from "lucide-react";
 import { Campo } from "@/components/Campo";
 import { EstadoVazio } from "@/components/EstadoVazio";
@@ -265,6 +265,7 @@ function DialogoEndereco({
   primeiro: boolean;
 }) {
   const [cep, setCep] = useState<EstadoCep>(CEP_INICIO);
+  const buscaCep = useRef(0);
   const [erroCep, setErroCep] = useState<string | null>(null);
   const [abertoAntes, setAbertoAntes] = useState(aberto);
   if (aberto !== abertoAntes) {
@@ -285,10 +286,16 @@ function DialogoEndereco({
     }
     setErroCep(null);
     setCep({ tipo: "buscando", texto: "Consultando o CEP…" });
+    // Resposta de uma busca mais velha (ou de um CEP que já não está no campo) não vale: descarta.
+    const minha = ++buscaCep.current;
+    const atual = () => minha === buscaCep.current && validacao.soDigitos(el.value) === d;
     try {
       const r = await fetch(`/api/cep/${d}`, { cache: "no-store" });
-      const j = (await r.json()) as { erro?: string; logradouro?: string; bairro?: string; cidade?: string; uf?: string };
-      if (!r.ok || j.erro) throw new Error(j.erro || "A consulta não respondeu.");
+      const j = (await r.json().catch(() => ({}))) as { erro?: string; logradouro?: string; bairro?: string; cidade?: string; uf?: string };
+      if (!atual()) return;
+      // 404 = o CEP não existe ("CEP não encontrado."); qualquer outra falha = a consulta não respondeu.
+      if (r.status === 404) throw new Error(j.erro || "CEP não encontrado.");
+      if (!r.ok || j.erro) throw new Error("A consulta não respondeu.");
       for (const k of ["logradouro", "bairro", "cidade"] as const) {
         const campo = form.elements.namedItem(k) as HTMLInputElement | null;
         if (campo && j[k]) campo.value = j[k]!;
@@ -298,7 +305,7 @@ function DialogoEndereco({
       setCep({ tipo: "achado", texto: `Encontrado: ${j.cidade}/${j.uf}. Confira o número.` });
       (form.elements.namedItem("numero") as HTMLInputElement | null)?.focus();
     } catch (e) {
-      setCep({ tipo: "erro", texto: (e as Error).message || "A consulta não respondeu." });
+      if (atual()) setCep({ tipo: "erro", texto: (e as Error).message || "A consulta não respondeu." });
     }
   }
 

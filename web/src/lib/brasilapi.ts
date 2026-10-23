@@ -129,6 +129,8 @@ type Provedor = {
   mapear: (j: Cru) => unknown;
   /** O provedor diz "não existe" numa resposta 200 (ViaCEP `erro`, ReceitaWS `status: "ERROR"`). */
   inexistente?: (j: Cru) => boolean;
+  /** Resposta 200 que não serve (ex.: ReceitaWS sem `nome`): conta como falha, não como achado. */
+  valida?: (j: Cru) => boolean;
 };
 type Tentativa = { tipo: "ok"; dados: unknown } | { tipo: "nao_achou" } | { tipo: "falhou"; resposta: Response };
 
@@ -152,6 +154,7 @@ async function tentar(p: Provedor, falhou: string): Promise<Tentativa> {
     const j = (await r.json()) as unknown;
     if (j === null || typeof j !== "object") return { tipo: "falhou", resposta: erro(falhou, 502) };
     if (p.inexistente?.(j as Cru)) return { tipo: "nao_achou" };
+    if (p.valida && !p.valida(j as Cru)) return { tipo: "falhou", resposta: erro(falhou, 502) };
     return { tipo: "ok", dados: p.mapear(j as Cru) };
   } catch {
     return { tipo: "falhou", resposta: erro(falhou, 502) };
@@ -176,7 +179,10 @@ export async function consultarCnpj(param: string): Promise<Response> {
   return consultar(
     [
       { url: `${BASE}/cnpj/v1/${param}`, mapear: mapearCnpj },
-      { url: `${RESERVA_CNPJ}/${param}`, mapear: mapearReceitaWs, inexistente: (j) => String(j.status).toUpperCase() === "ERROR" },
+      { url: `${RESERVA_CNPJ}/${param}`, mapear: mapearReceitaWs,
+        inexistente: (j) => String(j.status).toUpperCase() === "ERROR",
+        valida: (j) => txt(j.nome).trim() !== "",
+      },
     ],
     ERROS_BRASILAPI.cnpjNaoEncontrado,
     ERROS_BRASILAPI.cnpjFalhou,

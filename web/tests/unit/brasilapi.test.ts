@@ -352,6 +352,16 @@ describe("CNPJ com reserva (ReceitaWS)", () => {
     expect(res.status).toBe(404);
     expect(await res.json()).toEqual({ erro: "CNPJ não encontrado na Receita." });
   });
+  it.each([
+    ["vazia", {}],
+    ["sem nome", { status: "OK", fantasia: "X" }],
+    ["nome em branco", { status: "OK", nome: "  " }],
+  ])("BrasilAPI 404 + ReceitaWS 200 %s → falhou (não vale como achado)", async (_nome, corpo) => {
+    provedores({ [brasil]: () => json({ message: "nao" }, 404), [recWs]: () => json(corpo) });
+    const res = await cnpj();
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({ erro: "A consulta de CNPJ não respondeu. Tente de novo em instantes." });
+  });
   it("BrasilAPI 404 + ReceitaWS 429 → não respondeu", async () => {
     provedores({ [brasil]: () => json({ message: "nao" }, 404), [recWs]: () => new Response("limite", { status: 429 }) });
     const res = await cnpj();

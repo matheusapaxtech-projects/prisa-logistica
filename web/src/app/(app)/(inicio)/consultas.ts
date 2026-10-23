@@ -1,8 +1,9 @@
 /* Consultas da tela Início (servidor). As 5 placas usam `resumoPendencias` (a mesma conta do selo
-   do menu) e só acrescentam o que ela não separa: quantas pendências são de cada tipo. */
+   do menu, feita uma vez por requisição em `resumoDaRequisicao`) e só acrescentam o que ela não
+   separa: quantas pendências são de cada tipo. */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { tipado } from "@/lib/banco";
-import { resumoPendencias } from "@/lib/consultas";
+import { resumoDaRequisicao } from "@/lib/resumo-da-requisicao";
 import type { PecaEngate } from "@/components/Engate";
 import type { DadosCapacidade } from "@/components/Capacidade";
 
@@ -97,6 +98,11 @@ async function carregarVencimentos(db: Cliente): Promise<Vencimento[]> {
     .lte("dias", JANELA_VENCIMENTOS)
     .order("dias", { ascending: true })
     .order("tipo", { ascending: true })
+    // Desempate determinístico (mesmo dia e mesmo tipo): data, arquivo, pessoa, veículo.
+    .order("data", { ascending: true })
+    .order("arquivo_id", { ascending: true })
+    .order("pessoa_id", { ascending: true })
+    .order("veiculo_id", { ascending: true })
     .limit(MAX_VENCIMENTOS);
   if (error) throw error;
   const linhas = data ?? [];
@@ -183,11 +189,8 @@ async function carregarConjuntos(db: Cliente): Promise<ConjuntoAberto[]> {
   });
 }
 
-async function carregarCadastros(
-  db: Cliente,
-  conjuntos: ConjuntoAberto[],
-  acimaCmt: number,
-): Promise<Cadastros> {
+/** Contagens dos cadastros (só HEAD/count, em paralelo com o resto da tela). */
+async function contarCadastros(db: Cliente) {
   const motorista = (situacao?: "normal" | "pendente" | "cancelado") => {
     const q = db.from("motorista").select("*", { count: "exact", head: true });
     return contar(situacao ? q.eq("situacao_cadastro", situacao) : q);
@@ -229,12 +232,19 @@ async function carregarCadastros(
     motoristas: { total: mTotal, normal: mNormal, pendente: mPendente, cancelado: mCancelado },
     proprietarios: { total: pTotal, pf: pTotal - pPj, pj: pPj },
     veiculos: { total: vTotal, cavalo: vCavalo, carreta: vCarreta, dolly: vDolly, caminhao: vCaminhao, arrendados: vArrendados },
+    documentos: { total: aTotal, conferidos: aConferidos, restritos: aRestritos },
+  };
+}
+
+/** Cadastros = contagens + a linha de conjuntos, que vem dos conjuntos abertos já carregados. */
+function montarCadastros(contagens: Awaited<ReturnType<typeof contarCadastros>>, conjuntos: ConjuntoAberto[], acimaCmt: number): Cadastros {
+  return {
+    ...contagens,
     conjuntos: {
       total: conjuntos.length,
       comMaisDeUmaCarreta: conjuntos.filter((c) => c.itens.filter((i) => i.categoria === "carreta").length > 1).length,
       acimaCmt,
     },
-    documentos: { total: aTotal, conferidos: aConferidos, restritos: aRestritos },
   };
 }
 
@@ -248,15 +258,17 @@ export async function carregarInicio(cliente: SupabaseClient): Promise<DadosInic
   const tipo = (t: string) =>
     contar(db.from("v_pendencias_documentos").select("*", { count: "exact", head: true }).eq("tipo_pendencia", t));
 
-  const [resumo, arrendadoSemContrato, semCnh, semComprovante, vencimentos, conjuntos] = await Promise.all([
-    resumoPendencias(cliente),
+  // Tudo em paralelo: as contagens dos cadastros não esperam os conjuntos (só a montagem final usa os dois).
+  const [resumo, arrendadoSemContrato, semCnh, semComprovante, vencimentos, conjuntos, contagens] = await Promise.all([
+    resumoDaRequisicao(),
     tipo("veiculo_arrendado_sem_contrato"),
     tipo("motorista_sem_cnh"),
     tipo("motorista_sem_comprovante"),
     carregarVencimentos(db),
     carregarConjuntos(db),
+    contarCadastros(db),
   ]);
-  const cadastros = await carregarCadastros(db, conjuntos, resumo.acimaCmt);
+  const cadastros = montarCadastros(contagens, conjuntos, resumo.acimaCmt);
 
   return {
     placas: { vencidos: resumo.vencidos, arrendadoSemContrato, acimaCmt: resumo.acimaCmt, semCnh, semComprovante },

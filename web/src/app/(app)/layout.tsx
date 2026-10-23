@@ -1,14 +1,16 @@
+import { unstable_rethrow } from "next/navigation";
 import type { ReactNode } from "react";
 import { Shell } from "@/components/Shell";
-import { contarPendencias } from "@/lib/consultas";
 import { exigirPerfil } from "@/lib/permissoes";
-import { createClient } from "@/lib/supabase/server";
+import { resumoDaRequisicao } from "@/lib/resumo-da-requisicao";
 
 /** O selo é um extra: se a contagem falhar, o shell abre sem número e o erro fica no log do servidor. */
 async function seloPendencias(): Promise<number> {
   try {
-    return await contarPendencias(await createClient());
+    return (await resumoDaRequisicao()).total;
   } catch (e) {
+    // Erros de controle do Next (redirect, notFound, renderização dinâmica) não são falha da contagem.
+    unstable_rethrow(e);
     console.error("Falha ao contar as pendências do menu:", e);
     return 0;
   }

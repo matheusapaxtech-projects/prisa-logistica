@@ -7,7 +7,8 @@
    - Documentos: `arquivo` (o restrito só aparece para o administrador, pelo RLS). */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { tipado, type Banco } from "@/lib/banco";
-import { resumoPendencias, type ResumoPendencias } from "@/lib/consultas";
+import type { ResumoPendencias } from "@/lib/consultas";
+import { resumoDaRequisicao } from "@/lib/resumo-da-requisicao";
 import { diasAte, hojeISO } from "@/lib/datas";
 import { formato } from "@/lib/formato";
 import { tipoSemEixos } from "../conjuntos/regras";
@@ -84,7 +85,7 @@ async function porIds<T>(ids: string[], consulta: (ids: string[]) => PromiseLike
 export async function carregarPendencias(cliente: SupabaseClient): Promise<DadosPendencias> {
   const db: Banco = tipado(cliente);
   const [resumo, pend, venc, arquivos, tipos, capacidades] = await Promise.all([
-    resumoPendencias(cliente),
+    resumoDaRequisicao(),
     db.from("v_pendencias_documentos").select("tipo_pendencia, pessoa_id, veiculo_id, arquivo_id").neq("tipo_pendencia", "arquivo_vencido"),
     db.from("v_vencimentos").select("tipo, pessoa_id, veiculo_id, arquivo_id, data, dias").order("dias").order("tipo"),
     db

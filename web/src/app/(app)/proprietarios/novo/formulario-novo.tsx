@@ -27,6 +27,8 @@ type Props = { tipoInicial: Tipo | null; documentoInicial: string };
 const so = validacao.soDigitos;
 const MSG_RECEITA_404 = "CNPJ não encontrado na Receita. Confira os dígitos no cartão CNPJ; se estiverem certos, preencha os dados à mão.";
 const MSG_RECEITA_FALHOU = "A consulta à Receita não respondeu (BrasilAPI fora do ar ou sem internet). Tente de novo em instantes ou preencha os dados à mão.";
+const MSG_CEP_404 = "CEP não encontrado. Confira os dígitos ou preencha o endereço à mão.";
+const MSG_CEP_FALHOU = "A consulta não respondeu. Preencha à mão ou tente de novo.";
 const MSG_CORRIJA = "Corrija os campos marcados em vermelho para criar.";
 
 /* Novo proprietário (proprietario-novo.html): tipo → documento → dados → ANTT (→ responsável).
@@ -111,6 +113,7 @@ function FormularioTipo({ tipo, documentoInicial }: { tipo: Tipo; documentoInici
   const form = useRef<HTMLFormElement>(null);
   const cnpjRef = useRef<HTMLInputElement>(null);
   const pedido = useRef(0);
+  const buscaCep = useRef(0);
   const buscaReceita = useRef(0);
   const iniciado = useRef(false);
   const [consulta, setConsulta] = useState<Consulta>({ estado: "nada" });
@@ -253,18 +256,27 @@ function FormularioTipo({ tipo, documentoInicial }: { tipo: Tipo; documentoInici
     }
     setErroCep(null);
     setBuscandoCep(true);
+    // Resposta de uma busca mais velha (ou de um CEP que já não está no campo) não vale: descarta.
+    const minha = ++buscaCep.current;
+    const atual = () =>
+      minha === buscaCep.current && so((form.current?.elements.namedItem("cep") as HTMLInputElement | null)?.value) === d;
     try {
       const r = await fetch(`/api/cep/${d}`, { cache: "no-store" });
-      const j = (await r.json()) as { erro?: string; logradouro?: string; bairro?: string; cidade?: string; uf?: string };
+      const j = (await r.json().catch(() => ({}))) as { erro?: string; logradouro?: string; bairro?: string; cidade?: string; uf?: string };
+      if (!atual()) return;
+      if (r.status === 404) {
+        setErroCep(MSG_CEP_404);
+        return;
+      }
       if (!r.ok || j.erro) throw new Error("falhou");
       const f = form.current!;
       for (const k of ["logradouro", "bairro", "cidade"] as const) (f.elements.namedItem(k) as HTMLInputElement).value = j[k] ?? "";
       (f.elements.namedItem("uf") as HTMLSelectElement).value = j.uf ?? "";
       (f.elements.namedItem("numero") as HTMLInputElement | null)?.focus();
     } catch {
-      setErroCep("CEP não encontrado. Confira os dígitos ou preencha o endereço à mão.");
+      if (atual()) setErroCep(MSG_CEP_FALHOU);
     } finally {
-      setBuscandoCep(false);
+      if (minha === buscaCep.current) setBuscandoCep(false);
     }
   }
 

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Marca do NILT: placa verde de orientação com filete branco por dentro e a seta do menu (Shell). -->
+  <rect width="32" height="32" rx="5" fill="#0b6b3a"/>
+  <rect x="2.5" y="2.5" width="27" height="27" rx="3" fill="none" stroke="#fff" stroke-width="1.2"/>
+  <g transform="translate(4 4)" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 21V8"/><path d="M12 8l-4 4"/><path d="M12 8l4 4"/><path d="M5 21h14"/>
+  </g>
+</svg>
