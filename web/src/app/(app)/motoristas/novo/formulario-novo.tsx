@@ -73,7 +73,8 @@ export function FormularioNovo({ cpfInicial, tipoCnhId }: Props) {
 
   function mudarConsulta(c: Consulta) {
     setConsulta(c);
-    setErro(null);
+    // Só um CPF novo apaga o aviso; a reconsulta depois de uma falha parcial mantém a explicação.
+    if (c.estado === "nada") setErro(null);
   }
 
   function aoMudarValidade(e: ChangeEvent<HTMLInputElement>) {
@@ -111,7 +112,12 @@ export function FormularioNovo({ cpfInicial, tipoCnhId }: Props) {
           setCampos(r.campos);
           form.querySelector<HTMLElement>(`[name="${Object.keys(r.campos)[0]}"]`)?.focus();
           toast(MSG_FALTAM_DADOS, "alert-circle");
-        } else setErro(r.erro);
+        } else {
+          setErro(r.erro);
+          // A pessoa pode ter sido criada sem o papel de motorista: conferir o CPF de novo leva ao
+          // modo "ligar" (a CNH digitada continua nos campos).
+          if (modo === "novo") consultaRef.current?.verificar();
+        }
         return;
       }
       setCriado(true);

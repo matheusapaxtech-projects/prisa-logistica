@@ -124,7 +124,8 @@ test.describe("motoristas", () => {
     await page.screenshot({ path: path.join(PRINTS, "motoristas-dialogo-endereco-1440.png") });
     await dlg.getByRole("button", { name: "Adicionar endereço" }).click();
     await expect(dlg).toBeHidden();
-    await expect(page.getByRole("row", { name: /Rua E2E, 10/ })).toContainText("Londrina/PR");
+    // A lista recarrega depois da gravação (refresh do servidor): folga para o `next dev` carregado.
+    await expect(page.getByRole("row", { name: /Rua E2E, 10/ })).toContainText("Londrina/PR", { timeout: 15_000 });
     await expect(page.getByRole("row", { name: /Rua E2E, 10/ })).toContainText("Principal");
     await expect(page.getByRole("row", { name: /\(43\) 99988-7766/ })).toContainText("WhatsApp");
 
@@ -150,6 +151,13 @@ test.describe("motoristas", () => {
     await pix.getByRole("button", { name: "Adicionar chave" }).click();
     await expect(page.getByRole("row", { name: new RegExp(fmtCpf(cpf).replace(/\./g, "\\.")) })).toContainText("Caixa Econômica Federal");
     await expect(page.getByRole("navigation", { name: "Partes da ficha" }).getByRole("link", { name: /^Contas e Pix/ })).toContainText("2");
+    // Chave repetida marcada como principal: recusa e o principal atual continua.
+    await page.getByRole("button", { name: "Adicionar chave Pix" }).click();
+    await pix.getByLabel("Chave principal").check();
+    await pix.getByRole("button", { name: "Adicionar chave" }).click();
+    await expect(pix.getByRole("alert")).toHaveText("Esta chave Pix já está cadastrada.");
+    await pix.getByRole("button", { name: "Cancelar" }).click();
+    await expect(page.getByRole("row", { name: new RegExp(fmtCpf(cpf).replace(/\./g, "\\.")) })).toContainText("Principal");
 
     // Salvar a ficha: apelido novo aparece no resumo.
     await page.goto(ficha);

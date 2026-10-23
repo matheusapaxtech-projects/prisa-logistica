@@ -9,6 +9,7 @@ import { mensagemDeErro } from "@/lib/erros";
 import { validacao } from "@/lib/validacao";
 import { errosDoZod, lerForm, RE_ID, type ResultadoForm } from "../_pessoa/formulario";
 import { chaves, ROT, UFS } from "../_pessoa/rotulos";
+import { erroDigitos } from "./regras";
 
 /* Gravações das telas de Motoristas. Validação = a de prototipo/motorista-novo.html e motorista.html
    (mesmas mensagens). Toda escrita passa por `comSessao` (RLS: pessoa e motorista = admin/operação). */
@@ -25,11 +26,11 @@ const data = z.union([z.literal(""), z.iso.date("Data inválida.")]);
 /** Vazio vira null (o tipo do enum fica sem o ""). */
 const vazioOuNulo = <T extends string>(v: T | "" | undefined): T | null => (v ? v : null);
 
-/** "Faltam N dígitos: o número tem T." (números de tamanho fixo: INSS, registro da CNH). */
+/** Número de tamanho fixo (INSS, registro da CNH): vazio passa; faltando ou sobrando, `erroDigitos`. */
 const digitos = (t: number) =>
   z.string().superRefine((v, ctx) => {
-    const d = so(v);
-    if (d && d.length !== t) ctx.addIssue({ code: "custom", message: `Faltam ${t - d.length} dígitos: o número tem ${t}.` });
+    const msg = erroDigitos(v, t);
+    if (msg) ctx.addIssue({ code: "custom", message: msg });
   });
 
 function idadeEmAnos(nascimento: string): number {
@@ -80,6 +81,13 @@ export async function criarMotorista(form: FormData): Promise<ResultadoForm<Cria
     const id = pessoa.data.id;
     revalidatePath("/motoristas");
 
+    // O telefone vai antes do motorista: se o motorista falhar, o telefone já ficou com a pessoa.
+    const avisos: string[] = [];
+    const tel = await db
+      .from("pessoa_telefone")
+      .insert({ pessoa_id: id, numero: so(n.telefone), tipo: "celular", whatsapp: n.whatsapp === "on", principal: true });
+    if (tel.error) avisos.push("O telefone não foi gravado: adicione na aba Contatos.");
+
     const mot = await db.from("motorista").insert({
       pessoa_id: id,
       cnh_registro: so(n.cnh_registro),
@@ -89,19 +97,15 @@ export async function criarMotorista(form: FormData): Promise<ResultadoForm<Cria
       situacao_gr: "sem_consulta",
     });
     if (mot.error) {
+      // A tela confere o CPF de novo, acha a pessoa e oferece "Cadastrar também como motorista"
+      // com a CNH que já foi digitada. Saindo daqui, basta digitar o CPF de novo nesta tela.
       throw {
         code: "P0001",
         message:
           `A pessoa ${n.nome} foi criada, mas o cadastro de motorista não: ${mensagemDeErro(mot.error)} ` +
-          "Para completar, digite o CPF de novo nesta tela e use “Cadastrar também como motorista”.",
+          "Confira a CNH abaixo e use “Cadastrar também como motorista” para completar.",
       };
     }
-
-    const avisos: string[] = [];
-    const tel = await db
-      .from("pessoa_telefone")
-      .insert({ pessoa_id: id, numero: so(n.telefone), tipo: "celular", whatsapp: n.whatsapp === "on", principal: true });
-    if (tel.error) avisos.push("O telefone não foi gravado: adicione na aba Contatos.");
     return { id, avisos };
   });
 }

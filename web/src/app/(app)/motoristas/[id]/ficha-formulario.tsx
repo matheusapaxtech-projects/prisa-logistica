@@ -7,12 +7,12 @@ import { BarraSalvar, useAlteracoes } from "@/components/BarraSalvar";
 import { Campo } from "@/components/Campo";
 import { toast } from "@/components/Toast";
 import { formato } from "@/lib/formato";
-import { validacao } from "@/lib/validacao";
 import { MSG_FALTAM_DADOS } from "../../_pessoa/formulario";
 import { Opcoes, OpcoesUf } from "../../_pessoa/partes";
 import { ROT, rotulo } from "../../_pessoa/rotulos";
 import { salvarFicha } from "../actions";
 import type { MotoristaRow, PessoaRow } from "../consultas";
+import { erroDigitos } from "../regras";
 import { MarcoValidade } from "./marco-validade";
 
 type Props = {
@@ -79,10 +79,7 @@ export function FichaFormulario({ pessoa: p, motorista: m, aba, podeEditar, grRo
   }
 
   // Números de tamanho fixo (INSS, registro da CNH): confere no blur; enquanto errado, a cada tecla.
-  const conferirDigitos = (nome: string, t: number) => (v: string) => {
-    const d = validacao.soDigitos(v);
-    marcar(nome, d && d.length !== t ? `Faltam ${t - d.length} dígitos: o número tem ${t}.` : null);
-  };
+  const conferirDigitos = (nome: string, t: number) => (v: string) => marcar(nome, erroDigitos(v, t));
   const digitos = (nome: string, t: number) => ({
     onBlur: (e: FocusEvent<HTMLInputElement>) => conferirDigitos(nome, t)(e.currentTarget.value),
     onChange: (e: { currentTarget: HTMLInputElement }) => {

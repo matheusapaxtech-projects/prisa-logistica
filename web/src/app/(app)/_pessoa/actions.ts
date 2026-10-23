@@ -6,6 +6,7 @@ import { comSessao, type ResultadoAcao } from "@/lib/acao";
 import { tipado, type Banco } from "@/lib/banco";
 import { validacao } from "@/lib/validacao";
 import { caminhosValidos, errosDoZod, lerForm, RE_ID, type ResultadoForm } from "./formulario";
+import { inserirComPrincipal, type ClientePrincipal, type TabelaComPrincipal } from "./principal";
 import { chaves, ROT, UFS } from "./rotulos";
 
 /* Gravações das partes de pessoa compartilhadas por motorista e proprietário (contatos, contas e
@@ -26,12 +27,9 @@ function revalidarTudo(revalidar: string[]) {
   for (const c of caminhosValidos(revalidar)) revalidatePath(c);
 }
 
-type TabelaComPrincipal = "pessoa_endereco" | "pessoa_telefone" | "pessoa_email" | "pessoa_conta_bancaria" | "pessoa_chave_pix";
-
-/** Só um principal por pessoa (índice único parcial): o novo principal desmarca os outros antes. */
-async function desmarcarPrincipal(db: Banco, tabela: TabelaComPrincipal, pessoaId: string) {
-  const { error } = await db.from(tabela).update({ principal: false }).eq("pessoa_id", pessoaId).eq("principal", true);
-  if (error) throw error;
+/** Inclui com "principal" sem perder o principal anterior (ordem e motivo em ./principal.ts). */
+function incluir(db: Banco, tabela: TabelaComPrincipal, pessoaId: string, linha: Record<string, unknown>, principal: boolean) {
+  return inserirComPrincipal(db as unknown as ClientePrincipal, tabela, pessoaId, { pessoa_id: pessoaId, ...linha }, principal);
 }
 
 /* ---------- endereço ---------- */
@@ -60,23 +58,25 @@ export async function adicionarEndereco(pessoaId: string, revalidar: string[], f
   const coord = (e.coordenada ?? "").match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
   return comSessao(async ({ supabase }) => {
     const db = tipado(supabase);
-    if (marcado(e.principal)) await desmarcarPrincipal(db, "pessoa_endereco", pessoaId);
-    const { error } = await db.from("pessoa_endereco").insert({
-      pessoa_id: pessoaId,
-      tipo: e.tipo ?? null,
-      cep: opcional(so(e.cep)),
-      logradouro: e.logradouro,
-      numero: e.numero || "s/n",
-      complemento: opcional(e.complemento),
-      bairro: opcional(e.bairro),
-      cidade: e.cidade,
-      uf: e.uf,
-      ponto_referencia: opcional(e.ponto_referencia),
-      latitude: coord ? Number(coord[1]) : null,
-      longitude: coord ? Number(coord[2]) : null,
-      principal: marcado(e.principal),
-    });
-    if (error) throw error;
+    await incluir(
+      db,
+      "pessoa_endereco",
+      pessoaId,
+      {
+        tipo: e.tipo ?? null,
+        cep: opcional(so(e.cep)),
+        logradouro: e.logradouro,
+        numero: e.numero || "s/n",
+        complemento: opcional(e.complemento),
+        bairro: opcional(e.bairro),
+        cidade: e.cidade,
+        uf: e.uf,
+        ponto_referencia: opcional(e.ponto_referencia),
+        latitude: coord ? Number(coord[1]) : null,
+        longitude: coord ? Number(coord[2]) : null,
+      },
+      marcado(e.principal),
+    );
     revalidarTudo(revalidar);
   });
 }
@@ -100,18 +100,20 @@ export async function adicionarTelefone(pessoaId: string, revalidar: string[], f
   const t = v.data;
   return comSessao(async ({ supabase }) => {
     const db = tipado(supabase);
-    if (marcado(t.principal)) await desmarcarPrincipal(db, "pessoa_telefone", pessoaId);
-    const { error } = await db.from("pessoa_telefone").insert({
-      pessoa_id: pessoaId,
-      numero: so(t.numero),
-      ramal: opcional(so(t.ramal)),
-      contato: opcional(t.contato),
-      tipo: t.tipo ?? null,
-      whatsapp: marcado(t.whatsapp),
-      principal: marcado(t.principal),
-      restrito: marcado(t.restrito),
-    });
-    if (error) throw error;
+    await incluir(
+      db,
+      "pessoa_telefone",
+      pessoaId,
+      {
+        numero: so(t.numero),
+        ramal: opcional(so(t.ramal)),
+        contato: opcional(t.contato),
+        tipo: t.tipo ?? null,
+        whatsapp: marcado(t.whatsapp),
+        restrito: marcado(t.restrito),
+      },
+      marcado(t.principal),
+    );
     revalidarTudo(revalidar);
   });
 }
@@ -134,15 +136,17 @@ export async function adicionarEmail(pessoaId: string, revalidar: string[], form
   const m = v.data;
   return comSessao(async ({ supabase }) => {
     const db = tipado(supabase);
-    if (marcado(m.principal)) await desmarcarPrincipal(db, "pessoa_email", pessoaId);
-    const { error } = await db.from("pessoa_email").insert({
-      pessoa_id: pessoaId,
-      email: m.email.toLowerCase(),
-      observacao: opcional(m.observacao),
-      principal: marcado(m.principal),
-      recebe_cte: marcado(m.recebe_cte),
-    });
-    if (error) throw error;
+    await incluir(
+      db,
+      "pessoa_email",
+      pessoaId,
+      {
+        email: m.email.toLowerCase(),
+        observacao: opcional(m.observacao),
+        recebe_cte: marcado(m.recebe_cte),
+      },
+      marcado(m.principal),
+    );
     revalidarTudo(revalidar);
   });
 }
@@ -177,25 +181,29 @@ export async function adicionarConta(pessoaId: string, revalidar: string[], form
       if (p.error) throw p.error;
       favorecido = p.data?.nome ?? "";
     }
-    if (marcado(c.principal)) await desmarcarPrincipal(db, "pessoa_conta_bancaria", pessoaId);
-    const { error } = await db.from("pessoa_conta_bancaria").insert({
-      pessoa_id: pessoaId,
-      banco_codigo: c.banco_codigo,
-      tipo: c.tipo ?? null,
-      agencia: so(c.agencia),
-      agencia_digito: opcional(c.agencia_digito),
-      conta: so(c.conta),
-      conta_digito: opcional(c.conta_digito),
-      favorecido_nome: opcional(favorecido),
-      favorecido_documento: so(c.favorecido_documento),
-      principal: marcado(c.principal),
-    });
-    if (error) throw error;
+    await incluir(
+      db,
+      "pessoa_conta_bancaria",
+      pessoaId,
+      {
+        banco_codigo: c.banco_codigo,
+        tipo: c.tipo ?? null,
+        agencia: so(c.agencia),
+        agencia_digito: opcional(c.agencia_digito),
+        conta: so(c.conta),
+        conta_digito: opcional(c.conta_digito),
+        favorecido_nome: opcional(favorecido),
+        favorecido_documento: so(c.favorecido_documento),
+      },
+      marcado(c.principal),
+    );
     revalidarTudo(revalidar);
   });
 }
 
 /* ---------- chave Pix ---------- */
+
+const CHAVE_REPETIDA = { code: "P0001", message: "Esta chave Pix já está cadastrada." };
 
 const MSG_PIX: Record<string, string> = {
   cpf: "CPF inválido: confira os dígitos.",
@@ -240,19 +248,23 @@ export async function adicionarPix(pessoaId: string, revalidar: string[], form: 
       if (c.error) throw c.error;
       if (!c.data) throw { code: "P0001", message: "A conta escolhida não é desta pessoa. Atualize a página." };
     }
-    if (marcado(x.principal)) await desmarcarPrincipal(db, "pessoa_chave_pix", pessoaId);
-    const { error } = await db.from("pessoa_chave_pix").insert({
-      pessoa_id: pessoaId,
-      tipo: x.tipo,
-      chave: ["cpf", "cnpj", "celular"].includes(x.tipo) ? so(x.chave) : x.chave,
-      conta_id: x.conta_id || null,
-      descricao: opcional(x.descricao),
-      principal: marcado(x.principal),
-    });
-    if (error) {
-      // unique (tipo, chave): a mesma chave já está cadastrada (nesta ou em outra pessoa).
-      if (error.code === "23505") throw { code: "P0001", message: "Esta chave Pix já está cadastrada." };
-      throw error;
+    const chave = ["cpf", "cnpj", "celular"].includes(x.tipo) ? so(x.chave) : x.chave;
+    // unique (tipo, chave): a mesma chave já cadastrada (nesta ou em outra pessoa) é recusada antes.
+    const repetida = await db.from("pessoa_chave_pix").select("id").eq("tipo", x.tipo).eq("chave", chave).maybeSingle();
+    if (repetida.error) throw repetida.error;
+    if (repetida.data) throw CHAVE_REPETIDA;
+    try {
+      await incluir(
+        db,
+        "pessoa_chave_pix",
+        pessoaId,
+        { tipo: x.tipo, chave, conta_id: x.conta_id || null, descricao: opcional(x.descricao) },
+        marcado(x.principal),
+      );
+    } catch (e) {
+      // Corrida com outra inclusão da mesma chave.
+      if ((e as { code?: string }).code === "23505") throw CHAVE_REPETIDA;
+      throw e;
     }
     revalidarTudo(revalidar);
   });
