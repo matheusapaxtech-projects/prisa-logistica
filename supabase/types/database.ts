@@ -2021,6 +2021,7 @@ export type Database = {
       }
     }
     Functions: {
+      aptidao_da_viagem: { Args: { p_viagem: string }; Returns: Json }
       aptidao_viagem: {
         Args: { p_conjunto: string; p_tomador?: string }
         Returns: {

@@ -420,6 +420,47 @@ begin
     'carga dos 8 tempos-limite');
 end $$;
 
+-- Fix round 1: a aptidão (com pedido cancelado) vem de um lugar só, usado pela view e por iniciar_viagem.
+create function tests.test_aptidao_da_viagem() returns setof text language plpgsql as $$
+declare
+  v_op uuid := tests.criar_usuario('op@exemplo.test', 'operacao');
+  v_lei uuid := tests.criar_usuario('lei@exemplo.test', 'leitura');
+  r record;
+  v_num bigint;
+  v_apt jsonb;
+begin
+  select * into r from tests.cenario();
+  select numero into v_num from public.pedido where id = r.pedido;
+  return next is(public.aptidao_da_viagem(r.viagem), '[]'::jsonb, 'fixtura apta: []');
+  return next is(public.aptidao_da_viagem(gen_random_uuid()), null::jsonb, 'viagem inexistente: null');
+
+  update public.cliente set exige_gr = true where pessoa_id = r.cliente;
+  update public.motorista set cnh_validade = tests.hoje() - 1 where pessoa_id = r.motorista;
+  update public.pedido set situacao = 'cancelado' where id = r.pedido;
+  v_apt := public.aptidao_da_viagem(r.viagem);
+  return next is(array(select e ->> 'codigo' || ':' || (e ->> 'nivel') from jsonb_array_elements(v_apt) e),
+    array['pedido_cancelado:trava_legal', 'cnh_vencida:trava', 'cliente_exige_gr:aviso'],
+    'pedido cancelado primeiro, depois as linhas de aptidao_viagem na ordem');
+  return next is(v_apt -> 0 ->> 'mensagem', format('O pedido #%s está cancelado', v_num), 'mensagem do pedido cancelado');
+
+  perform tests.como(v_lei);
+  v_apt := public.aptidao_da_viagem(r.viagem);
+  perform tests.como_servico();
+  return next ok(jsonb_array_length(v_apt) = 3, 'leitura consulta a aptidão da viagem');
+  return next is((tests.planejada_como(v_op, r.viagem)).aptidao, public.aptidao_da_viagem(r.viagem),
+    'v_viagem_planejada.aptidao = aptidao_da_viagem');
+  return next throws_like(format('select tests.executar_como(%L, %L)', v_op, format('select public.iniciar_viagem(%L)', r.viagem)),
+    format('viagem não pode iniciar: O pedido #%s está cancelado%%', v_num), 'iniciar_viagem usa a mesma aptidão (pedido cancelado)');
+
+  -- liberação com exceção grava a mesma lista que a função devolve
+  update public.pedido set situacao = 'aberto' where id = r.pedido;
+  v_apt := public.aptidao_da_viagem(r.viagem);
+  perform tests.executar_como(tests.criar_usuario('adm@exemplo.test', 'admin'),
+    format('select public.iniciar_viagem(%L, %L)', r.viagem, 'CNH renovada'));
+  return next is((select liberacao_aptidao from public.viagem where id = r.viagem), v_apt,
+    'liberacao_aptidao = aptidao_da_viagem no momento do início');
+end $$;
+
 create function tests.test_estrutura() returns setof text language plpgsql as $$
 declare
   v text;
@@ -437,6 +478,24 @@ begin
   return next ok(not has_table_privilege('authenticated', 'public.quadro_limite', 'truncate'), 'quadro_limite: sem truncate');
   return next ok(exists (select 1 from pg_trigger where tgrelid = 'public.quadro_limite'::regclass and tgname = 'trg_auditoria'),
     'quadro_limite: auditada');
+  return next ok((select not prosecdef and provolatile = 's' and proconfig @> array['search_path=""']
+                  from pg_proc where oid = 'public.aptidao_da_viagem(uuid)'::regprocedure),
+    'aptidao_da_viagem: security invoker, stable, search_path vazio');
+  return next ok(has_function_privilege('authenticated', 'public.aptidao_da_viagem(uuid)', 'execute')
+                 and not has_function_privilege('anon', 'public.aptidao_da_viagem(uuid)', 'execute'),
+    'aptidao_da_viagem: execute para authenticated, não para anon');
+  -- a regra do pedido cancelado está escrita só em aptidao_da_viagem
+  return next ok(pg_get_functiondef('public.iniciar_viagem(uuid, text)'::regprocedure) !~ 'pedido_cancelado'
+                 and pg_get_functiondef('public.iniciar_viagem(uuid, text)'::regprocedure) ~ 'aptidao_da_viagem',
+    'iniciar_viagem usa aptidao_da_viagem (sem cópia da regra)');
+  return next ok(pg_get_viewdef('public.v_viagem_planejada'::regclass) !~ 'pedido_cancelado'
+                 and pg_get_viewdef('public.v_viagem_planejada'::regclass) ~ 'aptidao_da_viagem',
+    'v_viagem_planejada usa aptidao_da_viagem (sem cópia da regra)');
+  return next ok((select prosecdef and proconfig @> array['search_path=""'] from pg_proc
+                  where oid = 'public.iniciar_viagem(uuid, text)'::regprocedure)
+                 and has_function_privilege('authenticated', 'public.iniciar_viagem(uuid, text)', 'execute')
+                 and not has_function_privilege('anon', 'public.iniciar_viagem(uuid, text)', 'execute'),
+    'iniciar_viagem: continua security definer, execute só para authenticated');
 end $$;
 
 select * from runtests('tests'::name, '^test_');
