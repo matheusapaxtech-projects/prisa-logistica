@@ -134,5 +134,56 @@ begin
   return next ok(has_function_privilege('authenticated', 'public.tem_papel(public.app_papel[])', 'execute'), 'authenticated executa tem_papel');
 end $$;
 
+-- Task 10 (migration ajustes_advisors): privilégios de todas as tabelas/views de public.
+create function tests.test_privilegios_gerais_public() returns setof text language plpgsql as $$
+declare
+  r record;
+  v_ruins text;
+begin
+  select string_agg(c.relname, ', ') into v_ruins
+  from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  cross join unnest(array['select', 'insert', 'update', 'delete', 'truncate', 'references', 'trigger', 'maintain']) p
+  where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'f')
+    and has_table_privilege('anon', c.oid, p);
+  return next is(v_ruins, null, 'anon sem nenhum privilégio em tabelas e views de public');
+
+  select string_agg(c.relname, ', ') into v_ruins
+  from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  cross join unnest(array['truncate', 'references', 'trigger', 'maintain']) p
+  where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'f')
+    and has_table_privilege('authenticated', c.oid, p);
+  return next is(v_ruins, null, 'authenticated sem truncate/references/trigger/maintain em public');
+
+  select string_agg(c.relname, ', ') into v_ruins
+  from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'public' and c.relkind in ('r', 'p')
+    and not has_table_privilege('authenticated', c.oid, 'select');
+  return next is(v_ruins, null, 'authenticated mantém select em todas as tabelas (RLS decide as linhas)');
+
+  select string_agg(c.relname, ', ') into v_ruins
+  from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'public' and c.relkind in ('r', 'p') and not c.relrowsecurity;
+  return next is(v_ruins, null, 'todas as tabelas de public têm RLS ligado');
+
+  select string_agg(c.relname, ', ') into v_ruins
+  from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'public' and c.relkind in ('r', 'p')
+    and not exists (select 1 from pg_policies pp where pp.schemaname = 'public' and pp.tablename = c.relname);
+  return next is(v_ruins, null, 'nenhuma tabela de public sem política');
+
+  select string_agg(c.relname, ', ') into v_ruins
+  from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'public' and c.relkind = 'v'
+    and not coalesce(c.reloptions::text[] @> array['security_invoker=true'], false);
+  return next is(v_ruins, null, 'toda view de public é security_invoker');
+
+  return next ok(not has_function_privilege('anon', 'public.fn_set_updated_at()', 'execute'),
+    'fn_set_updated_at: anon sem execute');
+  return next ok(not has_function_privilege('authenticated', 'public.fn_set_updated_at()', 'execute'),
+    'fn_set_updated_at: authenticated sem execute');
+  return next ok(not has_function_privilege('public', 'public.fn_set_updated_at()', 'execute'),
+    'fn_set_updated_at: public sem execute');
+end $$;
+
 select * from runtests('tests'::name, '^test_');
 rollback;
