@@ -1,0 +1,167 @@
+/* NILT — telas de administração: /usuarios e /auditoria. Copiado de prototipo/assets/paginas/admin.css
+   (sem a parte do login, que está em login.css, e sem `[hidden]`/`th.num`, que o nilt.css já tem).
+   O CSS de página do Next fica carregado depois da primeira visita, então as regras genéricas do
+   protótipo (.so-celular, .linha3, td.acao) foram presas a `.tabela-usuarios` para não vazar. */
+
+/* ---------- usuários: avisos e lista ---------- */
+.aviso-topo { margin-bottom: var(--gap); }
+.aviso-topo p + p { margin-top: 4px; }
+.aviso .caminho { font-weight: 600; white-space: nowrap; }
+
+.tabela-usuarios .so-celular { display: none; }
+.usuario-cel { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.usuario-cel .txt { min-width: 0; }
+.usuario-cel .id { display: block; line-height: 18px; }
+.usuario-cel .voce { color: var(--muted); font-weight: 400; margin-left: 6px; }
+.usuario-cel .sem-nome { color: var(--muted); font-weight: 500; }
+.usuario-cel .linha2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* componentes.css dá 13/18 a `.tabela td .linha2` (motoristas); aqui vale o 12/16 do protótipo */
+.tabela-usuarios td .linha2 { font-size: 12px; line-height: 16px; }
+.tabela-usuarios .linha3 { display: none; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; color: var(--muted); line-height: 16px; }
+.tabela-usuarios td.acao { width: 1%; white-space: nowrap; text-align: right; }
+.tabela-usuarios td.papel-sem { color: var(--muted); }
+.tabela tr.desligado .id, .tabela tr.desligado td.papel-col { color: var(--muted); }
+.tabela .avatar.vazio { background: var(--raised) !important; color: var(--muted) !important; border: 1px dashed var(--control); }
+
+.papeis-ref { margin-top: 40px; }
+.papeis-ref h2 { font-size: var(--fs-section); line-height: 24px; }
+.papeis-ref > p { color: var(--muted); margin-top: 4px; }
+.papeis-lista { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 16px; border-top: 1px solid var(--rule); }
+.papeis-lista > div { padding: 16px 24px 0 0; }
+.papeis-lista > div + div { padding-left: 24px; border-left: 1px solid var(--rule); }
+.papeis-lista dt { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-weight: 600; }
+.papeis-lista dt span { color: var(--muted); font-weight: 400; font-size: 13px; font-variant-numeric: tabular-nums; }
+.papeis-lista dd { margin: 6px 0 0; color: var(--muted); }
+
+/* ---------- usuários: diálogo de acesso ---------- */
+.dialogo-cab .quem { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.dialogo-cab .quem b { display: block; line-height: 18px; }
+.dialogo-cab .quem span.email { display: block; color: var(--muted); font-size: 13px; line-height: 18px; }
+fieldset.papeis { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 8px; }
+fieldset.papeis legend { padding: 0; margin-bottom: 8px; font-size: 14px; font-weight: 500; line-height: 18px; }
+.papel-opcao {
+  position: relative; display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 12px; align-items: start;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+.papel-opcao input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--verde); cursor: pointer; }
+.papel-opcao b { display: block; font-weight: 600; line-height: 20px; }
+.papel-opcao .o-que { display: block; color: var(--muted); font-size: 13px; line-height: 18px; }
+@media (hover: hover) and (pointer: fine) { .papel-opcao:hover { border-color: var(--control); } }
+.papel-opcao:has(input:checked) { border-color: var(--verde); background: var(--verde-claro); }
+.papel-opcao:has(input:checked) .o-que { color: var(--verde-tinta); }
+.papel-opcao:has(input:focus-visible) { outline: 2px solid var(--verde); outline-offset: 2px; }
+.papel-opcao:has(input:disabled) { cursor: not-allowed; background: var(--raised); }
+.papel-opcao:has(input:disabled) input { cursor: not-allowed; }
+.papel-opcao:has(input:disabled) b { color: var(--muted); }
+
+.chave-linha { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; padding-top: 4px; }
+.chave-linha label { font-weight: 500; line-height: 18px; display: block; }
+.chave-linha .ajuda { display: block; font-size: 13px; color: var(--muted); line-height: 18px; margin-top: 2px; }
+input.chave {
+  appearance: none; -webkit-appearance: none; margin: 0;
+  position: relative; width: 36px; height: 20px; border-radius: 10px; flex: none;
+  background: var(--control); cursor: pointer; transition: background-color 150ms ease;
+}
+input.chave::before {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; transition: transform 160ms var(--ease-out);
+}
+input.chave:checked { background: var(--verde); }
+input.chave:checked::before { transform: translateX(16px); }
+input.chave:disabled { cursor: not-allowed; background: var(--active); }
+input.chave:disabled:checked { background: #8fb9a1; }
+
+/* ---------- auditoria ---------- */
+.ferramentas label.filtro { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.filtro-registro { display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 6px 0 12px; border: 1px solid var(--control); border-radius: var(--radius-control); background: var(--raised); }
+.filtro-registro .btn { height: 24px; width: 24px; }
+
+.dia { margin-top: 8px; }
+.dia + .dia { margin-top: 32px; }
+.dia-cab { display: flex; align-items: baseline; gap: 12px; padding-bottom: 4px; }
+.dia-cab h2 { font-size: var(--fs-section); line-height: 24px; }
+.dia-cab span { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+ol.eventos { list-style: none; margin: 0; padding: 0; }
+.evento {
+  display: grid; grid-template-columns: 44px 12px 28px minmax(0, 1fr) minmax(0, 280px);
+  column-gap: 12px; align-items: start; padding: 10px 0;
+}
+.evento .hora { font-variant-numeric: tabular-nums; color: var(--muted); line-height: 28px; text-align: right; }
+.evento .no { position: relative; align-self: stretch; margin: -10px 0; }
+.evento .no::before { content: ""; position: absolute; left: 5px; top: 0; bottom: 0; width: 1px; background: var(--border); }
+.eventos .evento:first-child .no::before { top: 24px; }
+.eventos .evento:last-child .no::before { bottom: auto; height: 24px; }
+.eventos .evento:only-child .no::before { display: none; }
+.evento .no::after { content: ""; position: absolute; left: 2px; top: 20px; width: 7px; height: 7px; border-radius: 50%; background: #8a928d; box-shadow: 0 0 0 3px var(--sheet); }
+.evento.visto .no::after { left: 1px; top: 19px; width: 9px; height: 9px; border-radius: 1px; background: var(--azul); }
+.evento .txt { min-width: 0; padding-top: 4px; }
+.evento .txt p { line-height: 20px; }
+.evento .txt b { font-weight: 600; }
+.evento .txt .sinal { vertical-align: 1px; margin-left: 2px; }
+.evento .resumo { color: var(--muted); }
+.evento .reg { min-width: 0; padding-top: 4px; text-align: right; display: grid; justify-items: end; }
+.evento .reg a, .evento .reg .nome { max-width: 100%; overflow-wrap: anywhere; line-height: 20px; }
+.evento .reg .de { color: var(--muted); font-size: 13px; line-height: 18px; max-width: 100%; overflow-wrap: anywhere; }
+.evento .reg a.placa-link { display: inline-flex; align-items: center; gap: 8px; margin-top: -4px; }
+.evento .reg .apagado { color: var(--muted); }
+.evento .avatar { margin-top: 0; }
+.rodape-lista .btn-texto { height: 28px; }
+/* painel LGPD ao lado da linha do tempo */
+.aud-grade { margin-top: 8px; }
+.aud-lgpd { position: sticky; top: 16px; }
+.aud-lgpd .bloco-corpo > p { font-size: 13px; line-height: 18px; }
+ul.vistos { list-style: none; margin: 12px 0 0; padding: 0; display: grid; }
+ul.vistos li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; align-items: start; padding: 12px 0; border-top: 1px solid var(--rule); }
+ul.vistos li .txt { display: grid; min-width: 0; line-height: 20px; }
+ul.vistos li .txt b { font-weight: 600; }
+ul.vistos li a { overflow-wrap: anywhere; }
+ul.vistos li .de { color: var(--muted); font-size: 13px; line-height: 18px; }
+.aud-lgpd .vazio-bloco { margin-top: 12px; }
+
+/* ---------- lista de usuários: celular ---------- */
+.tabela-usuarios .so-celular-ic { display: none; }
+.tabela-usuarios .papel-sub { display: none; }
+.tabela-usuarios td.nowrap { white-space: nowrap; }
+
+/* ---------- tablet e celular ---------- */
+@media (max-width: 1100px) {
+  .papeis-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .papeis-lista > div:nth-child(3) { padding-left: 0; border-left: 0; }
+  .papeis-lista > div:nth-child(n+3) { margin-top: 16px; border-top: 1px solid var(--rule); }
+  .evento { grid-template-columns: 44px 12px 28px minmax(0, 1fr) minmax(0, 200px); }
+  .aud-lgpd { position: static; }
+  .tabela-usuarios .col-papel { display: none; }
+  .tabela-usuarios .papel-sub { display: inline; }
+}
+@media (max-width: 640px) {
+  .tabela-usuarios .so-celular { display: block; }
+  .tabela-usuarios .linha3 { display: flex; }
+  .tabela-usuarios td.acao .btn { height: 40px; }
+  .papeis-lista { grid-template-columns: minmax(0, 1fr); }
+  .papeis-lista > div, .papeis-lista > div + div { padding: 14px 0 0; border-left: 0; }
+  .papeis-lista > div:nth-child(n+2) { margin-top: 14px; border-top: 1px solid var(--rule); }
+  .ferramentas label.filtro { width: 100%; }
+  .ferramentas label.filtro select { flex: 1; height: 40px; }
+  .evento { grid-template-columns: 40px 12px 24px minmax(0, 1fr); row-gap: 6px; }
+  .evento .avatar { width: 24px; height: 24px; font-size: 11px; margin-top: 2px; }
+  .evento .hora { grid-column: 1; grid-row: 1; }
+  .evento .no { grid-column: 2; grid-row: 1 / 3; }
+  .evento .avatar { grid-column: 3; grid-row: 1; }
+  .evento .txt { grid-column: 4; grid-row: 1; }
+  .evento .reg { grid-column: 4; grid-row: 2; text-align: left; justify-items: start; padding-top: 0; }
+
+  /* colunas fixas para o e-mail encurtar em vez de empurrar a ação */
+  .tabela-usuarios { table-layout: fixed; }
+  .tabela-usuarios th.col-acao { width: 56px; }
+  .tabela-usuarios .some-celular-txt { display: none; }
+  .tabela-usuarios .so-celular-ic { display: inline-block; }
+  .tabela-usuarios td.acao .btn:not(:has(.so-celular-ic)) { padding: 0 12px; }
+  .tabela-usuarios td.acao .btn:has(.so-celular-ic) { width: 44px; height: 40px; padding: 0; }
+  .tabela-usuarios .linha3 span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .tabela-usuarios .some-celular-ic { display: none; }
+  .tabela-usuarios .papel-sub { display: none; }
+  .tabela-usuarios td.acao-sem .btn { display: none; }
+  .tabela-usuarios .dar-celular { display: inline-flex; margin-top: 10px; height: 40px; }
+}
