@@ -1,4 +1,4 @@
-/* Consultas à BrasilAPI (CNPJ v1 e CEP v2), feitas no servidor pelas rotas /api/cnpj e /api/cep.
+/* Consultas à BrasilAPI (CNPJ v1 e CEP v2, com ReceitaWS e ViaCEP de reserva), feitas no servidor pelas rotas /api/cnpj e /api/cep.
    O mapeamento dos campos é porta 1:1 de `N.consultarCnpj` / `N.consultarCep`
    (prototipo/assets/nilt.js); os valores vêm como a BrasilAPI entrega (CNAE e natureza jurídica
    chegam só com dígitos, como no protótipo). */
@@ -81,53 +81,117 @@ export function mapearCep(j: Cru): DadosCep {
 
 const erro = (mensagem: string, status: number) => Response.json({ erro: mensagem }, { status });
 
-async function consultar(
-  url: string,
-  naoEncontrado: string,
-  falhou: string,
-  mapear: (j: Cru) => unknown,
-): Promise<Response> {
+/* ---------- provedores de reserva ---------- */
+
+const RESERVA_CEP = "https://viacep.com.br/ws";
+const RESERVA_CNPJ = "https://receitaws.com.br/v1/cnpj";
+
+const soDigitos = (v: unknown) => txt(v).replace(/\D/g, "");
+
+/** ViaCEP → formato de `mapearCep`. Chave `erro` (true) = CEP inexistente (a rota responde 200). */
+export function mapearViaCep(j: Cru): DadosCep {
+  return { logradouro: txt(j.logradouro), bairro: txt(j.bairro), cidade: txt(j.localidade), uf: txt(j.uf) };
+}
+
+/** "11/08/2009" → "2009-08-11"; o que não for essa data vira "". */
+function dataIso(v: unknown): string {
+  const m = txt(v).match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
+}
+
+/** ReceitaWS → formato de `mapearCnpj` (mesmos textos que a BrasilAPI: "2062 Natureza", "4930202 Atividade"). */
+export function mapearReceitaWs(j: Cru): DadosCnpj {
+  const atividade = Array.isArray(j.atividade_principal) ? (j.atividade_principal[0] as Cru | undefined) : undefined;
+  const simples = j.simples as Cru | null | undefined;
+  return {
+    nome: txt(j.nome),
+    nome_fantasia: txt(j.fantasia),
+    fundacao: dataIso(j.abertura),
+    // "206-2 - Sociedade Empresária Limitada" → "2062 Sociedade Empresária Limitada"
+    natureza_juridica: txt(j.natureza_juridica).replace(/^(\d+)-(\d)\s*-\s*/, "$1$2 "),
+    cnae_principal: atividade ? juntar(soDigitos(atividade.code), txt(atividade.text)) : "",
+    optante_simples: simples && typeof simples.optante === "boolean" ? simples.optante : null,
+    situacao: txt(j.situacao),
+    endereco: {
+      cep: soDigitos(j.cep),
+      logradouro: txt(j.logradouro),
+      numero: txt(j.numero),
+      complemento: txt(j.complemento),
+      bairro: txt(j.bairro),
+      cidade: txt(j.municipio),
+      uf: txt(j.uf),
+    },
+  };
+}
+
+type Provedor = {
+  url: string;
+  mapear: (j: Cru) => unknown;
+  /** O provedor diz "não existe" numa resposta 200 (ViaCEP `erro`, ReceitaWS `status: "ERROR"`). */
+  inexistente?: (j: Cru) => boolean;
+};
+type Tentativa = { tipo: "ok"; dados: unknown } | { tipo: "nao_achou" } | { tipo: "falhou"; resposta: Response };
+
+/** Uma consulta a um provedor, com timeout próprio, User-Agent e sem cache. Nunca lança. */
+async function tentar(p: Provedor, falhou: string): Promise<Tentativa> {
   let r: Response;
   try {
     // no-store: o resultado nunca é guardado em cache, nem compartilhado entre usuários.
-    r = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS), cache: "no-store", headers: { "user-agent": USER_AGENT } });
+    r = await fetch(p.url, { signal: AbortSignal.timeout(TIMEOUT_MS), cache: "no-store", headers: { "user-agent": USER_AGENT } });
   } catch (e) {
     // Estouro do tempo (TimeoutError), cancelamento (AbortError) e falha de rede.
     // Pelo nome, não por instanceof: o DOMException pode vir de outro realm (ex.: jsdom nos testes).
     const nome = (e as { name?: unknown } | null)?.name;
-    return erro(ERROS_BRASILAPI.semResposta, nome === "TimeoutError" || nome === "AbortError" ? 504 : 502);
+    return { tipo: "falhou", resposta: erro(ERROS_BRASILAPI.semResposta, nome === "TimeoutError" || nome === "AbortError" ? 504 : 502) };
   }
-  if (r.status === 404) return erro(naoEncontrado, 404);
+  if (r.status === 404) return { tipo: "nao_achou" };
   // Bloqueio ou limite de uso (403, 429): do ponto de vista de quem cadastra, a consulta não respondeu.
-  if (r.status === 403 || r.status === 429) return erro(ERROS_BRASILAPI.semResposta, 504);
-  if (!r.ok) return erro(falhou, 502);
+  if (r.status === 403 || r.status === 429) return { tipo: "falhou", resposta: erro(ERROS_BRASILAPI.semResposta, 504) };
+  if (!r.ok) return { tipo: "falhou", resposta: erro(falhou, 502) };
   try {
     const j = (await r.json()) as unknown;
-    if (j === null || typeof j !== "object") return erro(falhou, 502);
-    return Response.json(mapear(j as Cru));
+    if (j === null || typeof j !== "object") return { tipo: "falhou", resposta: erro(falhou, 502) };
+    if (p.inexistente?.(j as Cru)) return { tipo: "nao_achou" };
+    return { tipo: "ok", dados: p.mapear(j as Cru) };
   } catch {
-    return erro(falhou, 502);
+    return { tipo: "falhou", resposta: erro(falhou, 502) };
   }
 }
 
-/** Valida o parâmetro (14 dígitos com dígitos verificadores corretos) e consulta a Receita via BrasilAPI. */
+/** Tenta os provedores na ordem; o primeiro que acha vence. "Não encontrado" só quando TODOS dizem que não
+   existe; se algum falhou (e nenhum achou), responde a falha do primeiro que falhou ("não respondeu"). */
+async function consultar(provedores: Provedor[], naoEncontrado: string, falhou: string): Promise<Response> {
+  let falha: Response | null = null;
+  for (const p of provedores) {
+    const t = await tentar(p, falhou);
+    if (t.tipo === "ok") return Response.json(t.dados);
+    if (t.tipo === "falhou") falha ??= t.resposta;
+  }
+  return falha ?? erro(naoEncontrado, 404);
+}
+
+/** Valida o parâmetro (14 dígitos com dígitos verificadores corretos) e consulta a Receita: BrasilAPI e, de reserva, ReceitaWS. */
 export async function consultarCnpj(param: string): Promise<Response> {
   if (!/^\d{14}$/.test(param) || !validacao.cnpj(param)) return erro(ERROS_BRASILAPI.cnpjInvalido, 400);
   return consultar(
-    `${BASE}/cnpj/v1/${param}`,
+    [
+      { url: `${BASE}/cnpj/v1/${param}`, mapear: mapearCnpj },
+      { url: `${RESERVA_CNPJ}/${param}`, mapear: mapearReceitaWs, inexistente: (j) => String(j.status).toUpperCase() === "ERROR" },
+    ],
     ERROS_BRASILAPI.cnpjNaoEncontrado,
     ERROS_BRASILAPI.cnpjFalhou,
-    mapearCnpj,
   );
 }
 
-/** Valida o parâmetro (8 dígitos) e consulta o CEP na BrasilAPI v2. */
+/** Valida o parâmetro (8 dígitos) e consulta o CEP: BrasilAPI v2 e, de reserva, ViaCEP. */
 export async function consultarCep(param: string): Promise<Response> {
   if (!/^\d{8}$/.test(param)) return erro(ERROS_BRASILAPI.cepInvalido, 400);
   return consultar(
-    `${BASE}/cep/v2/${param}`,
+    [
+      { url: `${BASE}/cep/v2/${param}`, mapear: mapearCep },
+      { url: `${RESERVA_CEP}/${param}/json/`, mapear: mapearViaCep, inexistente: (j) => j.erro === true || j.erro === "true" },
+    ],
     ERROS_BRASILAPI.cepNaoEncontrado,
     ERROS_BRASILAPI.cepFalhou,
-    mapearCep,
   );
 }
