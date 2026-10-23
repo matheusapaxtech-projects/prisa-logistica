@@ -1428,6 +1428,13 @@ export type Database = {
           user_id: string
         }[]
       }
+      nomes_usuarios: {
+        Args: { p_ids: string[] }
+        Returns: {
+          nome: string
+          user_id: string
+        }[]
+      }
       normalizar_placa: { Args: { p: string }; Returns: string }
       papel_atual: {
         Args: never
