@@ -31,6 +31,7 @@ describe("arquivos: caminho no Storage", () => {
   it("caminhoArquivo segue a convenção pessoa/<id>/<arquivo>-<nome> ou veiculo/…", () => {
     expect(caminhoArquivo({ pessoaId: "p1" }, "a1", "Comprovante.jpg")).toBe("pessoa/p1/a1-comprovante.jpg");
     expect(caminhoArquivo({ veiculoId: "v1" }, "a2", "crlv 2026.pdf")).toBe("veiculo/v1/a2-crlv-2026.pdf");
+    expect(caminhoArquivo({ viagemId: "g1" }, "a3", "Canhoto NF.jpg")).toBe("viagem/g1/a3-canhoto-nf.jpg");
   });
 });
 

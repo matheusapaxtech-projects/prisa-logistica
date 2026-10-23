@@ -38,6 +38,7 @@ const Envio = z
   .object({
     pessoaId: ID.optional(),
     veiculoId: ID.optional(),
+    viagemId: ID.optional(),
     tipoArquivoId: z.number().int().positive(),
     nome: z.string().trim().min(1).max(255),
     mime: z.enum(["application/pdf", "image/jpeg", "image/png", "image/heic"]),
@@ -46,13 +47,14 @@ const Envio = z
     numero: z.string().trim().max(60).nullable(),
     restrito: z.boolean(),
   })
-  .refine((e) => Boolean(e.pessoaId) !== Boolean(e.veiculoId), "um dono só");
+  .refine((e) => [e.pessoaId, e.veiculoId, e.viagemId].filter(Boolean).length === 1, "um dono só");
 
 export type DadosEnvio = z.input<typeof Envio>;
 
 /** Grava a linha de `arquivo` (id gerado aqui) e devolve o caminho onde o navegador deve enviar o
    objeto. `restrito: true` só o administrador pode pedir: para os demais a ação recusa com
-   "Só o administrador pode fazer isso." (não grava nada). */
+   "Só o administrador pode fazer isso." (não grava nada). Dono `viagemId`: o tipo precisa ser de
+   viagem (`tipo_arquivo.aplica_viagem`: CANHOTO e OUTROS); o banco não confere tipo × dono. */
 export async function prepararEnvio(dados: DadosEnvio): Promise<ResultadoAcao<{ id: string; caminho: string }>> {
   const v = Envio.safeParse(dados);
   if (!v.success) return { ok: false, erro: "Confira o tipo e o arquivo: envie PDF, JPG, PNG ou HEIC de até 20 MB." };
@@ -60,16 +62,23 @@ export async function prepararEnvio(dados: DadosEnvio): Promise<ResultadoAcao<{ 
   return comSessao(async ({ supabase }) => {
     const admin = pode(await getPerfil(), "admin");
     if (e.restrito && !admin) throw SEM_PERMISSAO;
+    const db = tipado(supabase);
+    if (e.viagemId) {
+      const t = await db.from("tipo_arquivo").select("aplica_viagem").eq("id", e.tipoArquivoId).maybeSingle();
+      if (t.error) throw t.error;
+      if (!t.data?.aplica_viagem) throw { code: "P0001", message: "Este tipo de arquivo não é de viagem. Escolha Canhoto ou Outros." };
+    }
     const id = crypto.randomUUID();
-    const dono = e.pessoaId ? { pessoaId: e.pessoaId } : { veiculoId: e.veiculoId! };
+    const dono = e.pessoaId ? { pessoaId: e.pessoaId } : e.veiculoId ? { veiculoId: e.veiculoId } : { viagemId: e.viagemId! };
     const caminho = caminhoArquivo(dono, id, e.nome);
-    const { error } = await tipado(supabase)
+    const { error } = await db
       .from("arquivo")
       .insert({
         id,
         tipo_arquivo_id: e.tipoArquivoId,
         pessoa_id: e.pessoaId ?? null,
         veiculo_id: e.veiculoId ?? null,
+        viagem_id: e.viagemId ?? null,
         storage_path: caminho,
         nome_original: e.nome,
         mime: e.mime,

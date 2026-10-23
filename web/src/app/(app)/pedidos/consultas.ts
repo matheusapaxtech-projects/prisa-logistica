@@ -246,7 +246,7 @@ export async function carregarPedido(db: Banco, id: string): Promise<FichaPedido
 /* ---------- motoristas e conjuntos ---------- */
 
 /** Nome do motorista (o completo; o apelido entre parênteses, se houver). */
-async function nomesDeMotorista(db: Banco, ids: string[]): Promise<Map<string, string>> {
+export async function nomesDeMotorista(db: Banco, ids: string[]): Promise<Map<string, string>> {
   const unicos = [...new Set(ids)];
   if (!unicos.length) return new Map();
   const r = await db.from("pessoa").select("id, nome, apelido").in("id", unicos);

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { CircleAlert, Eye, Lock, RotateCw, Trash2, Upload } from "lucide-react";
 import { TIPOS_ACEITOS, erroDoArquivo, mimeDoArquivo, type DonoArquivo } from "@/lib/arquivos";
 import { formato } from "@/lib/formato";
-import { createBrowserClient } from "@/lib/supabase/client";
+import { enviarObjeto } from "@/lib/envio-navegador";
 import { abrirDocumento, apagarDocumento, conferirDocumento, prepararEnvio } from "@/components/documentos-acoes";
 import { Dialogo } from "@/components/Dialogo";
 import { EstadoVazio } from "@/components/EstadoVazio";
@@ -46,14 +46,6 @@ type Props = {
 
 const MSG_FALHA_ENVIO =
   "O arquivo não chegou ao armazenamento. O documento ficou marcado como “envio falhou”: use “Enviar de novo”.";
-
-/** Envia o objeto ao caminho já registrado em `arquivo` (sem sobrescrever). Objeto já existente conta como enviado. */
-async function enviarObjeto(caminho: string, arquivo: File): Promise<boolean> {
-  const { error } = await createBrowserClient()
-    .storage.from("documentos")
-    .upload(caminho, arquivo, { upsert: false, contentType: mimeDoArquivo(arquivo.name, arquivo.type) });
-  return !error || /exists|duplicate/i.test(error.message);
-}
 
 /* Parte interativa de <Documentos> (marcação da aba Documentos de prototipo/motorista.html). */
 export function DocumentosLista({
