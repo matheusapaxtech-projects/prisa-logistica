@@ -159,6 +159,59 @@ export type Database = {
         }
         Relationships: []
       }
+      cliente: {
+        Row: {
+          condicao_faturamento: Database["public"]["Enums"]["condicao_faturamento"]
+          created_at: string
+          created_by: string | null
+          email_cobranca: string | null
+          email_xml: string | null
+          exige_gr: boolean
+          exige_sm: boolean
+          exigencias: string | null
+          gerenciadora: string | null
+          pessoa_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          condicao_faturamento?: Database["public"]["Enums"]["condicao_faturamento"]
+          created_at?: string
+          created_by?: string | null
+          email_cobranca?: string | null
+          email_xml?: string | null
+          exige_gr?: boolean
+          exige_sm?: boolean
+          exigencias?: string | null
+          gerenciadora?: string | null
+          pessoa_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          condicao_faturamento?: Database["public"]["Enums"]["condicao_faturamento"]
+          created_at?: string
+          created_by?: string | null
+          email_cobranca?: string | null
+          email_xml?: string | null
+          exige_gr?: boolean
+          exige_sm?: boolean
+          exigencias?: string | null
+          gerenciadora?: string | null
+          pessoa_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cliente_pessoa_id_fkey"
+            columns: ["pessoa_id"]
+            isOneToOne: true
+            referencedRelation: "pessoa"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conjunto: {
         Row: {
           cavalo_id: string
@@ -774,9 +827,11 @@ export type Database = {
           cep: string | null
           cidade: string
           complemento: string | null
+          contato_local: string | null
           created_at: string
           created_by: string | null
           id: string
+          janela_atendimento: string | null
           latitude: number | null
           logradouro: string | null
           longitude: number | null
@@ -794,9 +849,11 @@ export type Database = {
           cep?: string | null
           cidade: string
           complemento?: string | null
+          contato_local?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
+          janela_atendimento?: string | null
           latitude?: number | null
           logradouro?: string | null
           longitude?: number | null
@@ -814,9 +871,11 @@ export type Database = {
           cep?: string | null
           cidade?: string
           complemento?: string | null
+          contato_local?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
+          janela_atendimento?: string | null
           latitude?: number | null
           logradouro?: string | null
           longitude?: number | null
@@ -1481,6 +1540,7 @@ export type Database = {
         | "ad"
         | "ae"
       categoria_veiculo: "cavalo" | "caminhao" | "carreta" | "dolly" | "outros"
+      condicao_faturamento: "por_cte" | "semanal" | "quinzenal" | "mensal"
       configuracao_cavalo: "toco" | "trucado"
       desconto_inss: "nao" | "inss_sest_senat" | "sest_senat"
       enquadramento_antt: "etc" | "tac" | "ctc" | "etc_equiparado"
@@ -1709,6 +1769,7 @@ export const Constants = {
         "ae",
       ],
       categoria_veiculo: ["cavalo", "caminhao", "carreta", "dolly", "outros"],
+      condicao_faturamento: ["por_cte", "semanal", "quinzenal", "mensal"],
       configuracao_cavalo: ["toco", "trucado"],
       desconto_inss: ["nao", "inss_sest_senat", "sest_senat"],
       enquadramento_antt: ["etc", "tac", "ctc", "etc_equiparado"],
