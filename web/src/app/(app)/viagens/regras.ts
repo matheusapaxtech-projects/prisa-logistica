@@ -30,6 +30,12 @@ export function proximoPasso(v: { status_campo: StatusCampo | null; pagamento_sa
   return null;
 }
 
+/** Ruling R13 (mesma regra de `canhoto_enviado` no banco): só conta canhoto cujo arquivo chegou ao
+   Storage; a linha com "envio falhou" não conta. */
+export function temCanhotoEnviado(canhotos: { envioFalhou: boolean }[]): boolean {
+  return canhotos.some((c) => !c.envioFalhou);
+}
+
 /* ---------- aptidão ---------- */
 
 export type NivelAptidao = "trava_legal" | "trava" | "aviso";

@@ -197,6 +197,10 @@ begin
   update public.pessoa set apelido = 'Cliente T' where id = r.cliente;
   insert into public.arquivo (tipo_arquivo_id, viagem_id, storage_path)
   values (15, r.viagem, format('viagem/%s/canhoto.png', r.viagem));
+  -- Ruling R13: a linha sem o objeto no Storage (envio falhou) não conta
+  q := tests.quadro_como(v_lei, r.viagem);
+  return next ok(not q.tem_canhoto, 'linha sem objeto não conta como canhoto');
+  insert into storage.objects (bucket_id, name) values ('documentos', format('viagem/%s/canhoto.png', r.viagem));
   insert into public.viagem_ocorrencia (viagem_id, tipo, descricao) values (r.viagem, 'atraso', 'trânsito na serra');
   insert into public.viagem_ocorrencia (viagem_id, tipo, descricao) values (r.viagem, 'avaria', 'lona rasgada');
   insert into public.viagem_ocorrencia (viagem_id, tipo, descricao, resolvida_em, resolucao)
@@ -204,7 +208,7 @@ begin
   q := tests.quadro_como(v_lei, r.viagem);
   return next is(q.motorista_nome, 'Teco', 'motorista com apelido: apelido');
   return next is(q.cliente_nome, 'Cliente T', 'tomador com apelido: apelido');
-  return next ok(q.tem_canhoto, 'canhoto (tipo 15) anexado');
+  return next ok(q.tem_canhoto, 'canhoto (tipo 15) anexado, com o objeto no Storage');
   return next is(q.ocorrencias_abertas, 2, 'duas ocorrências abertas (a resolvida não conta)');
 
   return next ok(not tests.no_quadro(v_sem, r.viagem), 'sem perfil não vê a viagem');
@@ -496,6 +500,15 @@ begin
                  and has_function_privilege('authenticated', 'public.iniciar_viagem(uuid, text)', 'execute')
                  and not has_function_privilege('anon', 'public.iniciar_viagem(uuid, text)', 'execute'),
     'iniciar_viagem: continua security definer, execute só para authenticated');
+  -- Ruling R13: "tem canhoto" num lugar só (canhoto_enviado), com o objeto no Storage
+  return next ok((select prosecdef and provolatile = 's' and proconfig @> array['search_path=""']
+                  from pg_proc where oid = 'public.canhoto_enviado(uuid)'::regprocedure)
+                 and has_function_privilege('authenticated', 'public.canhoto_enviado(uuid)', 'execute')
+                 and not has_function_privilege('anon', 'public.canhoto_enviado(uuid)', 'execute'),
+    'canhoto_enviado: security definer, stable, search_path vazio, execute só para authenticated');
+  return next ok(pg_get_viewdef('public.v_quadro'::regclass) ~ 'canhoto_enviado'
+                 and pg_get_functiondef('public.mover_viagem(uuid, public.status_campo, public.status_campo, jsonb)'::regprocedure) ~ 'canhoto_enviado',
+    'v_quadro e mover_viagem usam canhoto_enviado');
 end $$;
 
 select * from runtests('tests'::name, '^test_');

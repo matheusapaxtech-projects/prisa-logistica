@@ -3,12 +3,11 @@
 import { useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { CircleAlert, Eye, RotateCw, Upload } from "lucide-react";
-import { abrirDocumento } from "@/components/documentos-acoes";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import { Ponto } from "@/components/Ponto";
 import { toast } from "@/components/Toast";
 import { erroDoArquivo, TIPOS_ACEITOS } from "@/lib/arquivos";
-import { enviarObjeto } from "@/lib/envio-navegador";
+import { abrirEmNovaJanela, useReenvio } from "@/lib/envio-navegador";
 import { formato } from "@/lib/formato";
 import { CabPainel } from "../../_pessoa/partes";
 import type { CanhotoDaViagem } from "../consultas";
@@ -26,26 +25,23 @@ type Props = {
 export function Canhoto({ viagemId, canhotos, podeEnviar }: Props) {
   const router = useRouter();
   const campo = useRef<HTMLInputElement>(null);
-  const reenvio = useRef<HTMLInputElement>(null);
-  const [reenviando, setReenviando] = useState<CanhotoDaViagem | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, iniciarEnvio] = useTransition();
   const [ocupado, iniciar] = useTransition();
+  const { campo: campoReenvio, escolher: escolherReenvio, aoEscolher: reenviar } = useReenvio<CanhotoDaViagem>({
+    iniciar,
+    msgFalha: MSG_FALHA_ENVIO_CANHOTO,
+    aoEnviar: (arquivo) => {
+      toast(`Canhoto enviado: ${arquivo.name}`, "upload");
+      router.refresh();
+    },
+  });
 
   function abrir(c: CanhotoDaViagem) {
-    // A janela abre no clique (senão o navegador bloqueia) e recebe o link quando ele chega.
-    const janela = window.open("", "_blank");
+    const aberto = abrirEmNovaJanela(c.id);
     iniciar(async () => {
-      const r = await abrirDocumento(c.id);
-      if (!r.ok) {
-        janela?.close();
-        toast(r.erro, "alert-circle");
-        return;
-      }
-      if (janela) {
-        janela.opener = null;
-        janela.location.href = r.dados;
-      } else window.open(r.dados, "_blank", "noopener");
+      const r = await aberto;
+      if (!r.ok) return toast(r.erro, "alert-circle");
       toast(`Visualização registrada: ${c.nome}`, "eye");
     });
   }
@@ -64,21 +60,6 @@ export function Canhoto({ viagemId, canhotos, podeEnviar }: Props) {
       if (!r.ok) return setErro(r.erro);
       form.reset();
       toast(`Canhoto enviado: ${f.name}`, "upload");
-    });
-  }
-
-  function reenviar(arquivo: File | undefined) {
-    const c = reenviando;
-    if (reenvio.current) reenvio.current.value = "";
-    if (!c || !arquivo) return;
-    const problema = erroDoArquivo(arquivo);
-    if (problema) return toast(problema, "alert-circle");
-    iniciar(async () => {
-      const ok = await enviarObjeto(c.caminho, arquivo);
-      setReenviando(null);
-      if (!ok) return toast(MSG_FALHA_ENVIO_CANHOTO, "alert-circle");
-      toast(`Canhoto enviado: ${arquivo.name}`, "upload");
-      router.refresh();
     });
   }
 
@@ -109,10 +90,7 @@ export function Canhoto({ viagemId, canhotos, podeEnviar }: Props) {
                     className="btn btn-texto"
                     type="button"
                     disabled={ocupado}
-                    onClick={() => {
-                      setReenviando(c);
-                      reenvio.current?.click();
-                    }}
+                    onClick={() => escolherReenvio(c)}
                   >
                     <RotateCw size={16} strokeWidth={1.6} aria-hidden="true" />
                     Enviar de novo
@@ -160,7 +138,7 @@ export function Canhoto({ viagemId, canhotos, podeEnviar }: Props) {
           </div>
         </form>
       )}
-      <input ref={reenvio} type="file" accept={TIPOS_ACEITOS} hidden onChange={(e) => reenviar(e.currentTarget.files?.[0])} />
+      <input ref={campoReenvio} type="file" accept={TIPOS_ACEITOS} hidden onChange={(e) => reenviar(e.currentTarget.files?.[0])} />
     </section>
   );
 }

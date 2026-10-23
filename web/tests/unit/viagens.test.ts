@@ -57,6 +57,7 @@ import {
   podeLiberarComExcecao,
   proximoPasso,
   seloAptidao,
+  temCanhotoEnviado,
   type ItemAptidao,
 } from "@/app/(app)/viagens/regras";
 
@@ -99,6 +100,18 @@ describe("proximoPasso", () => {
   it("outras colunas → null", () => {
     expect(proximoPasso(v("em_rota", true))).toBeNull();
     expect(proximoPasso(v("frete_finalizado", true, true))).toBeNull();
+  });
+});
+
+describe("temCanhotoEnviado (Ruling R13)", () => {
+  it("linha com envio falhou não conta; basta um canhoto com o arquivo no Storage", () => {
+    expect(temCanhotoEnviado([])).toBe(false);
+    expect(temCanhotoEnviado([{ envioFalhou: true }])).toBe(false);
+    expect(temCanhotoEnviado([{ envioFalhou: true }, { envioFalhou: false }])).toBe(true);
+  });
+  it("com canhoto só com envio falhou, o próximo passo continua sendo enviar o canhoto", () => {
+    const tem = temCanhotoEnviado([{ envioFalhou: true }]);
+    expect(proximoPasso({ status_campo: "aguardando_descarga", pagamento_saida: true, tem_canhoto: tem })).toBe("Enviar canhoto");
   });
 });
 

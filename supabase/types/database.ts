@@ -2036,6 +2036,7 @@ export type Database = {
         Args: { p_motivo: string; p_viagem: string }
         Returns: undefined
       }
+      canhoto_enviado: { Args: { p_viagem: string }; Returns: boolean }
       capacidade_carga: {
         Args: { v: Database["public"]["Tables"]["veiculo"]["Row"] }
         Returns: number

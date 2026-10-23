@@ -103,13 +103,15 @@ begin
   perform tests.executar_como(p_uid, format('select public.iniciar_viagem(%L)', p_viagem));
 end $$;
 
--- Canhoto (tipo 15) da viagem, gravado como serviço.
+-- Canhoto (tipo 15) da viagem, gravado como serviço: a linha de arquivo e o objeto no Storage (Ruling R13).
 create function tests.canhoto(p_viagem uuid) returns void language plpgsql as $$
 declare
   v_arq uuid := gen_random_uuid();
+  v_path text := format('viagem/%s/%s-canhoto.png', p_viagem, v_arq);
 begin
   insert into public.arquivo (id, tipo_arquivo_id, viagem_id, storage_path, mime)
-  values (v_arq, 15, p_viagem, format('viagem/%s/%s-canhoto.png', p_viagem, v_arq), 'image/png');
+  values (v_arq, 15, p_viagem, v_path, 'image/png');
+  insert into storage.objects (bucket_id, name) values ('documentos', v_path);
 end $$;
 
 -- Leva uma viagem já iniciada pelo caminho feliz até p_alvo (sem pausa, sem divergência).
@@ -354,6 +356,30 @@ begin
     'P0001', 'informe o peso de chegada', 'com canhoto e sem peso de chegada: recusa');
   return next lives_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_descarga', 'aguardando_contagem', '{"peso_chegada_kg": 36950}'),
     'com canhoto e peso: passa');
+end $$;
+
+-- Ruling R13: a linha de arquivo CANHOTO sem o objeto no Storage (envio falhou) não conta.
+create function tests.test_canhoto_sem_objeto_nao_conta() returns setof text language plpgsql as $$
+declare
+  v_op uuid := tests.criar_usuario('op@exemplo.test', 'operacao');
+  r record;
+  v_path text;
+begin
+  select * into r from tests.cenario();
+  perform tests.iniciar(v_op, r.viagem);
+  perform tests.levar_ate(v_op, r.viagem, 'aguardando_descarga');
+  v_path := format('viagem/%s/%s-canhoto.png', r.viagem, gen_random_uuid());
+  insert into public.arquivo (tipo_arquivo_id, viagem_id, storage_path) values (15, r.viagem, v_path);
+  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_descarga', 'aguardando_contagem', '{"peso_chegada_kg": 36950}'),
+    'P0001', 'falta o canhoto', 'linha sem objeto não conta: recusa');
+  -- objeto de outro bucket com o mesmo nome também não conta
+  insert into storage.buckets (id, name) values ('tst-outro', 'tst-outro') on conflict do nothing;
+  insert into storage.objects (bucket_id, name) values ('tst-outro', v_path);
+  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_descarga', 'aguardando_contagem', '{"peso_chegada_kg": 36950}'),
+    'P0001', 'falta o canhoto', 'objeto em outro bucket não conta');
+  insert into storage.objects (bucket_id, name) values ('documentos', v_path);
+  return next lives_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_descarga', 'aguardando_contagem', '{"peso_chegada_kg": 36950}'),
+    'com o objeto no bucket documentos: passa');
 end $$;
 
 create function tests.test_voltar_exige_motivo() returns setof text language plpgsql as $$

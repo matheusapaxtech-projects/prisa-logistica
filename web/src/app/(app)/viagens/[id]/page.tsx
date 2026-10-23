@@ -16,7 +16,7 @@ import { RE_ID } from "../../_pessoa/formulario";
 import { CabPainel, Dash } from "../../_pessoa/partes";
 import { SUFIXO_TARIFA } from "../../pedidos/regras";
 import { carregarViagem, type FichaViagem, type PausaDaViagem } from "../consultas";
-import { duracao, modoDeInicio, podeCancelar, proximoPasso, TIPOS_PAUSA, type ModoInicio } from "../regras";
+import { duracao, modoDeInicio, podeCancelar, proximoPasso, temCanhotoEnviado, TIPOS_PAUSA, type ModoInicio } from "../regras";
 import { CancelarViagem, ConfirmarPagamento, IniciarViagem } from "./acoes-viagem";
 import { BlocoAptidao } from "./aptidao";
 import { Canhoto } from "./canhoto";
@@ -91,7 +91,7 @@ export default async function FichaViagemPage({ params }: Params) {
   const cancelada = Boolean(f.canceladaEm);
   const planejada = !cancelada && f.status_campo === null;
   const pagamento = Boolean(f.pagamentoSaidaEm);
-  const temCanhoto = f.canhotos.length > 0;
+  const temCanhoto = temCanhotoEnviado(f.canhotos);
   const passo = cancelada ? null : proximoPasso({ status_campo: f.status_campo, pagamento_saida: pagamento, tem_canhoto: temCanhoto });
   // Cancelar e confirmar o pagamento valem na mesma janela (antes de "Em rota").
   const antesDeEmRota = !cancelada && podeCancelar(f.status_campo, f.origemDaPausa);

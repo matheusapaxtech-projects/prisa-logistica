@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { CircleAlert, Eye, Lock, RotateCw, Trash2, Upload } from "lucide-react";
 import { TIPOS_ACEITOS, erroDoArquivo, mimeDoArquivo, type DonoArquivo } from "@/lib/arquivos";
 import { formato } from "@/lib/formato";
-import { enviarObjeto } from "@/lib/envio-navegador";
-import { abrirDocumento, apagarDocumento, conferirDocumento, prepararEnvio } from "@/components/documentos-acoes";
+import { abrirEmNovaJanela, enviarObjeto, useReenvio } from "@/lib/envio-navegador";
+import { apagarDocumento, conferirDocumento, prepararEnvio } from "@/components/documentos-acoes";
 import { Dialogo } from "@/components/Dialogo";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import { Ponto } from "@/components/Ponto";
@@ -70,26 +70,27 @@ export function DocumentosLista({
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [erroArquivo, setErroArquivo] = useState<string | null>(null);
   const [apagar, setApagar] = useState<LinhaDocumento | null>(null);
-  const reenvio = useRef<HTMLInputElement>(null);
-  const [reenviando, setReenviando] = useState<LinhaDocumento | null>(null);
 
   const visiveis = linhas.filter((a) => admin || !a.restrito);
   const sugerido = tipos.find((t) => t.nome === tipoSugerido)?.id ?? tipos[0]?.id;
 
+  const { campo: campoReenvio, escolher: escolherReenvio, aoEscolher: reenviar } = useReenvio<LinhaDocumento>({
+    iniciar,
+    msgFalha: MSG_FALHA_ENVIO,
+    aoEnviar: (arquivo) => {
+      toast(`Arquivo enviado: ${arquivo.name}`, "upload");
+      router.refresh();
+    },
+  });
+
   function abrir(a: LinhaDocumento) {
-    // A janela abre no clique (senão o navegador bloqueia) e recebe o link quando ele chega.
-    const janela = window.open("", "_blank");
+    const aberto = abrirEmNovaJanela(a.id);
     iniciar(async () => {
-      const r = await abrirDocumento(a.id);
+      const r = await aberto;
       if (!r.ok) {
-        janela?.close();
         toast(r.erro, "alert-circle");
         return;
       }
-      if (janela) {
-        janela.opener = null;
-        janela.location.href = r.dados;
-      } else window.open(r.dados, "_blank", "noopener");
       toast(`Visualização registrada: ${a.nome}`, "eye");
       router.refresh();
     });
@@ -113,26 +114,6 @@ export function DocumentosLista({
       setApagar(null);
       if (!r.ok) return toast(r.erro, "alert-circle");
       toast(`Documento apagado: ${a.nome}`, "trash-2");
-      router.refresh();
-    });
-  }
-
-  function escolherReenvio(a: LinhaDocumento) {
-    setReenviando(a);
-    reenvio.current?.click();
-  }
-
-  function reenviar(arquivo: File | undefined) {
-    const a = reenviando;
-    if (reenvio.current) reenvio.current.value = "";
-    if (!a || !arquivo) return;
-    const erro = erroDoArquivo(arquivo);
-    if (erro) return toast(erro, "alert-circle");
-    iniciar(async () => {
-      const ok = await enviarObjeto(a.caminho, arquivo);
-      setReenviando(null);
-      if (!ok) return toast(MSG_FALHA_ENVIO, "alert-circle");
-      toast(`Arquivo enviado: ${arquivo.name}`, "upload");
       router.refresh();
     });
   }
@@ -290,7 +271,7 @@ export function DocumentosLista({
           <EstadoVazio>{vazio}</EstadoVazio>
         )}
         <input
-          ref={reenvio}
+          ref={campoReenvio}
           type="file"
           className="sr-only"
           tabIndex={-1}
