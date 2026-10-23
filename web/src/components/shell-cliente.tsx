@@ -5,11 +5,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Building2,
+  ClipboardList,
+  Columns3,
   History,
   IdCard,
   Link2,
   Menu,
+  Route,
   Signpost,
+  Store,
   TriangleAlert,
   Truck,
   Users,
@@ -19,9 +23,14 @@ import { Toaster } from "@/components/Toast";
 
 type Item = { href: string; rotulo: string; Icone: LucideIcon };
 
-/* Mesmos itens, rótulos e ícones do `NAV`/`ADMIN` de nilt.js. */
+/* Itens, rótulos e ícones do `NAV`/`ADMIN` de nilt.js, com a operação (Quadro, Pedidos, Viagens,
+   Clientes) logo depois do Início. */
 const NAV: Item[] = [
   { href: "/", rotulo: "Início", Icone: Signpost },
+  { href: "/quadro", rotulo: "Quadro", Icone: Columns3 },
+  { href: "/pedidos", rotulo: "Pedidos", Icone: ClipboardList },
+  { href: "/viagens", rotulo: "Viagens", Icone: Route },
+  { href: "/clientes", rotulo: "Clientes", Icone: Store },
   { href: "/motoristas", rotulo: "Motoristas", Icone: IdCard },
   { href: "/proprietarios", rotulo: "Proprietários", Icone: Building2 },
   { href: "/veiculos", rotulo: "Veículos", Icone: Truck },
