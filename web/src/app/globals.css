@@ -1,0 +1,68 @@
+/* Tailwind v4 sem preflight: o protótipo foi construído sobre os padrões do navegador
+   mais a base própria de nilt.css (cabeçalhos, listas, botões e tabelas não podem mudar). */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* Tokens de DESIGN.md (frontmatter). Mesmos valores de :root em nilt.css. */
+@theme {
+  --color-frame: #eef1ef;
+  --color-sheet: #ffffff;
+  --color-raised: #f5f7f6;
+  --color-active: #e2e7e4;
+  --color-border: #e1e5e2;
+  --color-rule: #edf0ee;
+  --color-control: #c5ccc7;
+  --color-ink: #1e2327;
+  --color-muted: #535b57;
+  --color-faint: #656c68;
+  --color-verde: #0b6b3a;
+  --color-verde-forte: #08552e;
+  --color-verde-claro: #e3f1e8;
+  --color-verde-tinta: #0a4426;
+  --color-laranja: #d9580d;
+  --color-laranja-claro: #fdebdd;
+  --color-laranja-tinta: #873505;
+  --color-amarelo: #f2b705;
+  --color-amarelo-claro: #fdf3cb;
+  --color-amarelo-tinta: #5c4500;
+  --color-amarelo-borda: #c99700;
+  --color-vermelho: #c8102e;
+  --color-vermelho-claro: #fbe3e6;
+  --color-vermelho-tinta: #8a0b1f;
+  --color-perigo-borda: #e7b3bb;
+  --color-azul: #1f5fa8;
+  --color-azul-claro: #e3edf8;
+  --color-azul-tinta: #163f73;
+  --color-placa-azul: #1a4fa0;
+  --color-neutro-marca: #8a928d;
+  --color-neutro-tinta: #383f3b;
+
+  --radius-chip: 4px;
+  --radius-control: 6px;
+  --radius-card: 8px;
+  --radius-toast: 10px;
+  --radius-dialogo: 14px;
+  --radius-sheet: 16px;
+  --radius-pill: 9px;
+  --radius-round: 50%;
+
+  --spacing-sheet-inset: 8px;
+  --spacing-campo-gap: 16px;
+  --spacing-gap: 24px;
+  --spacing-pad: 24px;
+  --spacing-pad-celular: 16px;
+  --spacing-bloco-x: 20px;
+  --spacing-sidebar: 228px;
+  --spacing-topbar: 48px;
+  --spacing-control-h: 32px;
+  --spacing-field-h: 38px;
+  --spacing-row-h: 48px;
+  --spacing-toque: 44px;
+
+  --font-sans: var(--font-overpass), "Segoe UI", system-ui, sans-serif;
+  --font-mono: var(--font-overpass-mono), ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+/* Estilos do protótipo, sem camada: vencem como no protótipo. */
+@import "../styles/nilt.css";
