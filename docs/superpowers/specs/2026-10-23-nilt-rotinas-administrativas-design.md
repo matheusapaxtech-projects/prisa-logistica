@@ -425,10 +425,10 @@ Se a entrevista mostrar uma pessoa só no fiscal ou na frota, entra um papel nov
 
 ## 12. O que a entrevista precisa confirmar
 
-**Decisões do usuário que o plano precisa antes de começar** (levantadas na revisão do builder):
-- **A.** Antecipar pedido + viagem + Quadro para logo depois do complemento da fase 1, deixando frota e GR para depois? (seção 13). Recomendação do designer: sim, porque o Quadro foi pedido explicitamente.
-- **B.** A Prisa emite por um CNPJ só ou por mais de uma empresa/filial? Muda a chave de viagem, CT-e, série, fatura e conta bancária.
-- **C.** Quem é admin no dia a dia? Se for só o dono, cria-se um papel de supervisor para liberar exceções e aprovar pagamentos, para não parar a operação.
+**Decisões do usuário (2026-10-23), depois da revisão do builder:**
+- **A. Kanban antecipado** (usuário: "sim, antecipa o kanban"): a próxima entrega é pedido + viagem + Quadro da operação + tela Hoje, logo depois do complemento da fase 1; frota e GR vêm depois (seção 13).
+- **B. Um CNPJ só** (usuário). Prisa Apucarana e as demais são **unidades operacionais** para custo e filtro, não emitentes. Uma série de CT-e e de MDF-e; nada de empresa/filial nas chaves.
+- **C. Admin no dia a dia:** sem resposta ainda. Padrão do designer até lá: usar o papel admin que já existe, que pode ser dado a mais de uma pessoa da operação; nenhum papel novo é criado agora. **[designer]**
 
 Os itens abaixo não bloqueiam escrever o plano da próxima fase, mas cada um muda detalhes da rotina. Por importância:
 
@@ -451,14 +451,15 @@ Segue a ordem de fases do design do NILT (seção 6), com estes acréscimos **[d
 | Fase do NILT | Entrega desta spec |
 |---|---|
 | 1 Cadastros (feita) + complemento | Tela **Hoje** com as filas da rotina 1; aptidão (4.4); trava/aviso/exceção (3.2) |
+| **Próxima entrega (antecipada, decisão A)** | Cadastros mínimos de cliente e local (4.5) para criar pedido; pedido e viagem (6.1, 6.2, 6.4, 6.5); **Quadro da operação (3.5)** com as 10 colunas e tempo real; chave do CT-e/MDF-e do ATUA para liberar "Em rota" (seção 7, paralelo); filas da rotina 3 na tela Hoje. Sem emissão fiscal, contrato ou GR do NILT ainda: a aptidão só confere cadastro (4.4); GR entra como aviso manual |
 | 2 Frota | Rotina 6 (9.1 e 9.2 primeiro; pneus e acerto depois do estudo) |
 | 3 GR | Rotina 2 e a parte de GR da aptidão |
 | antes da 4 | Cadastros de 4.5 (cliente, local, seguradora, posto, produto) |
-| 4 Operação e fiscal | Rotinas 3, 4 e 5, em homologação em paralelo com o ATUA; **Quadro da operação (3.5)** entra na primeira entrega da fase, junto com pedido e viagem, antes do CT-e do NILT, com as 10 colunas do usuário; a passagem de "Aguardando NF e pagamento" para "Em rota" usa a chave do CT-e/MDF-e do ATUA durante o paralelo (seção 7) |
+| 4 Operação e fiscal | Rotinas 4 e 5 (CT-e, MDF-e, averbação, contrato, CIOT) sobre a viagem que já existe, em homologação em paralelo com o ATUA; o Quadro passa a ler os documentos do NILT |
 | 5 Financeiro | Rotina 7 |
 | 6 App do motorista | Botões que movem o cartão no Quadro (3.5), pausa, canhoto (6.5), envio de documentos (4.1) |
 
-A tela **Hoje** cresce a cada fase: cada rotina entregue traz suas filas. O **Quadro** precisa da Viagem, que só existe a partir da fase 4; se a Prisa quiser o quadro antes, o caminho é antecipar pedido e viagem (sem CT-e) para logo depois do complemento da fase 1, e o fiscal entra depois sem mudar o quadro. **[usuário decide]**
+A tela **Hoje** cresce a cada fase: cada rotina entregue traz suas filas. Por decisão do usuário (A), o Quadro vem antes de frota e GR.
 
 ---
 
