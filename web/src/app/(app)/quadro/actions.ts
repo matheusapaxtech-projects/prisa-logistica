@@ -1,0 +1,67 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { comSessao, type ResultadoAcao } from "@/lib/acao";
+import { tipado, type Json } from "@/lib/banco";
+import { COLUNAS, type StatusCampo } from "@/lib/quadro";
+import { RE_ID } from "../_pessoa/formulario";
+import { NAO_ACHADA } from "../viagens/regras";
+
+/* Gravação do Quadro: a única porta para trocar a coluna da viagem é a RPC `mover_viagem` (security
+   definer). Ela recebe a coluna que a tela via (`de`); se a viagem já mudou, recusa com "…; o quadro
+   foi atualizado" sem gravar nada, e a tela recarrega. As recusas dela (pt-BR) aparecem como estão. */
+
+const STATUS: readonly string[] = COLUNAS.map((c) => c.status);
+const ehStatus = (s: unknown): s is StatusCampo => typeof s === "string" && STATUS.includes(s);
+
+/* Só o que mover_viagem lê; o resto não vai ao banco (nem para a linha do tempo). */
+const NUMEROS = ["peso_saida_kg", "peso_chegada_kg"] as const;
+const TEXTOS = ["chave_cte", "chave_mdfe", "pausa_tipo", "divergencia", "divergencia_descricao", "resolucao", "motivo"] as const;
+
+/** Dados da passagem já no formato do banco (Ruling R7): pesos como número JSON, `pausa_programada`
+   como booleano JSON; textos aparados e com até 2000 caracteres. Devolve o erro da tela se algo veio errado. */
+function dadosDaPassagem(dados: unknown): { ok: true; json: Record<string, Json> } | { ok: false; erro: string } {
+  if (typeof dados !== "object" || dados === null || Array.isArray(dados)) return { ok: true, json: {} };
+  const d = dados as Record<string, unknown>;
+  const json: Record<string, Json> = {};
+  for (const k of NUMEROS) {
+    if (d[k] === undefined) continue;
+    const n = d[k];
+    if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) {
+      return { ok: false, erro: k === "peso_saida_kg" ? "Informe o peso de saída em kg." : "Informe o peso de chegada em kg." };
+    }
+    json[k] = n;
+  }
+  for (const k of TEXTOS) {
+    if (d[k] === undefined) continue;
+    if (typeof d[k] !== "string") return { ok: false, erro: "Dados da passagem inválidos. Atualize a página." };
+    const t = (d[k] as string).trim();
+    if (t.length > 2000) return { ok: false, erro: "O texto tem até 2000 caracteres." };
+    json[k] = t;
+  }
+  if (d.pausa_programada !== undefined) {
+    if (typeof d.pausa_programada !== "boolean") return { ok: false, erro: "Informe se a pausa é programada." };
+    json.pausa_programada = d.pausa_programada;
+  }
+  return { ok: true, json };
+}
+
+/** Move a viagem de `de` (a coluna que a tela via) para `para`, com os dados que a passagem pede. */
+export async function moverViagem(
+  viagemId: string,
+  de: StatusCampo,
+  para: StatusCampo,
+  dados: Record<string, unknown>,
+): Promise<ResultadoAcao> {
+  if (typeof viagemId !== "string" || !RE_ID.test(viagemId)) return { ok: false, erro: NAO_ACHADA };
+  if (!ehStatus(de) || !ehStatus(para)) return { ok: false, erro: "Coluna desconhecida. Atualize a página." };
+  const d = dadosDaPassagem(dados);
+  if (!d.ok) return d;
+  return comSessao(async ({ supabase }) => {
+    const { error } = await tipado(supabase).rpc("mover_viagem", { p_viagem: viagemId, p_de: de, p_para: para, p_dados: d.json });
+    if (error) throw error;
+    revalidatePath("/quadro");
+    revalidatePath("/viagens");
+    revalidatePath(`/viagens/${viagemId}`);
+  });
+}

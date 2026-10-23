@@ -548,6 +548,66 @@ dialog.dialogo[open] { animation: dlg 200ms var(--ease-out); }
 .toast svg { width: 16px; height: 16px; color: #8fd3ab; }
 @starting-style { .toast { opacity: 0; transform: translateY(12px); } }
 
+/* ---------- quadro da operação (kanban, spec 3.5) ---------- */
+/* Colunas lado a lado rolando na horizontal; as de espera estreitam (52px, rótulo em pé). Cartão plano
+   com a borda na cor do tempo-limite (âmbar com filete #c99700, vermelho); o tempo leva a forma do sinal. */
+.quadro-conexao p { display: flex; }
+.quadro-abas { display: none; }
+.quadro { display: flex; gap: 12px; align-items: flex-start; overflow-x: auto; padding-bottom: 12px; }
+.quadro-coluna {
+  position: relative; flex: 0 0 272px; min-width: 0; display: grid; grid-template-rows: auto 1fr;
+  background: var(--raised); border: 1px solid var(--border); border-radius: var(--radius-card);
+  transition: opacity 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+.quadro-coluna-cab { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 6px 6px 12px; }
+.quadro-coluna-cab h2 { font-size: 14px; line-height: 18px; font-weight: 600; }
+.quadro-coluna-cab .n { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+.quadro-coluna-cab .estreitar { margin-left: auto; color: var(--muted); }
+.quadro-coluna-corpo { display: grid; gap: 8px; align-content: start; min-height: 56px; padding: 0 8px 8px; }
+.quadro-coluna-corpo .vazio-bloco { min-height: 40px; font-size: 13px; }
+.quadro-coluna.estreita { flex-basis: 52px; }
+.quadro-coluna.estreita .quadro-coluna-cab { flex-direction: column; align-items: center; gap: 8px; padding: 6px 4px 12px; }
+.quadro-coluna.estreita .quadro-coluna-cab h2 { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; }
+.quadro-coluna.estreita .estreitar { order: -1; margin-left: 0; }
+.quadro-coluna.estreita .quadro-coluna-corpo { display: none; }
+.quadro.arrastando .quadro-coluna.proibida { opacity: 0.4; }
+.quadro.arrastando .quadro-coluna.permitida { border-style: dashed; border-color: var(--verde); }
+.quadro.arrastando .quadro-coluna.alvo { background: var(--verde-claro); }
+
+.quadro-cartao {
+  position: relative; display: grid; gap: 6px; padding: 10px 12px;
+  background: var(--sheet); border: 1px solid var(--border); border-radius: var(--radius-card);
+  transition: border-color 150ms ease, opacity 150ms ease;
+}
+.quadro-cartao[draggable="true"] { cursor: grab; }
+.quadro-cartao[draggable="true"]:active { cursor: grabbing; }
+@media (hover: hover) and (pointer: fine) { .quadro-cartao:hover { border-color: var(--control); } }
+.quadro-cartao.nivel-ambar, .quadro-cartao.nivel-ambar:hover { border-color: #c99700; }
+.quadro-cartao.nivel-vermelho, .quadro-cartao.nivel-vermelho:hover { border-color: var(--vermelho); box-shadow: inset 0 0 0 1px var(--vermelho); }
+.quadro-cartao.movendo { opacity: 0.6; }
+.quadro-cartao-cab { display: flex; align-items: center; gap: 8px; }
+.quadro-cartao-link { margin-left: auto; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.quadro-cartao-link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.quadro-cartao-link:focus-visible { outline: none; }
+.quadro-cartao-link:focus-visible::after { outline: 2px solid var(--verde); outline-offset: 2px; }
+.quadro-cartao p { min-width: 0; font-size: 13px; line-height: 18px; overflow-wrap: anywhere; }
+.quadro-cartao .quem b { font-size: 14px; font-weight: 600; }
+.quadro-cartao .rota { color: var(--muted); }
+.quadro-cartao .rota .seta { color: var(--faint); }
+.quadro-cartao .tempo { display: flex; }
+.quadro-cartao .tempo-normal { color: var(--muted); font-variant-numeric: tabular-nums; }
+.quadro-cartao .sem-placa { color: var(--faint); }
+.quadro-sinais { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.quadro-cartao-acoes { position: relative; z-index: 1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.quadro-cartao-acoes .btn { height: 28px; padding: 0 10px; font-size: 13px; }
+.quadro-filtros .filtro-chave[aria-pressed="true"] { background: var(--verde-claro); border-color: var(--verde); color: var(--verde-tinta); }
+.quadro-destinos { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.quadro-destinos .btn { width: 100%; justify-content: flex-start; }
+.ajuda-dialogo { margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 16px; }
+.dlg-passagem fieldset.campo { min-width: 0; margin: 0; padding: 0; border: 0; }
+.dlg-passagem legend { margin-bottom: 8px; padding: 0; }
+.campo input.mono { font-family: var(--mono); font-size: 13px; }
+
 /* ---------- celular e tablet ---------- */
 .menu-btn { display: none; }
 @media (max-width: 1100px) {
@@ -582,6 +642,18 @@ dialog.dialogo[open] { animation: dlg 200ms var(--ease-out); }
   .marco { grid-template-columns: minmax(0, 1fr) 84px; }
   .marco .trilho { display: none; }
   .advertencia { grid-template-columns: 48px 1fr; padding: 14px 12px; gap: 10px; }
+  /* Quadro: uma coluna por vez, escolhida nas abas (com o contador); alvos de toque de 44px. */
+  .quadro-abas { display: block; }
+  .quadro { display: block; overflow: visible; padding-bottom: 0; }
+  .quadro-coluna, .quadro-coluna.estreita { display: none; }
+  .quadro-coluna.ativa { display: grid; }
+  .quadro-coluna.estreita .quadro-coluna-cab { flex-direction: row; align-items: center; padding: 8px 6px 6px 12px; }
+  .quadro-coluna.estreita .quadro-coluna-cab h2 { writing-mode: horizontal-tb; transform: none; }
+  .quadro-coluna.estreita .quadro-coluna-corpo { display: grid; }
+  .quadro-coluna-cab .estreitar { display: none; }
+  .quadro-cartao-acoes .btn, .quadro-destinos .btn, .quadro-filtros .btn { height: 44px; }
+  .quadro-filtros label { flex: 1 1 100%; }
+  .quadro-filtros select { width: 100%; height: 44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
