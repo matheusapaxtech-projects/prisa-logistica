@@ -1,0 +1,399 @@
+"use client";
+
+import { useRef, useState, useTransition, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { CircleAlert, Eye, Lock, RotateCw, Trash2, Upload } from "lucide-react";
+import { LIMITE_BYTES, TIPOS_ACEITOS, mimeDoArquivo, type DonoArquivo } from "@/lib/arquivos";
+import { formato } from "@/lib/formato";
+import { createBrowserClient } from "@/lib/supabase/client";
+import { abrirDocumento, apagarDocumento, conferirDocumento, prepararEnvio } from "@/components/documentos-acoes";
+import { Dialogo } from "@/components/Dialogo";
+import { EstadoVazio } from "@/components/EstadoVazio";
+import { Ponto } from "@/components/Ponto";
+import { toast } from "@/components/Toast";
+
+export type TipoDocumento = { id: number; nome: string };
+
+export type LinhaDocumento = {
+  id: string;
+  tipo: string;
+  nome: string;
+  tamanho: number | null;
+  numero: string | null;
+  validade: string | null;
+  estado: "normal" | "vencendo" | "vencido" | "neutro";
+  textoValidade: string | null;
+  conferidoPor: string | null;
+  conferidoEm: string | null;
+  restrito: boolean;
+  caminho: string;
+  envioFalhou: boolean;
+};
+
+type Props = {
+  dono: DonoArquivo;
+  linhas: LinhaDocumento[];
+  tipos: TipoDocumento[];
+  podeEditar: boolean;
+  admin: boolean;
+  nomeUsuario: string;
+  titulo: string;
+  vazio: string;
+  tipoSugerido?: string;
+};
+
+const MSG_FALHA_ENVIO =
+  "O arquivo não chegou ao armazenamento. O documento ficou marcado como “envio falhou”: use “Enviar de novo”.";
+
+/** Envia o objeto ao caminho já registrado em `arquivo` (sem sobrescrever). Objeto já existente conta como enviado. */
+async function enviarObjeto(caminho: string, arquivo: File): Promise<boolean> {
+  const { error } = await createBrowserClient()
+    .storage.from("documentos")
+    .upload(caminho, arquivo, { upsert: false, contentType: mimeDoArquivo(arquivo.name, arquivo.type) });
+  return !error || /exists|duplicate/i.test(error.message);
+}
+
+function erroDoArquivo(arquivo: File | undefined): string | null {
+  if (!arquivo || !arquivo.size) return "Escolha o arquivo antes de enviar.";
+  if (arquivo.size > LIMITE_BYTES)
+    return `O arquivo tem ${formato.kb(arquivo.size)}; o limite é 20 MB. Reduza ou envie em partes.`;
+  if (!TIPOS_ACEITOS.split(",").includes(mimeDoArquivo(arquivo.name, arquivo.type)))
+    return "Envie o arquivo em PDF, JPG, PNG ou HEIC.";
+  return null;
+}
+
+/* Parte interativa de <Documentos> (marcação da aba Documentos de prototipo/motorista.html). */
+export function DocumentosLista({ dono, linhas, tipos, podeEditar, admin, nomeUsuario, titulo, vazio, tipoSugerido }: Props) {
+  const router = useRouter();
+  const [ocupado, iniciar] = useTransition();
+  const [enviando, iniciarEnvio] = useTransition();
+  const [erroGeral, setErroGeral] = useState<string | null>(null);
+  const [erroArquivo, setErroArquivo] = useState<string | null>(null);
+  const [apagar, setApagar] = useState<LinhaDocumento | null>(null);
+  const reenvio = useRef<HTMLInputElement>(null);
+  const [reenviando, setReenviando] = useState<LinhaDocumento | null>(null);
+
+  const visiveis = linhas.filter((a) => admin || !a.restrito);
+  const sugerido = tipos.find((t) => t.nome === tipoSugerido)?.id ?? tipos[0]?.id;
+
+  function abrir(a: LinhaDocumento) {
+    // A janela abre no clique (senão o navegador bloqueia) e recebe o link quando ele chega.
+    const janela = window.open("", "_blank");
+    iniciar(async () => {
+      const r = await abrirDocumento(a.id);
+      if (!r.ok) {
+        janela?.close();
+        toast(r.erro, "alert-circle");
+        return;
+      }
+      if (janela) {
+        janela.opener = null;
+        janela.location.href = r.dados;
+      } else window.open(r.dados, "_blank", "noopener");
+      toast(`Visualização registrada: ${a.nome}`, "eye");
+      router.refresh();
+    });
+  }
+
+  function conferir(a: LinhaDocumento) {
+    iniciar(async () => {
+      const r = await conferirDocumento(a.id);
+      if (!r.ok) return toast(r.erro, "alert-circle");
+      toast(`${a.tipo} conferido por ${nomeUsuario}`);
+      router.refresh();
+    });
+  }
+
+  function confirmarApagar(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const a = apagar;
+    if (!a) return;
+    iniciar(async () => {
+      const r = await apagarDocumento(a.id);
+      setApagar(null);
+      if (!r.ok) return toast(r.erro, "alert-circle");
+      toast(`Documento apagado: ${a.nome}`, "trash-2");
+      router.refresh();
+    });
+  }
+
+  function escolherReenvio(a: LinhaDocumento) {
+    setReenviando(a);
+    reenvio.current?.click();
+  }
+
+  function reenviar(arquivo: File | undefined) {
+    const a = reenviando;
+    if (reenvio.current) reenvio.current.value = "";
+    if (!a || !arquivo) return;
+    const erro = erroDoArquivo(arquivo);
+    if (erro) return toast(erro, "alert-circle");
+    iniciar(async () => {
+      const ok = await enviarObjeto(a.caminho, arquivo);
+      setReenviando(null);
+      if (!ok) return toast(MSG_FALHA_ENVIO, "alert-circle");
+      toast(`Arquivo enviado: ${arquivo.name}`, "upload");
+      router.refresh();
+    });
+  }
+
+  function enviar(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const arquivo = fd.get("arquivo");
+    const erro = erroDoArquivo(arquivo instanceof File ? arquivo : undefined);
+    setErroGeral(null);
+    setErroArquivo(erro);
+    if (erro || !(arquivo instanceof File)) {
+      form.querySelector<HTMLInputElement>("#up-arquivo")?.focus();
+      return;
+    }
+    iniciarEnvio(async () => {
+      const r = await prepararEnvio({
+        ...dono,
+        tipoArquivoId: Number(fd.get("tipo")),
+        nome: arquivo.name,
+        mime: mimeDoArquivo(arquivo.name, arquivo.type) as "application/pdf",
+        tamanho: arquivo.size,
+        validade: String(fd.get("validade") || "") || null,
+        numero: String(fd.get("numero") || "").trim() || null,
+        restrito: fd.get("restrito") === "on",
+      });
+      if (!r.ok) return setErroGeral(r.erro);
+      const ok = await enviarObjeto(r.dados.caminho, arquivo);
+      router.refresh();
+      if (!ok) return setErroGeral(MSG_FALHA_ENVIO);
+      form.reset();
+      toast(`Arquivo enviado: ${arquivo.name}`, "upload");
+    });
+  }
+
+  return (
+    <>
+      <div className="subsecao">
+        <div className="painel-cab">
+          <h2>{titulo}</h2>
+          <span className="dir">
+            <span className="muted small">{admin ? "Arquivos restritos só aparecem para administradores." : ""}</span>
+          </span>
+        </div>
+        {visiveis.length ? (
+          <div className="tabela-wrap">
+            <table className="tabela leve empilha">
+              <thead>
+                <tr>
+                  <th scope="col">Documento</th>
+                  <th scope="col">Validade</th>
+                  <th scope="col">Conferido por</th>
+                  <th scope="col">Acesso</th>
+                  <th scope="col">
+                    <span className="sr-only">Ações</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {visiveis.map((a) => (
+                  <tr key={a.id}>
+                    <td className="cel-1">
+                      <span className="id">{a.tipo}</span>
+                      <span className="linha2">
+                        {a.nome}
+                        <Ponto />
+                        {formato.kb(a.tamanho || 0)}
+                        {a.numero && (
+                          <>
+                            <Ponto />
+                            nº {a.numero}
+                          </>
+                        )}
+                        {a.envioFalhou && (
+                          <>
+                            <Ponto />
+                            <span className="val val-vencido">envio falhou</span>
+                          </>
+                        )}
+                      </span>
+                    </td>
+                    <td>
+                      {a.validade ? (
+                        <>
+                          <span className={`val${a.estado === "normal" ? "" : ` val-${a.estado}`}`}>
+                            {formato.data(a.validade)}
+                          </span>
+                          <span className="linha2">{a.textoValidade}</span>
+                        </>
+                      ) : (
+                        <span className="dash">sem validade</span>
+                      )}
+                    </td>
+                    <td>
+                      {a.conferidoEm ? (
+                        <>
+                          <span className="so-cel">conferido por </span>
+                          {a.conferidoPor ?? <span className="dash">—</span>}
+                          <span className="linha2">em {a.conferidoEm}</span>
+                        </>
+                      ) : podeEditar && !a.envioFalhou ? (
+                        <button className="btn btn-texto" type="button" disabled={ocupado} onClick={() => conferir(a)}>
+                          Conferir
+                        </button>
+                      ) : (
+                        <span className="muted">não conferido</span>
+                      )}
+                    </td>
+                    {a.restrito ? (
+                      <td>
+                        <span className="marca-texto">
+                          <Lock size={16} strokeWidth={1.6} aria-hidden="true" />
+                          Restrito
+                        </span>
+                      </td>
+                    ) : (
+                      <td className="vazio-cel">
+                        <span className="dash">todos</span>
+                      </td>
+                    )}
+                    <td className="acoes-linha">
+                      {a.envioFalhou ? (
+                        podeEditar && (
+                          <button className="btn" type="button" disabled={ocupado} onClick={() => escolherReenvio(a)}>
+                            <RotateCw size={16} strokeWidth={1.6} aria-hidden="true" />
+                            Enviar de novo
+                          </button>
+                        )
+                      ) : (
+                        <button className="btn" type="button" disabled={ocupado} onClick={() => abrir(a)}>
+                          <Eye size={16} strokeWidth={1.6} aria-hidden="true" />
+                          Abrir
+                        </button>
+                      )}
+                      {admin && (
+                        <button
+                          className="btn btn-texto btn-icone"
+                          type="button"
+                          aria-label={`Apagar ${a.nome}`}
+                          title="Apagar"
+                          disabled={ocupado}
+                          onClick={() => setApagar(a)}
+                        >
+                          <Trash2 size={16} strokeWidth={1.6} aria-hidden="true" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EstadoVazio>{vazio}</EstadoVazio>
+        )}
+        <input
+          ref={reenvio}
+          type="file"
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
+          accept={TIPOS_ACEITOS}
+          onChange={(e) => reenviar(e.currentTarget.files?.[0])}
+        />
+      </div>
+
+      {podeEditar && (
+        <section className="subsecao bloco bloco-corpo" aria-labelledby="h-enviar" id="enviar">
+          <h2 id="h-enviar" className="enviar-titulo">
+            Enviar documento
+          </h2>
+          <form onSubmit={enviar} noValidate>
+            <div className="campos">
+              {erroGeral && (
+                <div className="aviso aviso-bloqueado f12" role="alert">
+                  <CircleAlert size={16} strokeWidth={1.6} aria-hidden="true" />
+                  <span>{erroGeral}</span>
+                </div>
+              )}
+              <div className="campo f4">
+                <label htmlFor="up-tipo">Tipo de arquivo</label>
+                <select id="up-tipo" name="tipo" defaultValue={sugerido}>
+                  {tipos.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="campo f4">
+                <label htmlFor="up-validade">
+                  Validade <span className="opcional">(opcional)</span>
+                </label>
+                <input id="up-validade" name="validade" type="date" />
+              </div>
+              <div className="campo f4">
+                <label htmlFor="up-numero">
+                  Número do documento <span className="opcional">(opcional)</span>
+                </label>
+                <input id="up-numero" name="numero" autoComplete="off" />
+              </div>
+              <div className="campo f8" data-invalido={erroArquivo ? "" : undefined}>
+                <label htmlFor="up-arquivo">Arquivo</label>
+                <input
+                  id="up-arquivo"
+                  name="arquivo"
+                  type="file"
+                  accept={TIPOS_ACEITOS}
+                  aria-describedby="up-arquivo-ajuda"
+                  aria-invalid={erroArquivo ? true : undefined}
+                  onChange={() => setErroArquivo(null)}
+                />
+                <span className="ajuda" id="up-arquivo-ajuda">
+                  PDF, JPG, PNG ou HEIC, até 20 MB. Fica no armazenamento privado; cada abertura é registrada.
+                </span>
+                {erroArquivo && <span className="erro">{erroArquivo}</span>}
+              </div>
+              {admin && (
+                <div className="campo f4">
+                  <span className="rotulo" aria-hidden="true">
+                    &nbsp;
+                  </span>
+                  <label className="marcar" htmlFor="up-restrito">
+                    <input type="checkbox" id="up-restrito" name="restrito" />
+                    Restrito ao administrador
+                  </label>
+                </div>
+              )}
+              <div className="f12 enviar-pe">
+                <button className="btn" type="submit" disabled={enviando}>
+                  <Upload size={16} strokeWidth={1.6} aria-hidden="true" />
+                  {enviando ? "Enviando…" : "Enviar arquivo"}
+                </button>
+              </div>
+            </div>
+          </form>
+        </section>
+      )}
+
+      <Dialogo
+        aberto={!!apagar}
+        aoFechar={() => setApagar(null)}
+        titulo="Apagar documento"
+        onSubmit={confirmarApagar}
+        pe={
+          <>
+            <button className="btn" type="button" data-fechar>
+              Cancelar
+            </button>
+            <button className="btn btn-perigo" type="submit" disabled={ocupado}>
+              Apagar documento
+            </button>
+          </>
+        }
+      >
+        <p>
+          {apagar ? `${apagar.tipo} (${apagar.nome})` : ""} sai da ficha e do armazenamento. Não dá para desfazer; a
+          auditoria guarda quem apagou e quando.
+        </p>
+      </Dialogo>
+    </>
+  );
+}

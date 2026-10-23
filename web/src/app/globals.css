@@ -66,3 +66,6 @@
 
 /* Estilos do protótipo, sem camada: vencem como no protótipo. */
 @import "../styles/nilt.css";
+
+/* Componentes compartilhados (Documentos, Histórico, barra de salvar), também sem camada. */
+@import "../styles/componentes.css";

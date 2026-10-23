@@ -1,0 +1,69 @@
+/* NILT — estilos dos componentes compartilhados que o protótipo deixava no CSS de grupo.
+   Copiado de prototipo/assets/paginas/motoristas.css (ficha do motorista: documentos, histórico,
+   barra de salvar e campo de arquivo), que é a variante adotada por <Documentos> e <Historico>.
+   As páginas não devem redefinir estas classes no seu CSS. */
+
+/* marca de validade: a data ganha forma e cor só quando vence em até 30 dias ou venceu */
+.val { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.val::before { content: ""; width: 8px; height: 8px; flex: none; display: none; }
+.val-vencendo { color: var(--amarelo-tinta); font-weight: 600; }
+.val-vencendo::before { display: block; background: var(--amarelo); transform: rotate(45deg) scale(0.86); border-radius: 1px; box-shadow: 0 0 0 1px #c99700; }
+.val-vencido { color: var(--vermelho-tinta); font-weight: 600; }
+.val-vencido::before { display: block; width: 9px; height: 9px; border: 2px solid var(--vermelho); border-radius: 50%; }
+.val-pendente { color: var(--laranja-tinta); font-weight: 600; }
+.val-pendente::before { display: block; background: var(--laranja); transform: rotate(45deg) scale(0.86); border-radius: 1px; }
+
+.tabela td .linha2 { font-size: 13px; line-height: 18px; }
+.tabela td .linha2 .val { font-weight: 500; }
+
+/* campos de arquivo e de marcar dentro da grade */
+.campo input[type="file"] { height: auto; padding: 6px; color: var(--muted); }
+.campo input[type="file"]::file-selector-button {
+  height: 26px; margin-right: 10px; padding: 0 12px;
+  border: 1px solid var(--control); border-radius: var(--radius-control); background: #fff;
+  font: 600 13px var(--font); color: var(--ink); cursor: pointer;
+}
+.marcar { display: inline-flex; align-items: center; gap: 8px; min-height: var(--field-h); cursor: pointer; font-weight: 400 !important; }
+.campo .marcar input, .marcar input { width: 18px; height: 18px; margin: 0; accent-color: var(--verde); flex: none; }
+
+/* painéis de ficha */
+.painel-cab { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.painel-cab h2 { font-size: var(--fs-section); line-height: 24px; }
+.painel-cab .dir { margin-left: auto; display: flex; gap: 8px; }
+.subsecao + .subsecao { margin-top: 32px; }
+
+/* listas de documentos */
+.tabela.leve tbody tr { cursor: default; }
+.so-cel { display: none; }
+@media (hover: hover) and (pointer: fine) { .tabela.leve tbody tr:hover { background: transparent; } }
+.tabela .acoes-linha { text-align: right; white-space: nowrap; }
+.tabela .acoes-linha .btn { height: 30px; }
+.marca-texto { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.marca-texto svg { width: 14px; height: 14px; }
+.marca-texto + .marca-texto { margin-left: 12px; }
+
+/* histórico */
+.linha-tempo { list-style: none; margin: 0; padding: 0; display: grid; }
+.linha-tempo li { display: grid; grid-template-columns: 150px 18px minmax(0, 1fr); gap: 12px; padding: 10px 0; border-top: 1px solid var(--rule); }
+.linha-tempo li:first-child { border-top: 0; }
+.linha-tempo time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; }
+.linha-tempo .ponto-acao { width: 10px; height: 10px; margin-top: 5px; border-radius: 50%; border: 2px solid var(--control); background: #fff; }
+.linha-tempo .ponto-acao.insert { border-color: var(--verde); }
+.linha-tempo .ponto-acao.visualizacao { border-color: var(--azul); }
+.linha-tempo b { font-weight: 600; }
+.linha-tempo .meta { display: block; color: var(--muted); font-size: 13px; }
+
+.barra-salvar .espaco { margin-left: auto; }
+.enviar-titulo { font-size: var(--fs-section); line-height: 24px; margin-bottom: 16px; }
+.enviar-pe { display: flex; justify-content: flex-end; }
+
+@media (max-width: 640px) {
+  .linha-tempo li { grid-template-columns: 18px minmax(0, 1fr); }
+  .linha-tempo time { grid-column: 2; grid-row: 2; }
+  .tabela.empilha thead { display: none; }
+  .tabela.empilha tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--rule); }
+  .tabela.empilha td { height: auto; padding: 0; border: 0; }
+  .tabela.empilha td.cel-1 { grid-column: 1; }
+  .tabela.empilha td.acoes-linha { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
+  .tabela.empilha td:not(.cel-1):not(.acoes-linha) { grid-column: 1; font-size: 13px; color: var(--muted); }
+}
