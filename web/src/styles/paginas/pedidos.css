@@ -1,0 +1,63 @@
+/* NILT — grupo Pedidos (/pedidos, /pedidos/novo, /pedidos/[id]). Usa a base de proprietarios.css
+   (`.prop`: lista, novo, ficha); aqui só o que é dos pedidos. Tudo preso a `.ped` (a <main> das telas)
+   ou ao diálogo `.dlg-viagem`, para não vazar. */
+
+/* ---------- lista ---------- */
+.ped .tabela .col-num { width: 84px; }
+.ped .tabela .rota { white-space: nowrap; }
+.ped .tabela .rota .seta { color: var(--faint); margin: 0 6px; }
+.ped .tabela td.num, .ped .tabela td.data { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ped .tabela td.data { color: var(--muted); }
+.ped .tabela .saldo-zero { color: var(--muted); }
+
+/* ---------- novo: busca de cliente (combobox; a lista reaproveita .busca-resultados) ---------- */
+.ped .seletor { position: relative; }
+.ped .seletor input[role="combobox"] { width: 100%; }
+.ped .busca-resultados.seletor-lista { top: calc(100% + 4px); max-height: 288px; overflow-y: auto; }
+.ped .seletor-opcao { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+.ped .seletor-opcao:hover, .ped .seletor-opcao[aria-selected="true"] { background: var(--raised); }
+.ped .seletor-opcao > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ped .seletor-opcao small { display: block; font-size: 12px; color: var(--muted); }
+.ped .campo select:disabled { color: var(--faint); background: var(--raised); cursor: not-allowed; }
+.ped .local-detalhe { font-size: 12px; color: var(--muted); line-height: 16px; }
+
+/* ---------- ficha ---------- */
+.ped .resumo-pedido { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 24px; align-items: start; }
+.ped .resumo-pedido .kv dd .linha2 { display: block; font-size: 13px; color: var(--muted); line-height: 18px; }
+.ped .saldo {
+  display: grid; gap: 12px; padding: 16px 18px;
+  border: 1px solid var(--border); border-radius: var(--radius-card);
+}
+.ped .saldo .rotulo { color: var(--muted); }
+.ped .saldo .kpi { font-size: 28px; font-weight: 700; line-height: 32px; font-variant-numeric: tabular-nums; }
+.ped .saldo .trilho { height: 8px; border-radius: 4px; background: var(--raised); overflow: hidden; }
+.ped .saldo .trilho i { display: block; height: 100%; background: var(--verde); }
+.ped .saldo .linhas { display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 4px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ped .saldo .linhas b { color: var(--ink); font-weight: 600; text-align: right; }
+.ped .observacao { white-space: pre-line; }
+.ped .tabela .viagem-cel { display: flex; align-items: center; gap: 12px; }
+.ped .tabela tr.cancelada td { color: var(--muted); }
+
+/* ---------- diálogos (ficam fora da <main>: o <dialog> abre na camada de cima) ---------- */
+.dlg-viagem { width: min(640px, calc(100vw - 32px)); }
+.dlg-viagem .conjuntos { display: grid; gap: 8px; max-height: 300px; overflow-y: auto; padding: 2px; }
+.dlg-viagem .conjunto-opcao { position: relative; display: block; }
+.dlg-viagem .conjunto-opcao input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.dlg-viagem .conjunto-opcao > span {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center;
+  padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+.dlg-viagem .conjunto-opcao .placas { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dlg-viagem .conjunto-opcao .cap { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+.dlg-viagem .conjunto-opcao .mot { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }
+.dlg-viagem .conjunto-opcao input:checked + span { border-color: var(--verde); background: var(--verde-claro); box-shadow: inset 0 0 0 1px var(--verde); }
+.dlg-viagem .conjunto-opcao input:focus-visible + span { outline: 2px solid var(--verde); outline-offset: 2px; }
+.dlg-viagem .campo input.num { text-align: right; font-variant-numeric: tabular-nums; }
+.dlg-viagem .rotulo-grupo { font-weight: 600; }
+.dlg-viagem .explica, .dlg-cancelar .explica { font-size: 12px; color: var(--muted); line-height: 16px; }
+.dlg-cancelar textarea { width: 100%; min-height: 88px; }
+
+@media (max-width: 900px) {
+  .ped .resumo-pedido { grid-template-columns: minmax(0, 1fr); }
+}
