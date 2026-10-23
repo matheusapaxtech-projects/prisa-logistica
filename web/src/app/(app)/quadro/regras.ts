@@ -1,6 +1,6 @@
 /* Regras puras da tela do Quadro (servidor e cliente): filtros na URL, aba do celular, minutos na
    coluna e o nível de cada cartão. As regras de negócio ficam em `@/lib/quadro` (Task 6) e no banco. */
-import { chaveDoLimite, COLUNAS, nivelDoTempo, type Cartao, type Filtros, type Nivel, type StatusCampo } from "@/lib/quadro";
+import { chaveDoLimite, COLUNAS, nivelDoTempo, rotuloDe, type Cartao, type Filtros, type Nivel, type StatusCampo } from "@/lib/quadro";
 import type { Limite } from "./consultas";
 
 /** Filtros do Quadro como ficam na URL: `?cliente=&motorista=&unidade=&problema=1&minhas=1`. */
@@ -82,3 +82,46 @@ export function opcoesDe(valores: (string | null)[]): string[] {
 
 /** Recusa do banco por tela atrasada (mover_viagem: "…; o quadro foi atualizado"): a tela recarrega. */
 export { foiAtualizado } from "../viagens/regras";
+
+/* ---------- tempos-limite (diálogo do admin) ---------- */
+
+/** As 8 linhas de `quadro_limite`, na ordem das colunas; a Pausa tem uma linha por tipo. */
+export const CHAVES_LIMITE: readonly { chave: string; rotulo: string }[] = [
+  { chave: "aguardando_carregamento", rotulo: rotuloDe("aguardando_carregamento") },
+  { chave: "em_carregamento", rotulo: rotuloDe("em_carregamento") },
+  { chave: "aguardando_nf_pagamento", rotulo: rotuloDe("aguardando_nf_pagamento") },
+  { chave: "pausa_programada", rotulo: "Pausa programada" },
+  { chave: "pausa_nao_programada", rotulo: "Pausa não programada" },
+  { chave: "aguardando_descarga", rotulo: rotuloDe("aguardando_descarga") },
+  { chave: "aguardando_contagem", rotulo: rotuloDe("aguardando_contagem") },
+  { chave: "resolucao_divergencia", rotulo: rotuloDe("resolucao_divergencia") },
+];
+
+export const MSG_VERMELHO_MAIOR = "O vermelho precisa ser maior que o âmbar.";
+const MAX_MINUTOS = 100000;
+
+export type LimiteDigitado = { chave: string; ambar: number; vermelho: number };
+export type LeituraLimites = { ok: true; limites: LimiteDigitado[] } | { ok: false; erro: string; chave?: string };
+
+function lerMinutos(v: FormDataEntryValue | null): number | null {
+  const t = typeof v === "string" ? v.trim() : "";
+  if (!/^\d+$/.test(t)) return null;
+  const n = Number(t);
+  return n >= 1 && n <= MAX_MINUTOS ? n : null;
+}
+
+/** Lê `ambar_<chave>` e `vermelho_<chave>` do formulário (a mesma conta na tela e na ação): minutos
+   inteiros de 1 a 100000 e vermelho maior que o âmbar. O banco repete as duas travas. */
+export function lerLimites(form: FormData): LeituraLimites {
+  const limites: LimiteDigitado[] = [];
+  for (const { chave, rotulo } of CHAVES_LIMITE) {
+    const ambar = lerMinutos(form.get(`ambar_${chave}`));
+    const vermelho = lerMinutos(form.get(`vermelho_${chave}`));
+    const invalido = (qual: string) => ({ ok: false as const, chave, erro: `Informe minutos inteiros (de 1 a ${MAX_MINUTOS}) para o ${qual} de “${rotulo}”.` });
+    if (ambar === null) return invalido("âmbar");
+    if (vermelho === null) return invalido("vermelho");
+    if (vermelho <= ambar) return { ok: false, chave, erro: MSG_VERMELHO_MAIOR };
+    limites.push({ chave, ambar, vermelho });
+  }
+  return { ok: true, limites };
+}

@@ -15,6 +15,24 @@ function Cabecalho({ titulo, id }: { titulo: string; id: string }) {
   );
 }
 
+/** As 5 placas de advertência (Operação e Pendências têm o mesmo desenho). */
+function Placas() {
+  return (
+    <div className="advertencias" aria-hidden="true">
+      {[0, 1, 2, 3, 4].map((n) => (
+        <div className="advertencia carregando" key={n}>
+          <Barra w={44} h={44} r="50%" />
+          <span className="txt">
+            <Barra w="80%" h={14} />
+            <br />
+            <Barra w="60%" />
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function LinhaMarco({ conjunto = false }: { conjunto?: boolean }) {
   return (
     <div className={`marco carregando${conjunto ? " marco-conjunto" : ""}`} aria-hidden="true">
@@ -44,20 +62,14 @@ export default function CarregandoInicio() {
       </div>
 
       <div className="grade">
+        <section className="bloco c12" aria-labelledby="h-oper">
+          <Cabecalho titulo="Operação" id="h-oper" />
+          <Placas />
+        </section>
+
         <section className="bloco c12" aria-labelledby="h-pend">
           <Cabecalho titulo="Pendências" id="h-pend" />
-          <div className="advertencias" aria-hidden="true">
-            {[0, 1, 2, 3, 4].map((n) => (
-              <div className="advertencia carregando" key={n}>
-                <Barra w={44} h={44} r="50%" />
-                <span className="txt">
-                  <Barra w="80%" h={14} />
-                  <br />
-                  <Barra w="60%" />
-                </span>
-              </div>
-            ))}
-          </div>
+          <Placas />
         </section>
 
         <section className="bloco c7" aria-labelledby="h-venc">

@@ -5,7 +5,9 @@ import { comSessao, type ResultadoAcao } from "@/lib/acao";
 import { tipado, type Json } from "@/lib/banco";
 import { COLUNAS, type StatusCampo } from "@/lib/quadro";
 import { RE_ID } from "../_pessoa/formulario";
+import { MSG_SO_ADMIN } from "@/lib/erros";
 import { NAO_ACHADA } from "../viagens/regras";
+import { lerLimites, MSG_VERMELHO_MAIOR } from "./regras";
 
 /* Gravação do Quadro: a única porta para trocar a coluna da viagem é a RPC `mover_viagem` (security
    definer). Ela recebe a coluna que a tela via (`de`); se a viagem já mudou, recusa com "…; o quadro
@@ -64,4 +66,32 @@ export async function moverViagem(
     revalidatePath("/viagens");
     revalidatePath(`/viagens/${viagemId}`);
   });
+}
+
+const recusa = (message: string) => ({ code: "P0001", message });
+
+/** Tempos-limite do Quadro (só o administrador): grava âmbar e vermelho de cada linha de `quadro_limite`.
+   Valida aqui (`lerLimites`, a mesma conta da tela) e o banco repete a trava (vermelho > âmbar). O RLS
+   não dá erro a quem não é administrador: o update só não atinge linha, e isso vira "só o administrador". */
+export async function salvarLimites(_antes: ResultadoAcao | null, form: FormData): Promise<ResultadoAcao> {
+  const v = lerLimites(form);
+  if (!v.ok) return { ok: false, erro: v.erro };
+  return comSessao(
+    async ({ supabase }) => {
+      const db = tipado(supabase);
+      const respostas = await Promise.all(
+        v.limites.map((l) =>
+          db.from("quadro_limite").update({ minutos_ambar: l.ambar, minutos_vermelho: l.vermelho }).eq("chave", l.chave).select("chave"),
+        ),
+      );
+      for (const r of respostas) {
+        if (r.error?.code === "23514") throw recusa(MSG_VERMELHO_MAIOR);
+        if (r.error) throw r.error;
+      }
+      if (respostas.some((r) => (r.data ?? []).length === 0)) throw recusa(MSG_SO_ADMIN);
+      revalidatePath("/quadro");
+      revalidatePath("/");
+    },
+    { somenteAdmin: true },
+  );
 }

@@ -8,7 +8,11 @@ import type { Cartao } from "@/lib/quadro";
 
 const moverViagem = vi.fn();
 const enviarCanhotoDoNavegador = vi.fn();
-vi.mock("@/app/(app)/quadro/actions", () => ({ moverViagem: (...a: unknown[]) => moverViagem(...a) }));
+const salvarLimites = vi.fn();
+vi.mock("@/app/(app)/quadro/actions", () => ({
+  moverViagem: (...a: unknown[]) => moverViagem(...a),
+  salvarLimites: (...a: unknown[]) => salvarLimites(...a),
+}));
 vi.mock("@/app/(app)/viagens/actions", () => ({ confirmarPagamentoSaida: vi.fn(async () => ({ ok: true, dados: undefined })) }));
 vi.mock("@/app/(app)/viagens/envio", () => ({ enviarCanhotoDoNavegador: (...a: unknown[]) => enviarCanhotoDoNavegador(...a) }));
 vi.mock("@/lib/supabase/client", () => ({
@@ -39,6 +43,7 @@ beforeAll(() => {
 beforeEach(() => {
   moverViagem.mockReset();
   enviarCanhotoDoNavegador.mockReset();
+  salvarLimites.mockReset();
   try {
     localStorage.clear();
   } catch {
@@ -101,8 +106,8 @@ function fonteFalsa(dados?: DadosQuadro) {
 
 type Papel = "admin" | "operacao" | "financeiro" | "leitura";
 
-function montar(cartoes: Cartao[], opcoes: { papel?: Papel; fonte?: FonteQuadro } = {}) {
-  const inicial: DadosQuadro = { cartoes, limites: LIMITES, origensDaPausa: {} };
+function montar(cartoes: Cartao[], opcoes: { papel?: Papel; fonte?: FonteQuadro; limites?: DadosQuadro["limites"] } = {}) {
+  const inicial: DadosQuadro = { cartoes, limites: opcoes.limites ?? LIMITES, origensDaPausa: {} };
   const fonte = opcoes.fonte ?? fonteFalsa(inicial).fonte;
   return render(
     <>
@@ -289,5 +294,81 @@ describe("Quadro da operação: tela", () => {
     await act(async () => f.ouvinte()!.estado("inscrito"));
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Ao vivo"));
     expect(f.fonte.carregar).toHaveBeenCalledTimes(1);
+  });
+
+  describe("Tempos-limite (só administrador)", () => {
+    const TODOS = [
+      { chave: "aguardando_carregamento", minutos_ambar: 120, minutos_vermelho: 240 },
+      { chave: "em_carregamento", minutos_ambar: 60, minutos_vermelho: 120 },
+      { chave: "aguardando_nf_pagamento", minutos_ambar: 60, minutos_vermelho: 120 },
+      { chave: "aguardando_descarga", minutos_ambar: 120, minutos_vermelho: 240 },
+      { chave: "aguardando_contagem", minutos_ambar: 60, minutos_vermelho: 120 },
+      { chave: "resolucao_divergencia", minutos_ambar: 240, minutos_vermelho: 480 },
+      { chave: "pausa_programada", minutos_ambar: 480, minutos_vermelho: 720 },
+      { chave: "pausa_nao_programada", minutos_ambar: 30, minutos_vermelho: 60 },
+    ];
+
+    it("operação, financeiro e leitura não veem o botão “Tempos-limite”", () => {
+      for (const papel of ["operacao", "financeiro", "leitura"] as const) {
+        const { unmount } = montar([cartao()], { papel, limites: TODOS });
+        expect(screen.queryByRole("button", { name: "Tempos-limite" })).toBeNull();
+        unmount();
+      }
+    });
+
+    it("administrador abre o diálogo com uma linha por chave, pausa em duas linhas", () => {
+      montar([cartao()], { papel: "admin", limites: TODOS });
+      fireEvent.click(screen.getByRole("button", { name: "Tempos-limite" }));
+      const dlg = screen.getByRole("dialog", { name: "Tempos-limite" });
+      const linhas = within(dlg).getAllByRole("row").slice(1);
+      expect(linhas.map((l) => within(l).getByRole("rowheader").textContent)).toEqual([
+        "Aguardando carregamento",
+        "Em carregamento",
+        "Aguardando NF e pagamento",
+        "Pausa programada",
+        "Pausa não programada",
+        "Aguardando descarga",
+        "Aguardando contagem de divergência",
+        "Resolução de divergência na carga",
+      ]);
+      expect(within(dlg).getByLabelText("Aguardando carregamento: âmbar")).toHaveValue("120");
+      expect(within(dlg).getByLabelText("Pausa não programada: vermelho")).toHaveValue("60");
+    });
+
+    it("vermelho menor ou igual ao âmbar é recusado na tela, sem chamar o servidor", () => {
+      montar([cartao()], { papel: "admin", limites: TODOS });
+      fireEvent.click(screen.getByRole("button", { name: "Tempos-limite" }));
+      const dlg = screen.getByRole("dialog", { name: "Tempos-limite" });
+      fireEvent.change(within(dlg).getByLabelText("Em carregamento: vermelho"), { target: { value: "60" } });
+      fireEvent.click(within(dlg).getByRole("button", { name: "Salvar" }));
+      expect(within(dlg).getByText("O vermelho precisa ser maior que o âmbar.")).toBeInTheDocument();
+      expect(salvarLimites).not.toHaveBeenCalled();
+    });
+
+    it("salva com os minutos digitados e recarrega o quadro", async () => {
+      salvarLimites.mockResolvedValue({ ok: true, dados: undefined });
+      const { fonte } = fonteFalsa();
+      montar([cartao()], { papel: "admin", limites: TODOS, fonte });
+      fireEvent.click(screen.getByRole("button", { name: "Tempos-limite" }));
+      const dlg = screen.getByRole("dialog", { name: "Tempos-limite" });
+      fireEvent.change(within(dlg).getByLabelText("Aguardando carregamento: âmbar"), { target: { value: "90" } });
+      fireEvent.change(within(dlg).getByLabelText("Aguardando carregamento: vermelho"), { target: { value: "180" } });
+      fireEvent.click(within(dlg).getByRole("button", { name: "Salvar" }));
+      await waitFor(() => expect(salvarLimites).toHaveBeenCalledTimes(1));
+      const form = salvarLimites.mock.calls[0][1] as FormData;
+      expect(form.get("ambar_aguardando_carregamento")).toBe("90");
+      expect(form.get("vermelho_aguardando_carregamento")).toBe("180");
+      expect(form.get("vermelho_pausa_nao_programada")).toBe("60");
+      await waitFor(() => expect(fonte.carregar).toHaveBeenCalled());
+    });
+
+    it("recusa do servidor aparece no diálogo, que continua aberto", async () => {
+      salvarLimites.mockResolvedValue({ ok: false, erro: "Só o administrador pode fazer isso." });
+      montar([cartao()], { papel: "admin", limites: TODOS });
+      fireEvent.click(screen.getByRole("button", { name: "Tempos-limite" }));
+      const dlg = screen.getByRole("dialog", { name: "Tempos-limite" });
+      fireEvent.click(within(dlg).getByRole("button", { name: "Salvar" }));
+      expect(await within(dlg).findByRole("alert")).toHaveTextContent("Só o administrador pode fazer isso.");
+    });
   });
 });

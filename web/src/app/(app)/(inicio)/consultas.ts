@@ -2,10 +2,12 @@
    do menu, feita uma vez por requisição em `resumoDaRequisicao`) e só acrescentam o que ela não
    separa: quantas pendências são de cada tipo. */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { tipado } from "@/lib/banco";
+import { tipado, type Banco } from "@/lib/banco";
 import { resumoDaRequisicao } from "@/lib/resumo-da-requisicao";
 import type { PecaEngate } from "@/components/Engate";
 import type { DadosCapacidade } from "@/components/Capacidade";
+import { carregarQuadro } from "../quadro/consultas";
+import { nivelDoCartao } from "../quadro/regras";
 
 /** Janela da lista "Vencimentos" e quantas linhas ela mostra (protótipo: `dias <= 90`, `slice(0, 5)`). */
 export const JANELA_VENCIMENTOS = 90;
@@ -275,5 +277,43 @@ export async function carregarInicio(cliente: SupabaseClient): Promise<DadosInic
     vencimentos,
     cadastros,
     conjuntos,
+  };
+}
+
+export type ResumoOperacao = {
+  /** Pedidos abertos com peso ainda sem viagem (a aba "A planejar" de Pedidos). */
+  pedidosAPlanejar: number;
+  /** Viagens planejadas sem trava (podem ser iniciadas). */
+  planejadasAptas: number;
+  /** Viagens planejadas com ao menos uma trava (travas legais contam como trava). */
+  planejadasComTrava: number;
+  /** Cartões do Quadro parados além do tempo-limite vermelho da coluna. */
+  cartoesVermelhos: number;
+  /** Cartões em Pausa não programada. */
+  pausasNaoProgramadas: number;
+};
+
+/**
+ * As filas da operação para o bloco "Operação" do Início, com o RLS de quem consulta. Os cartões
+ * vermelhos e as pausas saem de `carregarQuadro` com a mesma regra do Quadro (`nivelDoCartao`),
+ * para o número da placa e o que se vê ao clicar nela serem a mesma coisa.
+ */
+export async function resumoOperacao(cliente: Banco, agora: number = Date.now()): Promise<ResumoOperacao> {
+  const [pedidosAPlanejar, planejadas, quadro] = await Promise.all([
+    contar(cliente.from("v_pedido_saldo").select("*", { count: "exact", head: true }).eq("situacao", "aberto").gt("saldo_kg", 0)),
+    cliente.from("v_viagem_planejada").select("travas"),
+    carregarQuadro(cliente),
+  ]);
+  if (planejadas.error) throw planejadas.error;
+
+  const linhas = planejadas.data ?? [];
+  const planejadasComTrava = linhas.filter((l) => (l.travas ?? 0) > 0).length;
+  const limites = new Map(quadro.limites.map((l) => [l.chave, l]));
+  return {
+    pedidosAPlanejar,
+    planejadasAptas: linhas.length - planejadasComTrava,
+    planejadasComTrava,
+    cartoesVermelhos: quadro.cartoes.filter((c) => nivelDoCartao(c, limites, agora) === "vermelho").length,
+    pausasNaoProgramadas: quadro.cartoes.filter((c) => c.status_campo === "pausa" && c.pausa_programada === false).length,
   };
 }

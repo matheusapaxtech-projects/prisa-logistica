@@ -29,6 +29,7 @@ import { Coluna } from "./coluna";
 import { carregarQuadro, type DadosQuadro, type Limite } from "./consultas";
 import { DialogoPagamento, DialogoPassagem, MenuMover, type EnviarCanhoto, type Passagem } from "./dialogos-passagem";
 import { FiltrosQuadro } from "./filtros";
+import { TemposLimite } from "./tempos-limite";
 import { buscaDe, foiAtualizado, nivelDoCartao, opcoesDe, paraFiltros, type EstadoFiltros } from "./regras";
 
 /* Quadro da operação em tempo real (Client Component): estado dos cartões, tempo real, filtros,
@@ -172,6 +173,7 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
 
   const podeMover = pode(perfil, "editar");
   const podePagar = pode(perfil, "editarFinanceiro");
+  const ehAdmin = pode(perfil, "admin");
 
   /** Lê o quadro de novo. Só a recarga mais recente vale (uma resposta atrasada não apaga outra mais nova). */
   const recarregar = useCallback(async (): Promise<void> => {
@@ -352,6 +354,7 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
           <p className="sub">Onde está cada carga, qual está parada e há quanto tempo.</p>
         </div>
         <div className="acoes quadro-conexao">
+          {ehAdmin && <TemposLimite limites={dados.limites} aoSalvar={recarregar} />}
           <p role="status">
             <Sinal tipo={SINAL_CONEXAO[conexao.tipo]} texto={textoConexao(conexao)} />
           </p>

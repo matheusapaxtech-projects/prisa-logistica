@@ -604,6 +604,13 @@ dialog.dialogo[open] { animation: dlg 200ms var(--ease-out); }
 .quadro-destinos { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .quadro-destinos .btn { width: 100%; justify-content: flex-start; }
 .ajuda-dialogo { margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 16px; }
+.dlg-limites { width: min(560px, calc(100vw - 32px)); }
+.dlg-limites table { width: 100%; border-collapse: collapse; }
+.dlg-limites th { font-size: 13px; font-weight: 500; color: var(--muted); text-align: left; padding: 0 8px 8px 0; }
+.dlg-limites td, .dlg-limites tbody th { padding: 6px 8px 6px 0; border-top: 1px solid var(--rule); vertical-align: middle; }
+.dlg-limites tbody th { font-size: 14px; font-weight: 500; color: var(--ink); line-height: 18px; }
+.dlg-limites td:last-child { padding-right: 0; }
+.dlg-limites .campo input { text-align: right; font-variant-numeric: tabular-nums; }
 .dlg-passagem fieldset.campo { min-width: 0; margin: 0; padding: 0; border: 0; }
 .dlg-passagem legend { margin-bottom: 8px; padding: 0; }
 .campo input.mono { font-family: var(--mono); font-size: 13px; }

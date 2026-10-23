@@ -10,7 +10,8 @@ import { Ponto } from "@/components/Ponto";
 import { formato } from "@/lib/formato";
 import { getPerfil, pode } from "@/lib/permissoes";
 import { createClient } from "@/lib/supabase/server";
-import { carregarInicio, type Cadastros, type Placas, type Vencimento } from "./consultas";
+import { tipado } from "@/lib/banco";
+import { carregarInicio, resumoOperacao, type Cadastros, type Placas, type ResumoOperacao, type Vencimento } from "./consultas";
 import { MenuNovo } from "./menu-novo";
 
 export const metadata: Metadata = { title: "Início" };
@@ -60,26 +61,41 @@ function achadoDoDia(p: Placas): string[] {
 
 type Advertencia = {
   tipo: string;
+  /** Para onde a placa leva (pendências filtradas, ou a fila da operação). */
+  href: string;
   n: number;
   rotulo: string;
   sub: string;
-  forma: "circulo" | "laranja";
+  /** Texto quando o valor é zero (padrão: "nada pendente"). */
+  zero?: string;
+  forma: "circulo" | "laranja" | "amarelo";
 };
+
+/** Placas da fila da operação (bloco "Operação"), antes das pendências de cadastro. */
+function filasDaOperacao(o: ResumoOperacao): Advertencia[] {
+  return [
+    { tipo: "pedidos_a_planejar", href: "/pedidos?aba=a_planejar", n: o.pedidosAPlanejar, rotulo: "Pedidos a planejar", sub: "com peso ainda sem viagem", zero: "nada a planejar", forma: "laranja" },
+    { tipo: "planejadas_aptas", href: "/viagens?aba=planejadas", n: o.planejadasAptas, rotulo: "Planejadas aptas", sub: "prontas para iniciar", zero: "nenhuma pronta", forma: "amarelo" },
+    { tipo: "planejadas_com_trava", href: "/viagens?aba=planejadas&trava=1", n: o.planejadasComTrava, rotulo: "Planejadas com trava", sub: "não podem iniciar", zero: "nenhuma travada", forma: "circulo" },
+    { tipo: "cartoes_vermelhos", href: "/quadro?problema=1", n: o.cartoesVermelhos, rotulo: "Cartões no vermelho", sub: "passaram do tempo-limite", zero: "nenhum parado demais", forma: "circulo" },
+    { tipo: "pausas_nao_programadas", href: "/quadro?problema=1", n: o.pausasNaoProgramadas, rotulo: "Pausas não programadas", sub: "carga parada sem aviso", zero: "nenhuma pausa", forma: "laranja" },
+  ];
+}
 
 function advertencias(p: Placas): Advertencia[] {
   return [
-    { tipo: "arquivo_vencido", n: p.vencidos, rotulo: "Documentos vencidos", sub: "CNH, RNTRC, seguro e arquivos", forma: "circulo" },
-    { tipo: "veiculo_arrendado_sem_contrato", n: p.arrendadoSemContrato, rotulo: "Arrendado sem contrato", sub: "posse diferente da ANTT", forma: "laranja" },
-    { tipo: "conjunto_acima_cmt", n: p.acimaCmt, rotulo: "Conjunto acima do CMT", sub: "carretas passam do que o cavalo puxa", forma: "circulo" },
-    { tipo: "motorista_sem_cnh", n: p.semCnh, rotulo: "Motorista sem CNH anexada", sub: "falta o arquivo da CNH", forma: "laranja" },
-    { tipo: "motorista_sem_comprovante", n: p.semComprovante, rotulo: "Sem comprovante de residência", sub: "falta o arquivo do comprovante", forma: "laranja" },
+    { tipo: "arquivo_vencido", href: `/pendencias?tipo=arquivo_vencido`, n: p.vencidos, rotulo: "Documentos vencidos", sub: "CNH, RNTRC, seguro e arquivos", forma: "circulo" },
+    { tipo: "veiculo_arrendado_sem_contrato", href: `/pendencias?tipo=veiculo_arrendado_sem_contrato`, n: p.arrendadoSemContrato, rotulo: "Arrendado sem contrato", sub: "posse diferente da ANTT", forma: "laranja" },
+    { tipo: "conjunto_acima_cmt", href: `/pendencias?tipo=conjunto_acima_cmt`, n: p.acimaCmt, rotulo: "Conjunto acima do CMT", sub: "carretas passam do que o cavalo puxa", forma: "circulo" },
+    { tipo: "motorista_sem_cnh", href: `/pendencias?tipo=motorista_sem_cnh`, n: p.semCnh, rotulo: "Motorista sem CNH anexada", sub: "falta o arquivo da CNH", forma: "laranja" },
+    { tipo: "motorista_sem_comprovante", href: `/pendencias?tipo=motorista_sem_comprovante`, n: p.semComprovante, rotulo: "Sem comprovante de residência", sub: "falta o arquivo do comprovante", forma: "laranja" },
   ];
 }
 
 function PlacaAdvertencia({ a }: { a: Advertencia }) {
   const vazio = a.n === 0;
   return (
-    <Link className="advertencia" href={`/pendencias?tipo=${a.tipo}`} aria-label={`${a.n} ${a.rotulo}`}>
+    <Link className="advertencia" href={a.href} aria-label={`${a.n} ${a.rotulo}`}>
       {a.forma === "circulo" ? (
         <span className={`circulo-proibido${vazio ? " vazio" : ""}`} aria-hidden="true">
           <b>{a.n}</b>
@@ -91,7 +107,7 @@ function PlacaAdvertencia({ a }: { a: Advertencia }) {
       )}
       <span className="txt">
         <b>{a.rotulo}</b>
-        <span>{vazio ? "nada pendente" : a.sub}</span>
+        <span>{vazio ? (a.zero ?? "nada pendente") : a.sub}</span>
       </span>
     </Link>
   );
@@ -184,7 +200,8 @@ function ResumoCadastros({ c }: { c: Cadastros }) {
 export default async function Inicio() {
   const perfil = await getPerfil();
   const podeEditar = pode(perfil, "editar");
-  const { placas, vencimentos, cadastros, conjuntos } = await carregarInicio(await createClient());
+  const supabase = await createClient();
+  const [{ placas, vencimentos, cadastros, conjuntos }, operacao] = await Promise.all([carregarInicio(supabase), resumoOperacao(tipado(supabase))]);
 
   return (
     <main>
@@ -207,6 +224,20 @@ export default async function Inicio() {
       </div>
 
       <div className="grade">
+        <section className="bloco c12" aria-labelledby="h-oper">
+          <div className="bloco-cab">
+            <h2 id="h-oper">Operação</h2>
+            <span className="dir">
+              <Link href="/quadro">Abrir o Quadro</Link>
+            </span>
+          </div>
+          <div className="advertencias" id="operacao">
+            {filasDaOperacao(operacao).map((a) => (
+              <PlacaAdvertencia key={a.tipo} a={a} />
+            ))}
+          </div>
+        </section>
+
         <section className="bloco c12" aria-labelledby="h-pend">
           <div className="bloco-cab">
             <h2 id="h-pend">Pendências</h2>
