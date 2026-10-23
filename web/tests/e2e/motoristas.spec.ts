@@ -1,13 +1,9 @@
 import { expect, test } from "@playwright/test";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
-import { cpfAleatorio, E2E_EMAIL, E2E_SENHA, entrar, prepararPrint } from "./apoio";
+import { cpfAleatorio, E2E_EMAIL, E2E_SENHA, entrar } from "./apoio";
 
 // Motoristas (Task 7): lista, novo (CPF → pessoa → motorista) e ficha com abas.
 // Re-executável: cria um motorista com CPF válido aleatório e nome "E2E …" (nada é apagado);
 // o resto só lê a seed.
-const PRINTS = path.join(__dirname, "prints");
-const PROTOTIPO = (pagina: string) => pathToFileURL(path.join(__dirname, "..", "..", "..", "prototipo", pagina)).href;
 const EDSON = "00000000-0000-4000-8000-000000000101"; // seed: motorista normal, também proprietário
 const CLAUDIO = "00000000-0000-4000-8000-000000000102"; // seed: o p02 dos prints do protótipo
 const GERSON_CPF = "27614038517"; // seed: só proprietário
@@ -120,8 +116,6 @@ test.describe("motoristas", () => {
     await dlg.getByLabel("Número").fill("10");
     await dlg.getByLabel("Cidade").fill("Londrina");
     await dlg.getByLabel("UF").selectOption("PR");
-    await prepararPrint(page);
-    await page.screenshot({ path: path.join(PRINTS, "motoristas-dialogo-endereco-1440.png") });
     await dlg.getByRole("button", { name: "Adicionar endereço" }).click();
     await expect(dlg).toBeHidden();
     // A lista recarrega depois da gravação (refresh do servidor): folga para o `next dev` carregado.
@@ -235,84 +229,4 @@ test.describe("motoristas", () => {
     }
   });
 
-  test("prints (1440 e 390) ao lado do protótipo", async ({ page }) => {
-    test.setTimeout(180_000);
-    const telas: [string, string, string][] = [
-      ["lista", "/motoristas", "motoristas.html"],
-      ["novo", "/motoristas/novo", "motorista-novo.html"],
-      ["ficha", `/motoristas/${CLAUDIO}`, "motorista.html?id=p02"],
-    ];
-    for (const [largura, altura] of [
-      [1440, 900],
-      [390, 844],
-    ]) {
-      await page.setViewportSize({ width: largura, height: altura });
-      for (const [nome, , pagina] of telas) {
-        const [arquivo, busca] = pagina.split("?");
-        await page.goto(PROTOTIPO(arquivo) + (busca ? `?${busca}` : ""));
-        await page.waitForLoadState("networkidle");
-        await page.screenshot({ path: path.join(PRINTS, `motoristas-prototipo-${nome}-${largura}.png`), fullPage: true });
-      }
-    }
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await entrar(page);
-    for (const [largura, altura] of [
-      [1440, 900],
-      [390, 844],
-    ]) {
-      await page.setViewportSize({ width: largura, height: altura });
-      for (const [nome, rota] of telas) {
-        await page.goto(rota);
-        await prepararPrint(page);
-        await page.waitForTimeout(400);
-        await page.screenshot({ path: path.join(PRINTS, `motoristas-${nome}-${largura}.png`), fullPage: true });
-      }
-    }
-  });
-  test("prints das abas da ficha e do não encontrado (1440 e 390)", async ({ page }) => {
-    test.setTimeout(240_000);
-    const id = (p: string) => `00000000-0000-4000-8000-000000000${100 + Number(p)}`;
-    const casos: [string, string, string][] = [
-      ["cnh", "02", "cnh"],
-      ["contatos", "01", "contatos"],
-      ["referencias", "03", "referencias"],
-      ["contas", "04", "contas"],
-      ["documentos", "01", "documentos"],
-      ["gr", "07", "gr"],
-      ["historico", "01", "historico"],
-      ["proprietario", "12", "dados"],
-    ];
-    for (const [largura, altura] of [
-      [1440, 900],
-      [390, 844],
-    ]) {
-      await page.setViewportSize({ width: largura, height: altura });
-      for (const [nome, p, aba] of casos) {
-        await page.goto(PROTOTIPO("motorista.html") + `?id=p${p}&aba=${aba}`);
-        await page.waitForLoadState("networkidle");
-        await page.screenshot({ path: path.join(PRINTS, `motoristas-prototipo-aba-${nome}-${largura}.png`), fullPage: true });
-      }
-      await page.goto(PROTOTIPO("motorista.html") + "?id=p99");
-      await page.waitForLoadState("networkidle");
-      await page.screenshot({ path: path.join(PRINTS, `motoristas-prototipo-aba-naoachado-${largura}.png`), fullPage: true });
-    }
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await entrar(page);
-    for (const [largura, altura] of [
-      [1440, 900],
-      [390, 844],
-    ]) {
-      await page.setViewportSize({ width: largura, height: altura });
-      for (const [nome, p, aba] of casos) {
-        await page.goto(`/motoristas/${id(p)}?aba=${aba}`);
-        await prepararPrint(page);
-        await page.waitForTimeout(400);
-        await page.screenshot({ path: path.join(PRINTS, `motoristas-aba-${nome}-${largura}.png`), fullPage: true });
-      }
-      await page.goto("/motoristas/00000000-0000-4000-8000-000000000999");
-      await prepararPrint(page);
-      await page.waitForTimeout(400);
-      await page.screenshot({ path: path.join(PRINTS, `motoristas-aba-naoachado-${largura}.png`), fullPage: true });
-    }
-  });
 });

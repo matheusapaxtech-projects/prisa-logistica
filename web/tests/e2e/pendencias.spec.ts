@@ -1,12 +1,8 @@
 import { expect, test } from "@playwright/test";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
-import { E2E_EMAIL, E2E_SENHA, entrar, prepararPrint } from "./apoio";
+import { E2E_EMAIL, E2E_SENHA, entrar } from "./apoio";
 
 // Pendências (Task 10): abas Pendências, Vencimentos e Documentos; `?tipo=` vindo das placas da tela Início.
 // Só lê dados.
-const PRINTS = path.join(__dirname, "prints");
-const PROTOTIPO = (pagina: string) => pathToFileURL(path.join(__dirname, "..", "..", "..", "prototipo", pagina)).href;
 
 /** Os `tipo` que a tela Início linka e o título do grupo que cada um abre. */
 const TIPOS: [string, string][] = [
@@ -76,28 +72,4 @@ test.describe("pendências", () => {
     await expect(page.locator("#filtro-tipo")).toHaveValue("");
   });
 
-  test("prints 1440 e 390 de cada aba", async ({ page }) => {
-    test.setTimeout(120_000);
-    await entrar(page);
-    const rotas: [string, string, string][] = [
-      ["pendencias", "/pendencias", "pendencias.html"],
-      ["tipo", "/pendencias?tipo=conjunto_acima_cmt", "pendencias.html?tipo=conjunto_acima_cmt"],
-      ["vencimentos", "/pendencias?aba=vencimentos", "pendencias.html"],
-      ["documentos", "/pendencias?aba=documentos", "pendencias.html"],
-    ];
-    for (const largura of [1440, 390]) {
-      await page.setViewportSize({ width: largura, height: largura === 1440 ? 900 : 844 });
-      for (const [nome, url, proto] of rotas) {
-        await page.goto(url);
-        await page.waitForLoadState("networkidle");
-        await prepararPrint(page);
-        await page.screenshot({ path: path.join(PRINTS, `pendencias-${nome}-${largura}.png`), fullPage: true });
-        const [arq, q] = proto.split("?");
-        await page.goto(PROTOTIPO(arq) + (q ? `?${q}` : ""));
-        await page.waitForTimeout(600);
-        if (nome === "vencimentos" || nome === "documentos") await page.locator(`[data-aba="${nome}"]`).click();
-        await page.screenshot({ path: path.join(PRINTS, `pendencias-${nome}-prototipo-${largura}.png`), fullPage: true });
-      }
-    }
-  });
 });

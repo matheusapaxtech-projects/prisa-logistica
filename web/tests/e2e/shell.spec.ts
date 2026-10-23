@@ -1,20 +1,9 @@
-import { expect, test, type Page } from "@playwright/test";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { expect, test } from "@playwright/test";
+import { entrar } from "./apoio";
 
 // Shell (Task 5): sidebar, topbar, busca global, selo de pendências e menu do celular.
 // Usa o administrador de teste de web/.env.test.local. Só lê dados (nada é criado nem apagado).
 const { E2E_EMAIL, E2E_SENHA } = process.env;
-const PRINTS = path.join(__dirname, "prints");
-const PROTOTIPO = pathToFileURL(path.join(__dirname, "..", "..", "..", "prototipo", "index.html")).href;
-
-async function entrar(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("E-mail").fill(E2E_EMAIL!);
-  await page.getByLabel("Senha", { exact: true }).fill(E2E_SENHA!);
-  await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page).toHaveURL(/\/$/);
-}
 
 test.describe("shell", () => {
   test.skip(!E2E_EMAIL || !E2E_SENHA, "Faltam E2E_EMAIL/E2E_SENHA em web/.env.test.local.");
@@ -78,27 +67,4 @@ test.describe("shell", () => {
     await expect(shell).not.toHaveClass(/menu-aberto/);
   });
 
-  test("prints do shell (1440 e 390) ao lado do protótipo", async ({ page }) => {
-    for (const [largura, altura] of [
-      [1440, 900],
-      [390, 844],
-    ]) {
-      await page.setViewportSize({ width: largura, height: altura });
-      await page.goto(PROTOTIPO);
-      await page.waitForLoadState("networkidle");
-      await page.screenshot({ path: path.join(PRINTS, `task5-prototipo-${largura}.png`) });
-    }
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await entrar(page);
-    // O indicador do `next dev` (canto inferior esquerdo) cobre o avatar: fora do print.
-    await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
-    await page.evaluate(() => document.fonts.ready);
-    await page.screenshot({ path: path.join(PRINTS, "task5-shell-1440.png") });
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.waitForTimeout(400); // a sidebar desliza para fora (transição de 260 ms)
-    await page.screenshot({ path: path.join(PRINTS, "task5-shell-390.png") });
-    await page.getByRole("button", { name: "Abrir menu" }).click();
-    await page.waitForTimeout(400);
-    await page.screenshot({ path: path.join(PRINTS, "task5-shell-390-menu.png") });
-  });
 });

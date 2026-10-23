@@ -13,6 +13,9 @@ async function entrar(page: Page, email: string, senha: string) {
   await page.getByRole("button", { name: "Entrar" }).click();
 }
 
+// Este spec testa o próprio login: começa sem a sessão compartilhada do administrador.
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test("sem sessão, / leva para /login", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);

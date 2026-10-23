@@ -1,13 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
-import { E2E_EMAIL, E2E_SENHA, entrar, prepararPrint } from "./apoio";
+import { E2E_EMAIL, E2E_SENHA, entrar } from "./apoio";
 
 // Veículos (Task 9): lista, novo (placa desenhada ao vivo) e ficha com abas.
 // Re-executável: o único veículo criado tem placa Mercosul aleatória (nunca "TST…") e modelo "E2E Teste";
 // nada é apagado. O arrendado usado nas verificações é da seed (só leitura).
-const PRINTS = path.join(__dirname, "prints");
-const PROTOTIPO = (pagina: string) => pathToFileURL(path.join(__dirname, "..", "..", "..", "prototipo", pagina)).href;
 const ID = (n: number) => `00000000-0000-4000-8000-000000000${n}`;
 const RTU1F45 = ID(204); // seed: cavalo arrendado SEM contrato
 const RTV6H10 = ID(216); // seed: carreta arrendada COM contrato
@@ -98,6 +94,8 @@ test.describe("veículos", () => {
   test("operação (não admin): contrato restrito já enviado não gera a pendência; sem contrato, gera", async ({ page }) => {
     const { E2E_OPERACAO_EMAIL, E2E_OPERACAO_SENHA } = process.env;
     test.skip(!E2E_OPERACAO_EMAIL || !E2E_OPERACAO_SENHA, "Faltam E2E_OPERACAO_* em web/.env.test.local.");
+    // Sai da sessão compartilhada do administrador (só neste contexto) para entrar como operação.
+    await page.context().clearCookies();
     await page.goto("/login");
     await page.getByLabel("E-mail").fill(E2E_OPERACAO_EMAIL!);
     await page.getByLabel("Senha", { exact: true }).fill(E2E_OPERACAO_SENHA!);
@@ -127,7 +125,8 @@ test.describe("veículos", () => {
     await entrar(page);
     for (const id of ["zzz", "00000000-0000-4000-8000-0000000009ff"]) {
       await page.goto(`/veiculos/${id}`);
-      await expect(page.locator("meta[name=robots]")).toHaveAttribute("content", "noindex");
+      // Com streaming, o Next pode emitir o noindex no <head> e de novo no <body>: basta o primeiro.
+      await expect(page.locator("meta[name=robots]").first()).toHaveAttribute("content", "noindex");
       await expect(page.getByRole("heading", { level: 1, name: "Veículo não encontrado" })).toBeVisible();
       await expect(page.locator(".titulo .sub")).toContainText(`Não há veículo com o código “${id}”.`);
       await expect(page.getByRole("link", { name: "Ver todos os veículos" })).toBeVisible();
@@ -257,7 +256,6 @@ test.describe("veículos", () => {
     await expect(posse).toHaveValue(/TSC Transportes \(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\)/);
     await expect(page.locator("#arrendado")).toBeHidden();
     await expect(page.locator("#falta")).toHaveText("Tudo certo para criar. O cadastro nasce pendente até a ficha ser conferida.");
-    await page.screenshot({ path: path.join(PRINTS, "veiculos-novo-preenchido.png"), fullPage: true });
 
     await page.getByRole("button", { name: "Criar veículo" }).click();
     await expect(page).toHaveURL(/\/veiculos\/[0-9a-f-]{36}(\?criado=1)?$/);
@@ -311,31 +309,4 @@ test.describe("veículos", () => {
     await expect(page.locator(".linha-tempo")).toContainText("Alterou");
   });
 
-  test("prints 1440 e 390 de cada rota", async ({ page }) => {
-    test.setTimeout(120_000);
-    await entrar(page);
-    const rotas: [string, string, string | null][] = [
-      ["lista", "/veiculos", "veiculos.html"],
-      ["lista-arrendados", "/veiculos?filtro=arrendados", "veiculos.html?filtro=arrendados"],
-      ["novo", "/veiculos/novo", "veiculo-novo.html"],
-      ["ficha", `/veiculos/${RTU1F45}`, "veiculo.html?id=v04"],
-      ["ficha-conjunto", `/veiculos/${BRA7G33}?aba=conjunto`, null],
-      ["nao-encontrado", "/veiculos/zzz", "veiculo.html?id=zzz"],
-    ];
-    for (const largura of [1440, 390]) {
-      await page.setViewportSize({ width: largura, height: largura === 1440 ? 900 : 844 });
-      for (const [nome, url, proto] of rotas) {
-        await page.goto(url);
-        await page.waitForLoadState("networkidle");
-        await prepararPrint(page);
-        await page.screenshot({ path: path.join(PRINTS, `veiculos-${nome}-${largura}.png`), fullPage: true });
-        if (proto) {
-          const [arq, q] = proto.split("?");
-          await page.goto(PROTOTIPO(arq) + (q ? `?${q}` : ""));
-          await page.waitForTimeout(700);
-          await page.screenshot({ path: path.join(PRINTS, `veiculos-${nome}-prototipo-${largura}.png`), fullPage: true });
-        }
-      }
-    }
-  });
 });

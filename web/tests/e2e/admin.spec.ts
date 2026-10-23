@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
+import { bancoAdmin, entrar as entrarAdmin } from "./apoio";
 
 // Usuários e Auditoria (Task 11). Roda contra o banco vivo de desenvolvimento com os usuários de teste:
 // admin (E2E_EMAIL), operação (E2E_OPERACAO_EMAIL, o 3º usuário criado para esta tela) e sem perfil.
@@ -11,20 +11,15 @@ try {
 }
 const { E2E_EMAIL, E2E_SENHA, E2E_OPERACAO_EMAIL, E2E_OPERACAO_SENHA, NEXT_PUBLIC_SUPABASE_URL: URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: CHAVE } = process.env;
 
+/** Admin: sessão do storageState (sem novo login). Outro usuário: limpa a sessão deste teste e entra. */
 async function entrar(page: Page, email: string, senha: string) {
+  if (email === E2E_EMAIL) return entrarAdmin(page);
+  await page.context().clearCookies();
   await page.goto("/login");
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(senha);
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page).toHaveURL(/\/$/);
-}
-
-/** Cliente do banco logado como o admin de teste (mesmo RLS da tela). */
-async function banco() {
-  const db = createClient(URL!, CHAVE!, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { error } = await db.auth.signInWithPassword({ email: E2E_EMAIL!, password: E2E_SENHA! });
-  if (error) throw new Error("Não foi possível entrar no banco com o usuário de teste.");
-  return db;
 }
 
 const dialogo = (page: Page) => page.locator("#dlg-acesso");
@@ -37,7 +32,7 @@ test.describe("usuários e auditoria", () => {
   );
 
   test("admin muda o papel da operação para leitura, vê na lista e restaura", async ({ page }) => {
-    const db = await banco();
+    const db = bancoAdmin();
     const alvo = await db.rpc("listar_usuarios");
     expect(alvo.error).toBeNull();
     const operacao = ((alvo.data ?? []) as { email: string; user_id: string }[]).find((u) => u.email === E2E_OPERACAO_EMAIL);
@@ -113,7 +108,7 @@ test.describe("usuários e auditoria", () => {
   });
 
   test("auditoria: filtro na URL sobrevive ao recarregar, agrupa por dia de São Paulo e destaca visualizações", async ({ page }) => {
-    const db = await banco();
+    const db = bancoAdmin();
     const ultimo = await db.from("auditoria").select("em").order("em", { ascending: false }).limit(1);
     expect(ultimo.error).toBeNull();
     const diaEsperado = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(

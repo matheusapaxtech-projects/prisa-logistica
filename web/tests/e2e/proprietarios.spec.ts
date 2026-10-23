@@ -1,16 +1,9 @@
 import { expect, test } from "@playwright/test";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
-import { cpfAleatorio, E2E_EMAIL, E2E_SENHA, entrar, prepararPrint } from "./apoio";
+import { cpfAleatorio, E2E_EMAIL, E2E_SENHA, entrar } from "./apoio";
 
 // Proprietários (Task 8): lista, novo (PF/PJ, CPF e CNPJ → Receita) e ficha com abas.
 // Re-executável: cria um proprietário PF com CPF válido aleatório e nome "E2E …" (nada é apagado);
 // o resto só lê a seed. O CNPJ real 00000000000191 só consulta a Receita: nunca é gravado.
-const PRINTS = path.join(__dirname, "prints");
-const PROTOTIPO = (pagina: string) => {
-  const [arquivo, consulta] = pagina.split("?");
-  return pathToFileURL(path.join(__dirname, "..", "..", "..", "prototipo", arquivo)).href + (consulta ? `?${consulta}` : "");
-};
 const EDSON = "00000000-0000-4000-8000-000000000101"; // seed: PF, TAC, 3 veículos, também motorista
 const TSC = "00000000-0000-4000-8000-000000000109"; // seed: PJ (ETC), 8 veículos, arrendados
 const IVAI = "00000000-0000-4000-8000-000000000111"; // seed: PJ sem RNTRC, pendente
@@ -376,77 +369,4 @@ test.describe("proprietários", () => {
     await expect(page.locator(".tabela tbody tr")).toHaveCount(2);
   });
 
-  test("prints: lista, novo e ficha em 1440 e 390, ao lado do protótipo", async ({ page }) => {
-    test.setTimeout(240_000);
-    await entrar(page);
-    const alvos: [string, string, string][] = [
-      ["lista", "/proprietarios", "proprietarios.html"],
-      ["novo", "/proprietarios/novo", "proprietario-novo.html"],
-      ["ficha", `/proprietarios/${TSC}`, "proprietario.html?id=p09"],
-      ["naoachado", "/proprietarios/abc", "proprietario.html?id=zzz"],
-    ];
-    for (const [w, h] of [
-      [1440, 900],
-      [390, 844],
-    ] as const) {
-      await page.setViewportSize({ width: w, height: h });
-      for (const [nome, rota, proto] of alvos) {
-        await page.goto(rota);
-        await expect(page.locator("main[aria-busy]")).toHaveCount(0);
-        await prepararPrint(page);
-        await page.screenshot({ path: path.join(PRINTS, `proprietarios-${nome}-${w}.png`), fullPage: true });
-        await page.goto(PROTOTIPO(proto));
-        await page.waitForTimeout(600);
-        await page.screenshot({ path: path.join(PRINTS, `proprietarios-prototipo-${nome}-${w}.png`), fullPage: true });
-      }
-      for (const aba of ["antt", "pagamento", "contatos", "contas", "documentos", "veiculos", "historico", "responsavel"]) {
-        await page.goto(`/proprietarios/${TSC}?aba=${aba}`);
-        await expect(page.locator("main[aria-busy]")).toHaveCount(0);
-        await prepararPrint(page);
-        await page.screenshot({ path: path.join(PRINTS, `proprietarios-aba-${aba}-${w}.png`), fullPage: true });
-        await page.goto(PROTOTIPO("proprietario.html?id=p09"));
-        await page.locator(`#aba-${aba}`).click();
-        await page.waitForTimeout(400);
-        await page.screenshot({ path: path.join(PRINTS, `proprietarios-prototipo-aba-${aba}-${w}.png`), fullPage: true });
-      }
-    }
-  });
-
-  test("prints: novo (pessoa física e empresa pela Receita) em 1440 e 390, ao lado do protótipo", async ({ page }) => {
-    test.setTimeout(240_000);
-    const cpf = fmtCpf(cpfAleatorio());
-    await entrar(page);
-    for (const [w, h] of [
-      [1440, 900],
-      [390, 844],
-    ] as const) {
-      await page.setViewportSize({ width: w, height: h });
-      for (const [nome, rotulo, doc, campo, botao] of [
-        ["pf", "Pessoa física", cpf, "#cpf", null],
-        ["pj", "Empresa", "00000000000191", "#cnpj", "#btn-receita"],
-      ] as const) {
-        await page.goto("/proprietarios/novo");
-        await page.locator(".tipo-opcao", { hasText: rotulo }).click();
-        await page.locator(campo).fill(doc);
-        if (botao) {
-          await page.locator(botao).click();
-          await expect(page.locator("#nome")).not.toHaveValue("", { timeout: 20_000 });
-        } else await expect(page.locator("#nome")).toBeVisible();
-        await page.locator("#rntrc").fill("123456789");
-        await prepararPrint(page);
-        await page.screenshot({ path: path.join(PRINTS, `proprietarios-novo-${nome}-${w}.png`), fullPage: true });
-
-        await page.goto(PROTOTIPO("proprietario-novo.html"));
-        await page.locator(".tipo-opcao", { hasText: rotulo }).click();
-        await page.locator(campo).fill(doc);
-        if (botao) {
-          await page.locator(botao).click();
-          await expect(page.locator("#pj-nome")).not.toHaveValue("", { timeout: 20_000 });
-        }
-        await page.locator("#rntrc").fill("123456789");
-        await page.waitForTimeout(400);
-        await page.screenshot({ path: path.join(PRINTS, `proprietarios-prototipo-novo-${nome}-${w}.png`), fullPage: true });
-      }
-    }
-  });
 });

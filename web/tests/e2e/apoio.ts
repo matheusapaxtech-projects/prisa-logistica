@@ -1,17 +1,39 @@
 import { expect, type Page } from "@playwright/test";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import fs from "node:fs";
+import path from "node:path";
 
-// Apoio dos specs E2E (Tasks 7+). Os specs anteriores (auth, shell, inicio) têm o próprio `entrar`.
-// Credenciais do administrador de teste em web/.env.test.local (carregado pelo playwright.config).
+// Apoio dos specs E2E. Credenciais dos usuários de teste em web/.env.test.local (carregado pelo
+// playwright.config).
 export const { E2E_EMAIL, E2E_SENHA } = process.env;
 
-/** Entra com o administrador de teste e espera o Início. */
+/** Sessão do administrador de teste gravada pelo sessao.setup.ts (pasta fora do git). */
+export const PASTA_SESSAO = path.join(__dirname, ".sessao");
+export const SESSAO_ADMIN = path.join(PASTA_SESSAO, "admin.json");
+export const TOKEN_BANCO = path.join(PASTA_SESSAO, "banco.json");
+
+/**
+ * Abre o Início já logado: a sessão do administrador de teste vem do storageState do projeto
+ * (um login só por execução, em sessao.setup.ts). Quem precisa testar o login em si usa
+ * `test.use({ storageState: { cookies: [], origins: [] } })` e preenche o formulário.
+ */
 export async function entrar(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("E-mail").fill(E2E_EMAIL!);
-  await page.getByLabel("Senha", { exact: true }).fill(E2E_SENHA!);
-  await page.getByRole("button", { name: "Entrar" }).click();
-  // Folga para o `next dev` compilar quando vários specs rodam juntos.
+  await page.goto("/");
   await expect(page).toHaveURL(/\/$/, { timeout: 20_000 });
+}
+
+/**
+ * Cliente do Supabase com o token do administrador de teste (mesmo RLS da tela), sem novo login:
+ * o token foi obtido uma vez em sessao.setup.ts. Só leitura/RPC; não chame `auth.*` nele.
+ */
+export function bancoAdmin(): SupabaseClient {
+  const { NEXT_PUBLIC_SUPABASE_URL: URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: CHAVE } = process.env;
+  if (!URL || !CHAVE) throw new Error("Faltam as chaves públicas do Supabase (.env.local).");
+  const { access_token } = JSON.parse(fs.readFileSync(TOKEN_BANCO, "utf8")) as { access_token: string };
+  return createClient(URL, CHAVE, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${access_token}` } },
+  });
 }
 
 /** CPF válido aleatório (nunca os das fixtures pgTAP nem com todos os dígitos iguais). */

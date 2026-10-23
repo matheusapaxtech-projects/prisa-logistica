@@ -1,8 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
-import { E2E_EMAIL, E2E_SENHA, entrar, prepararPrint } from "./apoio";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { bancoAdmin, E2E_EMAIL, E2E_SENHA, entrar } from "./apoio";
 
 // Conjuntos (Task 10): lista, montador (/conjuntos/novo), ficha, "Trocar peças" (?editar=1) e encerrar.
 // Roda contra o banco vivo de desenvolvimento. Re-executável e sem apagar nada:
@@ -16,8 +14,6 @@ try {
 }
 const { NEXT_PUBLIC_SUPABASE_URL: URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: CHAVE } = process.env;
 
-const PRINTS = path.join(__dirname, "prints");
-const PROTOTIPO = (pagina: string) => pathToFileURL(path.join(__dirname, "..", "..", "..", "prototipo", pagina)).href;
 /** Ids fixos da seed de desenvolvimento: veículos 2xx, conjuntos 3xx. */
 const SEED_VEICULO = "00000000-0000-4000-8000-0000000002";
 const SEED_CONJUNTO = "00000000-0000-4000-8000-0000000003";
@@ -26,14 +22,6 @@ const MSG_OUTRO = "veículo já está em outro conjunto aberto";
 
 type Veic = { id: string; placa: string; categoria: string; tipo: string };
 type Aberto = { id: string; cavalo_id: string; motorista_id: string | null; itens: string[] };
-
-/** Cliente do banco logado como o admin de teste (mesmo RLS da tela). */
-async function banco(): Promise<SupabaseClient> {
-  const db = createClient(URL!, CHAVE!, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { error } = await db.auth.signInWithPassword({ email: E2E_EMAIL!, password: E2E_SENHA! });
-  if (error) throw new Error("Não foi possível entrar no banco com o usuário de teste.");
-  return db;
-}
 
 async function abertos(db: SupabaseClient): Promise<Aberto[]> {
   const { data, error } = await db.from("conjunto").select("id, cavalo_id, motorista_id, created_by, conjunto_item(posicao, veiculo_id)").is("fim", null);
@@ -139,7 +127,7 @@ test.describe("conjuntos", () => {
 
   test("dolly na ponta não salva; rodotrem válido salva, troca peças e encerra", async ({ page }) => {
     test.setTimeout(120_000);
-    const db = await banco();
+    const db = bancoAdmin();
     const { cavalo, a, b, dolly } = await escolher(db);
     test.skip(!cavalo || !a || !b || !dolly, "A seed não tem um cavalo, duas carretas e um dolly livres agora.");
     const original = await abertoDoCavalo(db, cavalo!.id);
@@ -207,7 +195,6 @@ test.describe("conjuntos", () => {
     }
     const limpeza = await limpar(
       () => restaurar(db, cavalo!.id, original),
-      () => db.auth.signOut({ scope: "local" }),
     );
     if (falha) throw falha;
     if (limpeza) throw limpeza;
@@ -215,7 +202,7 @@ test.describe("conjuntos", () => {
 
   test("banco recusa a peça que outra pessoa engatou: mensagem junto da peça e nada gravado", async ({ page }) => {
     test.setTimeout(120_000);
-    const db = await banco();
+    const db = bancoAdmin();
     const { cavalo, a, abs } = await escolher(db);
     // conjunto aberto da seed que vai receber a peça (estado salvo antes, comparado depois)
     const alvo = abs.find((c) => c.id.startsWith(SEED_CONJUNTO) && c.itens.length < 4);
@@ -250,7 +237,6 @@ test.describe("conjuntos", () => {
     }
     const limpeza = await limpar(
       () => restaurar(db, cavalo!.id, original),
-      () => db.auth.signOut({ scope: "local" }),
     );
     if (falha) throw falha;
     if (limpeza) throw limpeza;
@@ -258,7 +244,7 @@ test.describe("conjuntos", () => {
 
   test("montar não encerra o conjunto que outra pessoa abriu no mesmo cavalo com a tela aberta", async ({ page }) => {
     test.setTimeout(120_000);
-    const db = await banco();
+    const db = bancoAdmin();
     const { cavalo, a, b } = await escolher(db);
     test.skip(!cavalo || !a || !b, "A seed não tem um cavalo e duas carretas livres agora.");
     const original = await abertoDoCavalo(db, cavalo!.id);
@@ -291,7 +277,6 @@ test.describe("conjuntos", () => {
     }
     const limpeza = await limpar(
       () => restaurar(db, cavalo!.id, original),
-      () => db.auth.signOut({ scope: "local" }),
     );
     if (falha) throw falha;
     if (limpeza) throw limpeza;
@@ -307,35 +292,4 @@ test.describe("conjuntos", () => {
     }
   });
 
-  test("prints 1440 e 390 de cada rota", async ({ page }) => {
-    test.setTimeout(180_000);
-    const db = await banco();
-    const qht = (await abertos(db)).find((c) => c.id === `${SEED_CONJUNTO}02`);
-    await db.auth.signOut({ scope: "local" });
-    await entrar(page);
-    const ficha = qht ? `/conjuntos/${qht.id}` : null;
-    const rotas: [string, string | null, string][] = [
-      ["lista", "/conjuntos", "conjuntos.html"],
-      ["novo", "/conjuntos/novo", "conjunto.html?novo=1"],
-      ["ficha", ficha, "conjunto.html?id=c02"],
-      ["editar", ficha && `${ficha}?editar=1`, "conjunto.html?id=c02&editar=1"],
-      ["encerrado", `/conjuntos/${SEED_CONJUNTO}05`, "conjunto.html?id=c00"],
-      ["nao-encontrado", "/conjuntos/zzz", "conjunto.html?id=zzz"],
-    ];
-    for (const largura of [1440, 390]) {
-      await page.setViewportSize({ width: largura, height: largura === 1440 ? 900 : 844 });
-      for (const [nome, url, proto] of rotas) {
-        if (url) {
-          await page.goto(url);
-          await page.waitForLoadState("networkidle");
-          await prepararPrint(page);
-          await page.screenshot({ path: path.join(PRINTS, `conjuntos-${nome}-${largura}.png`), fullPage: true });
-        }
-        const [arq, q] = proto.split("?");
-        await page.goto(PROTOTIPO(arq) + (q ? `?${q}` : ""));
-        await page.waitForTimeout(700);
-        await page.screenshot({ path: path.join(PRINTS, `conjuntos-${nome}-prototipo-${largura}.png`), fullPage: true });
-      }
-    }
-  });
 });

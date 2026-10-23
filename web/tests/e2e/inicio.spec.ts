@@ -1,7 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { bancoAdmin, entrar } from "./apoio";
 
 // Início (Task 6): as contagens da tela batem com as do banco. O esperado é calculado aqui, direto
 // pelo cliente do Supabase logado como o administrador de teste (mesmo RLS da tela), com a mesma
@@ -13,23 +11,6 @@ try {
   // sem .env.local o teste abaixo é pulado
 }
 const { E2E_EMAIL, E2E_SENHA, NEXT_PUBLIC_SUPABASE_URL: URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: CHAVE } = process.env;
-const PRINTS = path.join(__dirname, "prints");
-const PROTOTIPO = pathToFileURL(path.join(__dirname, "..", "..", "..", "prototipo", "index.html")).href;
-
-async function entrar(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("E-mail").fill(E2E_EMAIL!);
-  await page.getByLabel("Senha", { exact: true }).fill(E2E_SENHA!);
-  await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page).toHaveURL(/\/$/);
-}
-
-async function banco() {
-  const db = createClient(URL!, CHAVE!, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { error } = await db.auth.signInWithPassword({ email: E2E_EMAIL!, password: E2E_SENHA! });
-  if (error) throw new Error("Não foi possível entrar no banco com o usuário de teste.");
-  return db;
-}
 
 async function contar(consulta: PromiseLike<{ count: number | null; error: { message: string } | null }>) {
   const { count, error } = await consulta;
@@ -48,7 +29,7 @@ test.describe("início", () => {
   test.skip(!E2E_EMAIL || !E2E_SENHA || !URL || !CHAVE, "Faltam E2E_* (.env.test.local) ou as chaves públicas (.env.local).");
 
   test("placas, vencimentos, cadastros e conjuntos batem com o banco", async ({ page }) => {
-    const db = await banco();
+    const db = bancoAdmin();
     const cont = (tabela: string) => db.from(tabela).select("*", { count: "exact", head: true });
     const pend = (tipo: string) => cont("v_pendencias_documentos").eq("tipo_pendencia", tipo);
 
@@ -71,6 +52,11 @@ test.describe("início", () => {
       .lte("dias", 90)
       .order("dias", { ascending: true })
       .order("tipo", { ascending: true })
+      // Mesmo desempate da tela (consultas.ts): data, arquivo, pessoa, veículo.
+      .order("data", { ascending: true })
+      .order("arquivo_id", { ascending: true })
+      .order("pessoa_id", { ascending: true })
+      .order("veiculo_id", { ascending: true })
       .limit(5);
     expect(venc.error).toBeNull();
 
@@ -178,26 +164,4 @@ test.describe("início", () => {
     await expect(menu).toBeHidden();
   });
 
-  test("prints em 1440 e 390 ao lado do protótipo", async ({ page }) => {
-    const tamanhos = [
-      [1440, 900],
-      [390, 844],
-    ];
-    for (const [largura, altura] of tamanhos) {
-      await page.setViewportSize({ width: largura, height: altura });
-      await page.goto(PROTOTIPO);
-      await page.waitForLoadState("networkidle");
-      await page.screenshot({ path: path.join(PRINTS, `inicio-prototipo-${largura}.png`), fullPage: true });
-    }
-    await entrar(page);
-    for (const [largura, altura] of tamanhos) {
-      await page.setViewportSize({ width: largura, height: altura });
-      await page.goto("/");
-      await expect(page.locator("#conjuntos .engate").first()).toBeVisible();
-      // O indicador do `next dev` (canto inferior esquerdo) não existe em produção: fora do print.
-      await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
-      await page.evaluate(() => document.fonts.ready);
-      await page.screenshot({ path: path.join(PRINTS, `inicio-${largura}.png`), fullPage: true });
-    }
-  });
 });
