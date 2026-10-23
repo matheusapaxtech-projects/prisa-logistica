@@ -1,0 +1,153 @@
+/* NILT — grupo Proprietários (/proprietarios, /proprietarios/novo, /proprietarios/[id]).
+   Porta de prototipo/assets/paginas/proprietarios.css sem o que já está em componentes.css
+   (validade, documentos, histórico, barra de salvar, painéis) e em paginas/pessoa.css (diálogos,
+   avisos de painel, itens de contato). As regras genéricas ficam presas a `.prop` (a <main> das três
+   telas) para não vazar para as telas de veículos e motoristas, que usam os mesmos nomes. */
+
+.prop .link-botao { font: inherit; color: var(--azul); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.prop .btn-pequeno { height: 30px; padding: 0 10px; font-size: 13px; }
+
+/* ---------- lista ---------- */
+/* componentes.css dá 13/18 a `.tabela td .linha2` (a de motorista); as tabelas daqui mantêm o 12/16 do nilt.css */
+.prop .tabela-prop td .linha2 { font-size: 12px; line-height: 16px; }
+.prop .tabela .col-prop { width: 34%; }
+.prop .tabela .col-doc { width: 170px; }
+.prop .tabela .cod, .prop .tabela .tel { white-space: nowrap; }
+.prop .rntrc-linha { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.prop .enq { font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: 0.02em; }
+.prop .validade-ok { display: block; font-size: 13px; color: var(--muted); line-height: 16px; margin-top: 4px; }
+.prop .validade-sinal { display: block; margin-top: 4px; }
+.prop .veic b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.prop .veic .linha2 { white-space: nowrap; }
+.prop .p-cel, .prop .tabela .linha2.p-cel { display: none; }
+.prop .p-estreito { display: none; white-space: nowrap; }
+.prop .tabela tr.vazio-linha, .prop .tabela tr.sem-link { cursor: default; }
+.prop .tabela tr.vazio-linha:hover { background: none; }
+.prop .tabela tr.vazio-linha td { border-top: 0; padding: 8px 0 0; }
+
+/* ---------- novo cadastro ---------- */
+.prop .tipos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.prop .tipo-opcao { position: relative; display: block; }
+.prop .tipo-opcao input { position: absolute; opacity: 0; inset: 0; cursor: pointer; margin: 0; }
+.prop .tipo-opcao .cartao {
+  display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 4px 12px; align-items: start;
+  min-height: 96px; padding: 18px 20px;
+  border: 1px solid var(--border); border-radius: var(--radius-card); background: #fff; cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+.prop .tipo-opcao .cartao svg { width: 20px; height: 20px; color: var(--muted); margin-top: 2px; }
+.prop .tipo-opcao .cartao b { font-size: 16px; font-weight: 600; line-height: 24px; }
+.prop .tipo-opcao .cartao span { grid-column: 2; color: var(--muted); }
+@media (hover: hover) and (pointer: fine) { .prop .tipo-opcao:hover .cartao { border-color: var(--control); } }
+.prop .tipo-opcao input:checked + .cartao { border-color: var(--verde); background: var(--verde-claro); box-shadow: inset 0 0 0 1px var(--verde); }
+.prop .tipo-opcao input:checked + .cartao svg { color: var(--verde); }
+.prop .tipo-opcao input:checked + .cartao span { color: var(--verde-tinta); }
+.prop .tipo-opcao input:focus-visible + .cartao { outline: 2px solid var(--verde); outline-offset: 2px; }
+
+.prop .doc-estado { display: flex; align-items: center; gap: 8px; font-size: 13px; line-height: 16px; color: var(--muted); min-height: 16px; }
+.prop .doc-estado.ok { color: var(--verde-tinta); }
+.prop .doc-estado svg { width: 14px; height: 14px; flex: none; }
+.prop .existe { display: grid; gap: 12px; }
+.prop .existe .aviso { align-items: center; flex-wrap: wrap; }
+.prop .existe .aviso .txt { flex: 1 1 260px; }
+.prop .existe .aviso .btn { margin-left: auto; }
+.prop .aviso .acoes-aviso { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.prop .existe .aviso .acoes-aviso { margin-top: 0; margin-left: auto; }
+.prop .receita-estado { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.prop .carimbo { font-size: 12px; color: var(--muted); }
+.prop .gira { animation: prop-girar 900ms linear infinite; }
+@keyframes prop-girar { to { transform: rotate(360deg); } }
+.prop .btn .gira { width: 16px; height: 16px; }
+.prop .opcao em { font-style: normal; font-weight: 400; color: var(--muted); margin-left: 6px; }
+.prop .opcao input:checked + span em { color: var(--verde-tinta); }
+.prop .opcao input:disabled + span { color: var(--faint); background: var(--raised); border-style: dashed; cursor: not-allowed; }
+.prop .opcao input:disabled { cursor: not-allowed; }
+.prop .rodape-form { display: flex; align-items: center; gap: 12px; justify-content: flex-end; padding-top: 24px; border-top: 1px solid var(--rule); margin-top: 8px; }
+.prop .rodape-form .resumo { margin-right: auto; color: var(--muted); }
+
+/* prévia das etapas do novo cadastro (sequência real, por isso numerada) */
+.prop .passos-previa { margin: 0; padding: 0; list-style: none; counter-reset: passo; display: grid; gap: 0; border: 1px dashed var(--control); border-radius: 8px; }
+.prop .passos-previa li { counter-increment: passo; display: grid; grid-template-columns: 32px 140px minmax(0, 1fr); gap: 12px; align-items: baseline; padding: 14px 16px; border-top: 1px dashed var(--border); color: var(--muted); }
+.prop .passos-previa li:first-child { border-top: 0; }
+.prop .passos-previa li::before { content: counter(passo); font: 600 13px/20px var(--font); color: var(--faint); font-variant-numeric: tabular-nums; }
+.prop .passos-previa b { color: var(--ink); font-weight: 600; }
+
+/* ---------- ficha ---------- */
+.prop .cab-ficha { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+.prop .cab-ficha .ident { display: grid; gap: 6px; min-width: 0; }
+.prop .cab-ficha .migalha h1 { font-size: var(--fs-title); line-height: 28px; }
+.prop .cab-ficha .linha-doc { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; color: var(--muted); }
+.prop .cab-ficha .linha-doc .cod { color: var(--ink); }
+.prop .cab-ficha .linha-doc > * { white-space: nowrap; }
+.prop .cab-ficha .linha-doc > * + *::before { content: "·"; color: var(--faint); margin-right: 12px; }
+.prop .cab-ficha .sinais { display: flex; gap: 6px; flex-wrap: wrap; }
+.prop .cab-ficha .acoes { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.prop .abas .alerta-aba { display: inline-block; width: 9px; height: 9px; margin-left: 6px; border: 2px solid var(--vermelho); border-radius: 50%; vertical-align: 1px; }
+.prop .aviso-criado { margin-bottom: 16px; }
+
+.prop .marco-rntrc { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: center; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-card); }
+.prop .marco-rntrc .trilho { grid-column: 1 / -1; height: 8px; }
+.prop .marco-rntrc .quem b { display: block; font-weight: 600; }
+.prop .marco-rntrc .quem span { font-size: 13px; color: var(--muted); }
+.prop .marco-rntrc .dias { text-align: right; font-variant-numeric: tabular-nums; }
+.prop .marco-rntrc .dias b { font-size: 16px; font-weight: 600; }
+.prop .marco-rntrc .dias.vencido b { color: var(--vermelho-tinta); }
+.prop .marco-rntrc .dias span { display: block; font-size: 13px; color: var(--muted); }
+.prop .marco-rntrc .escala { grid-column: 1 / -1; display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.prop .explica { font-size: 12px; color: var(--muted); line-height: 16px; }
+.prop .regras { display: grid; gap: 8px; }
+.prop .regra { position: relative; display: block; }
+.prop .regra input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.prop .regra > span {
+  display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 2px 12px; padding: 10px 14px;
+  border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+.prop .regra > span::before { content: ""; width: 14px; height: 14px; margin-top: 3px; border-radius: 50%; border: 1.5px solid var(--control); background: #fff; }
+.prop .regra b { font-weight: 600; }
+.prop .regra small { grid-column: 2; font-size: 13px; color: var(--muted); line-height: 18px; }
+.prop .regra input:checked + span { border-color: var(--verde); background: var(--verde-claro); }
+.prop .regra input:checked + span::before { border: 4px solid var(--verde); }
+.prop .regra input:checked + span small { color: var(--verde-tinta); }
+.prop .regra input:focus-visible + span { outline: 2px solid var(--verde); outline-offset: 2px; }
+
+.prop .sufixo { position: relative; }
+.prop .sufixo input { padding-right: 40px; }
+.prop .sufixo > span { position: absolute; right: 12px; top: 0; line-height: var(--field-h); color: var(--muted); pointer-events: none; }
+.prop .prefixo { position: relative; }
+.prop .prefixo input { padding-left: 40px; }
+.prop .prefixo > span { position: absolute; left: 12px; top: 0; line-height: var(--field-h); color: var(--muted); pointer-events: none; }
+.prop .campo input.num { text-align: right; font-variant-numeric: tabular-nums; }
+.prop .campo input.cod { font-family: var(--mono); font-size: 14px; }
+.prop .checar { display: flex; align-items: center; gap: 8px; min-height: var(--field-h); cursor: pointer; }
+.prop .checar input { width: 16px; height: 16px; margin: 0; accent-color: var(--verde); }
+.prop .kv-pessoa { grid-column: 1 / -1; }
+
+.prop .tabela .placa-cel { display: flex; align-items: center; gap: 12px; }
+.prop .tabela .placa-cel .txt { min-width: 0; }
+.prop .sem-contrato { color: var(--laranja-tinta); }
+
+.prop-nao-achou { display: grid; gap: 16px; max-width: 640px; }
+.prop-nao-achou .acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.prop .ficha-leitura { border: 0; padding: 0; margin: 0; min-width: 0; }
+.prop .rodape-apoio { margin-top: 16px; }
+
+@media (max-width: 1100px) {
+  .prop .tabela .some-tablet { display: none; }
+  /* 9 abas não cabem: quebram em duas linhas em vez de esconder abas fora da faixa */
+  .prop .abas { flex-wrap: wrap; column-gap: 20px; row-gap: 0; overflow: visible; }
+  .prop .p-estreito { display: inline; }
+  .prop .cab-ficha .acoes { margin-left: 0; width: 100%; }
+}
+@media (max-width: 640px) {
+  .prop .p-cel, .prop .tabela .linha2.p-cel { display: block; }
+  .prop .abas { -webkit-mask-image: none; mask-image: none; padding-right: 0; }
+  .prop .tipos { grid-template-columns: minmax(0, 1fr); }
+  .prop .tabela .col-prop { width: auto; }
+  .prop .rodape-form { flex-wrap: wrap; }
+  .prop .rodape-form .resumo { width: 100%; }
+  .prop .rodape-form .btn { flex: 1 1 0; }
+  .prop .passos-previa li { grid-template-columns: 24px minmax(0, 1fr); }
+  .prop .passos-previa li span { grid-column: 2; }
+}
