@@ -488,6 +488,7 @@ export type Database = {
           observacao: string | null
           optante_simples: boolean | null
           pai: string | null
+          qualificacao_inss: string | null
           raca_cor: Database["public"]["Enums"]["raca_cor"] | null
           rg: string | null
           rg_emissao: string | null
@@ -530,6 +531,7 @@ export type Database = {
           observacao?: string | null
           optante_simples?: boolean | null
           pai?: string | null
+          qualificacao_inss?: string | null
           raca_cor?: Database["public"]["Enums"]["raca_cor"] | null
           rg?: string | null
           rg_emissao?: string | null
@@ -572,6 +574,7 @@ export type Database = {
           observacao?: string | null
           optante_simples?: boolean | null
           pai?: string | null
+          qualificacao_inss?: string | null
           raca_cor?: Database["public"]["Enums"]["raca_cor"] | null
           rg?: string | null
           rg_emissao?: string | null
@@ -902,6 +905,8 @@ export type Database = {
           enquadramento_antt:
             | Database["public"]["Enums"]["enquadramento_antt"]
             | null
+          frete_empresa_motorista_percentual: number | null
+          frete_empresa_motorista_valor: number | null
           limite_adiantamento_percentual: number | null
           limite_adiantamento_valor: number | null
           pessoa_id: string
@@ -931,6 +936,8 @@ export type Database = {
           enquadramento_antt?:
             | Database["public"]["Enums"]["enquadramento_antt"]
             | null
+          frete_empresa_motorista_percentual?: number | null
+          frete_empresa_motorista_valor?: number | null
           limite_adiantamento_percentual?: number | null
           limite_adiantamento_valor?: number | null
           pessoa_id: string
@@ -960,6 +967,8 @@ export type Database = {
           enquadramento_antt?:
             | Database["public"]["Enums"]["enquadramento_antt"]
             | null
+          frete_empresa_motorista_percentual?: number | null
+          frete_empresa_motorista_valor?: number | null
           limite_adiantamento_percentual?: number | null
           limite_adiantamento_valor?: number | null
           pessoa_id?: string
@@ -1376,6 +1385,17 @@ export type Database = {
         }
         Relationships: []
       }
+      v_vencimentos: {
+        Row: {
+          arquivo_id: string | null
+          data: string | null
+          dias: number | null
+          pessoa_id: string | null
+          tipo: string | null
+          veiculo_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       arquivo_restrito: { Args: { p_path: string }; Returns: boolean }
@@ -1386,7 +1406,28 @@ export type Database = {
       }
       cnpj_valido: { Args: { p: string }; Returns: boolean }
       cpf_valido: { Args: { p: string }; Returns: boolean }
+      definir_perfil: {
+        Args: {
+          p_ativo: boolean
+          p_nome: string
+          p_papel: Database["public"]["Enums"]["app_papel"]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       eh_admin: { Args: never; Returns: boolean }
+      encerrar_conjunto: { Args: { p_conjunto_id: string }; Returns: undefined }
+      listar_usuarios: {
+        Args: never
+        Returns: {
+          ativo: boolean
+          email: string
+          nome: string
+          papel: Database["public"]["Enums"]["app_papel"]
+          ultimo_acesso: string
+          user_id: string
+        }[]
+      }
       normalizar_placa: { Args: { p: string }; Returns: string }
       papel_atual: {
         Args: never
@@ -1398,6 +1439,15 @@ export type Database = {
       registrar_visualizacao: {
         Args: { p_arquivo: string }
         Returns: undefined
+      }
+      salvar_conjunto: {
+        Args: {
+          p_cavalo_id: string
+          p_conjunto_id: string
+          p_itens: string[]
+          p_motorista_id: string
+        }
+        Returns: string
       }
       so_digitos: { Args: { p: string }; Returns: string }
       tem_papel: {
