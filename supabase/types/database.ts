@@ -1417,6 +1417,10 @@ export type Database = {
       }
       eh_admin: { Args: never; Returns: boolean }
       encerrar_conjunto: { Args: { p_conjunto_id: string }; Returns: undefined }
+      existe_arquivo_enviado: {
+        Args: { p_pessoa_id: string; p_tipo: string; p_veiculo_id: string }
+        Returns: boolean
+      }
       listar_usuarios: {
         Args: never
         Returns: {

@@ -166,6 +166,7 @@ end $$;
 create function tests.test_pendencia_arrendado() returns setof text language plpgsql as $$
 declare
   v_op uuid := tests.criar_usuario('op.pend@exemplo.test', 'operacao');
+  v_adm uuid := tests.criar_usuario('adm.pend@exemplo.test', 'admin');
   v_pos uuid := tests.novo_proprietario('52998224725');
   v_doc uuid := tests.novo_proprietario('11222333000181');
   v_arr uuid := tests.novo_veiculo(v_pos, v_doc);
@@ -193,9 +194,18 @@ begin
 
   insert into public.arquivo (tipo_arquivo_id, veiculo_id, storage_path)
   values (7, v_arr, 'veiculo/' || v_arr || '/contrato.pdf');
+  -- só a linha não basta: o objeto precisa estar no Storage (migration pendencias_arquivos)
   select count(*) into v_depois from public.v_pendencias_documentos
    where tipo_pendencia = 'veiculo_arrendado_sem_contrato' and veiculo_id = v_arr;
-  return next is(v_depois, 0::bigint, 'depois de inserir o CONTRATO a pendência some');
+  return next is(v_depois, 1::bigint, 'CONTRATO só com a linha (sem o objeto no Storage) não resolve a pendência');
+
+  -- (existe_arquivo_enviado só responde a quem tem pode_ler(): daqui em diante a view é lida como admin)
+  insert into storage.objects (bucket_id, name) values ('documentos', 'veiculo/' || v_arr || '/contrato.pdf');
+  perform tests.como(v_adm);
+  select count(*) into v_depois from public.v_pendencias_documentos
+   where tipo_pendencia = 'veiculo_arrendado_sem_contrato' and veiculo_id = v_arr;
+  perform tests.como_servico();
+  return next is(v_depois, 0::bigint, 'com o CONTRATO enviado a pendência some');
 end $$;
 
 create function tests.test_pendencia_arquivo_vencido() returns setof text language plpgsql as $$
@@ -225,8 +235,10 @@ end $$;
 
 create function tests.test_pendencia_motorista() returns setof text language plpgsql as $$
 declare
+  v_adm uuid := tests.criar_usuario('adm.mot@exemplo.test', 'admin');
   v_mot uuid := tests.novo_motorista('52998224725');
   v_outro uuid := tests.nova_pessoa('11144477735');  -- pessoa que não é motorista
+  v_cnh bigint; v_comp bigint; v_nenhuma bigint;
 begin
   return next is(
     (select count(*) from public.v_pendencias_documentos where tipo_pendencia = 'motorista_sem_cnh' and pessoa_id = v_mot),
@@ -239,17 +251,21 @@ begin
     0::bigint, 'pessoa que não é motorista não gera pendência de motorista');
 
   insert into public.arquivo (tipo_arquivo_id, pessoa_id, storage_path) values (5, v_mot, 'pessoa/' || v_mot || '/cnh.pdf');
-  return next is(
-    (select count(*) from public.v_pendencias_documentos where tipo_pendencia = 'motorista_sem_cnh' and pessoa_id = v_mot),
-    0::bigint, 'com arquivo CNH a pendência de CNH some');
-  return next is(
-    (select count(*) from public.v_pendencias_documentos where tipo_pendencia = 'motorista_sem_comprovante' and pessoa_id = v_mot),
-    1::bigint, 'a pendência de comprovante continua');
+  insert into storage.objects (bucket_id, name) values ('documentos', 'pessoa/' || v_mot || '/cnh.pdf');
+  -- (existe_arquivo_enviado só responde a quem tem pode_ler(): a view é lida como admin)
+  perform tests.como(v_adm);
+  select count(*) into v_cnh from public.v_pendencias_documentos where tipo_pendencia = 'motorista_sem_cnh' and pessoa_id = v_mot;
+  select count(*) into v_comp from public.v_pendencias_documentos where tipo_pendencia = 'motorista_sem_comprovante' and pessoa_id = v_mot;
+  perform tests.como_servico();
+  return next is(v_cnh, 0::bigint, 'com arquivo CNH enviado a pendência de CNH some');
+  return next is(v_comp, 1::bigint, 'a pendência de comprovante continua');
 
   insert into public.arquivo (tipo_arquivo_id, pessoa_id, storage_path) values (6, v_mot, 'pessoa/' || v_mot || '/comp.pdf');
-  return next is(
-    (select count(*) from public.v_pendencias_documentos where pessoa_id = v_mot and tipo_pendencia like 'motorista_sem_%'),
-    0::bigint, 'com CNH e comprovante, nenhuma pendência de motorista');
+  insert into storage.objects (bucket_id, name) values ('documentos', 'pessoa/' || v_mot || '/comp.pdf');
+  perform tests.como(v_adm);
+  select count(*) into v_nenhuma from public.v_pendencias_documentos where pessoa_id = v_mot and tipo_pendencia like 'motorista_sem_%';
+  perform tests.como_servico();
+  return next is(v_nenhuma, 0::bigint, 'com CNH e comprovante, nenhuma pendência de motorista');
 end $$;
 
 create function tests.test_visualizacao_auditada() returns setof text language plpgsql as $$
