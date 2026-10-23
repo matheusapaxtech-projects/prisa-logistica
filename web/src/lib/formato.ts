@@ -32,24 +32,30 @@ function cep(v: Nulo): string {
   return d.length === 8 ? d.replace(/(\d{5})(\d{3})/, "$1-$2") : v || "";
 }
 
-/** ISO (data ou data-hora) → dd/mm/aaaa; vazio → travessão. */
+/** Coluna `date` (string ISO "yyyy-mm-dd") → dd/mm/aaaa; vazio → travessão.
+   Só corta os 10 primeiros caracteres, sem converter fuso: para `timestamptz` use `dataHora`. */
 function data(iso: Nulo): string {
   if (!iso) return "—";
   const [a, m, d] = iso.slice(0, 10).split("-");
   return `${d}/${m}/${a}`;
 }
 
-/** ISO → "dd/mm/aaaa hh:mm" no fuso local. */
+/** Fuso fixo de exibição: o servidor (UTC) e o navegador têm de mostrar o mesmo horário. */
+const FUSO = "America/Sao_Paulo";
+
+/** Instante (`timestamptz` em ISO) → "dd/mm/aaaa hh:mm" no horário de Brasília,
+   independente do fuso do runtime. */
 function dataHora(iso: string): string {
   const d = new Date(iso);
   return (
-    d.toLocaleDateString("pt-BR") +
+    d.toLocaleDateString("pt-BR", { timeZone: FUSO }) +
     " " +
-    d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+    d.toLocaleTimeString("pt-BR", { timeZone: FUSO, hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
   );
 }
 
-/** "agora", "há 5 min", "há 3 h", "ontem", "há 5 dias". */
+/** "agora", "há 5 min", "há 3 h", "ontem", "há 5 dias". Conta o tempo decorrido (não o dia do
+   calendário), por isso não depende de fuso. */
 function relativo(iso: string): string {
   const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
   if (min < 1) return "agora";

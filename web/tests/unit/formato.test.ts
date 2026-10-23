@@ -33,9 +33,12 @@ describe("formato de datas", () => {
     expect(formato.data(null)).toBe("—");
     expect(formato.data("")).toBe("—");
   });
-  it("dataHora mostra data e hora locais", () => {
-    const iso = new Date(2026, 9, 23, 14, 5).toISOString();
-    expect(formato.dataHora(iso)).toBe("23/10/2026 14:05");
+  it("dataHora mostra o horário de Brasília, seja qual for o fuso do runtime", () => {
+    expect(formato.dataHora("2026-10-23T17:05:00Z")).toBe("23/10/2026 14:05");
+    // 02:30 UTC ainda é o dia anterior em Brasília; 03:05 UTC é meia-noite (sem "24:05").
+    expect(formato.dataHora("2026-10-24T02:30:00Z")).toBe("23/10/2026 23:30");
+    expect(formato.dataHora("2026-10-24T03:05:00Z")).toBe("24/10/2026 00:05");
+    expect(formato.dataHora("2026-10-23T17:05:00-03:00")).toBe("23/10/2026 17:05");
   });
 });
 
