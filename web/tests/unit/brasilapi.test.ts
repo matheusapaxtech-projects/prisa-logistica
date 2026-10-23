@@ -1,4 +1,10 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// As rotas exigem sessão (Task 4): cliente do servidor falso, com sessão por padrão.
+const getClaims = vi.fn();
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: vi.fn(async () => ({ auth: { getClaims } })),
+}));
 import { mapearCep, mapearCnpj } from "@/lib/brasilapi";
 import { GET as getCep } from "@/app/api/cep/[cep]/route";
 import { GET as getCnpj } from "@/app/api/cnpj/[cnpj]/route";
@@ -34,6 +40,11 @@ function ctxCep(cep: string) {
 const req = (caminho: string) => new Request(`http://localhost${caminho}`);
 const json = (corpo: unknown, status = 200) =>
   new Response(JSON.stringify(corpo), { status, headers: { "content-type": "application/json" } });
+
+beforeEach(() => {
+  getClaims.mockReset();
+  getClaims.mockResolvedValue({ data: { claims: { sub: "u-1" } }, error: null });
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -74,6 +85,22 @@ describe("mapearCep", () => {
     expect(
       mapearCep({ cep: "86800000", street: "Rua das Flores", neighborhood: "Centro", city: "Apucarana", state: "PR" }),
     ).toEqual({ logradouro: "Rua das Flores", bairro: "Centro", cidade: "Apucarana", uf: "PR" });
+  });
+});
+
+describe("sem sessão", () => {
+  const MSG_SESSAO = "Sua sessão expirou. Entre de novo; o que você digitou continua na tela.";
+  it("/api/cnpj e /api/cep respondem 401 em JSON sem chamar a BrasilAPI", async () => {
+    getClaims.mockResolvedValue({ data: null, error: null });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const rCnpj = await getCnpj(req("/api/cnpj/11222333000181"), ctxCnpj("11222333000181"));
+    expect(rCnpj.status).toBe(401);
+    expect(await rCnpj.json()).toEqual({ erro: MSG_SESSAO });
+    const rCep = await getCep(req("/api/cep/86800000"), ctxCep("86800000"));
+    expect(rCep.status).toBe(401);
+    expect(await rCep.json()).toEqual({ erro: MSG_SESSAO });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
