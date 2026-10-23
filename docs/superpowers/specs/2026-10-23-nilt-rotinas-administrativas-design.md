@@ -451,7 +451,7 @@ Segue a ordem de fases do design do NILT (seção 6), com estes acréscimos **[d
 | Fase do NILT | Entrega desta spec |
 |---|---|
 | 1 Cadastros (feita) + complemento | Tela **Hoje** com as filas da rotina 1; aptidão (4.4); trava/aviso/exceção (3.2) |
-| **Próxima entrega (antecipada, decisão A)** | Cadastros mínimos de cliente e local (4.5) para criar pedido; pedido e viagem (6.1, 6.2, 6.4, 6.5); **Quadro da operação (3.5)** com as 10 colunas e tempo real; chave do CT-e/MDF-e do ATUA para liberar "Em rota" (seção 7, paralelo); filas da rotina 3 na tela Hoje. Sem emissão fiscal, contrato ou GR do NILT ainda: a aptidão só confere cadastro (4.4); GR entra como aviso manual |
+| **Próxima entrega (antecipada, decisão A)** | Cadastros mínimos de cliente e local (4.5) para criar pedido; pedido e viagem (6.1, 6.2, 6.4, 6.5); **Quadro da operação (3.5)** com as 10 colunas e tempo real; para liberar "Em rota", a chave do CT-e/MDF-e do ATUA (seção 7, paralelo) e a confirmação "adiantamento e vale-pedágio pagos no ATUA" (quem e quando), já que o contrato ainda não está no NILT; filas da rotina 3 na tela Hoje. Sem emissão fiscal, contrato ou GR do NILT ainda: a aptidão só confere cadastro (4.4); GR entra como aviso manual |
 | 2 Frota | Rotina 6 (9.1 e 9.2 primeiro; pneus e acerto depois do estudo) |
 | 3 GR | Rotina 2 e a parte de GR da aptidão |
 | antes da 4 | Cadastros de 4.5 (cliente, local, seguradora, posto, produto) |
