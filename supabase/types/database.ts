@@ -101,6 +101,20 @@ export type Database = {
             foreignKeyName: "arquivo_viagem_id_fkey"
             columns: ["viagem_id"]
             isOneToOne: false
+            referencedRelation: "v_quadro"
+            referencedColumns: ["viagem_id"]
+          },
+          {
+            foreignKeyName: "arquivo_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "v_viagem_planejada"
+            referencedColumns: ["viagem_id"]
+          },
+          {
+            foreignKeyName: "arquivo_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
             referencedRelation: "viagem"
             referencedColumns: ["id"]
           },
@@ -1173,6 +1187,24 @@ export type Database = {
           },
         ]
       }
+      quadro_limite: {
+        Row: {
+          chave: string
+          minutos_ambar: number
+          minutos_vermelho: number
+        }
+        Insert: {
+          chave: string
+          minutos_ambar: number
+          minutos_vermelho: number
+        }
+        Update: {
+          chave?: string
+          minutos_ambar?: number
+          minutos_vermelho?: number
+        }
+        Relationships: []
+      }
       tipo_arquivo: {
         Row: {
           aplica_pessoa: boolean
@@ -1668,6 +1700,13 @@ export type Database = {
             referencedRelation: "pedido"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "viagem_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedido_saldo"
+            referencedColumns: ["pedido_id"]
+          },
         ]
       }
       viagem_evento: {
@@ -1702,6 +1741,20 @@ export type Database = {
           viagem_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "viagem_evento_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "v_quadro"
+            referencedColumns: ["viagem_id"]
+          },
+          {
+            foreignKeyName: "viagem_evento_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "v_viagem_planejada"
+            referencedColumns: ["viagem_id"]
+          },
           {
             foreignKeyName: "viagem_evento_viagem_id_fkey"
             columns: ["viagem_id"]
@@ -1750,6 +1803,20 @@ export type Database = {
             foreignKeyName: "viagem_ocorrencia_viagem_id_fkey"
             columns: ["viagem_id"]
             isOneToOne: false
+            referencedRelation: "v_quadro"
+            referencedColumns: ["viagem_id"]
+          },
+          {
+            foreignKeyName: "viagem_ocorrencia_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "v_viagem_planejada"
+            referencedColumns: ["viagem_id"]
+          },
+          {
+            foreignKeyName: "viagem_ocorrencia_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
             referencedRelation: "viagem"
             referencedColumns: ["id"]
           },
@@ -1784,6 +1851,20 @@ export type Database = {
           viagem_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "viagem_pausa_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "v_quadro"
+            referencedColumns: ["viagem_id"]
+          },
+          {
+            foreignKeyName: "viagem_pausa_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "v_viagem_planejada"
+            referencedColumns: ["viagem_id"]
+          },
           {
             foreignKeyName: "viagem_pausa_viagem_id_fkey"
             columns: ["viagem_id"]
@@ -1832,6 +1913,27 @@ export type Database = {
           },
         ]
       }
+      v_pedido_saldo: {
+        Row: {
+          numero: number | null
+          pedido_id: string | null
+          peso_alocado_kg: number | null
+          peso_total_kg: number | null
+          saldo_kg: number | null
+          situacao: Database["public"]["Enums"]["situacao_pedido"] | null
+          tomador_id: string | null
+          viagens: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedido_tomador_id_fkey"
+            columns: ["tomador_id"]
+            isOneToOne: false
+            referencedRelation: "cliente"
+            referencedColumns: ["pessoa_id"]
+          },
+        ]
+      }
       v_pendencias_documentos: {
         Row: {
           arquivo_id: string | null
@@ -1841,6 +1943,40 @@ export type Database = {
           veiculo_id: string | null
         }
         Relationships: []
+      }
+      v_quadro: {
+        Row: {
+          cavalo_placa: string | null
+          cliente_nome: string | null
+          destino_cidade: string | null
+          destino_uf: Database["public"]["Enums"]["uf"] | null
+          divergencia: Database["public"]["Enums"]["resultado_contagem"] | null
+          iniciada_por: string | null
+          motorista_nome: string | null
+          numero: number | null
+          ocorrencias_abertas: number | null
+          origem_cidade: string | null
+          origem_uf: Database["public"]["Enums"]["uf"] | null
+          pagamento_saida: boolean | null
+          pausa_inicio: string | null
+          pausa_programada: boolean | null
+          pausa_tipo: Database["public"]["Enums"]["tipo_pausa"] | null
+          status_campo: Database["public"]["Enums"]["status_campo"] | null
+          status_desde: string | null
+          tem_canhoto: boolean | null
+          tem_chaves: boolean | null
+          unidade_operacional_id: number | null
+          viagem_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "veiculo_unidade_operacional_id_fkey"
+            columns: ["unidade_operacional_id"]
+            isOneToOne: false
+            referencedRelation: "unidade_operacional"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_vencimentos: {
         Row: {
@@ -1852,6 +1988,36 @@ export type Database = {
           veiculo_id: string | null
         }
         Relationships: []
+      }
+      v_viagem_planejada: {
+        Row: {
+          aptidao: Json | null
+          avisos: number | null
+          cavalo_placa: string | null
+          cliente_nome: string | null
+          motorista_nome: string | null
+          numero: number | null
+          pedido_id: string | null
+          pedido_numero: number | null
+          travas: number | null
+          viagem_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "viagem_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedido"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "viagem_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedido_saldo"
+            referencedColumns: ["pedido_id"]
+          },
+        ]
       }
     }
     Functions: {
