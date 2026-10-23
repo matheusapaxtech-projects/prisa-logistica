@@ -1,0 +1,200 @@
+-- =============================================================================================
+-- LIMPEZA ANTES DA PRODUÇÃO: APAGA OS DADOS FICTÍCIOS, O QUE OS TESTES E2E CRIARAM E OS USUÁRIOS DE TESTE.
+-- =============================================================================================
+-- Para o responsável pelo NILT rodar UMA VEZ, no SQL Editor do Supabase (projeto tkfpbpqbnasabtzatojk),
+-- antes de começar a usar o sistema com dados reais. Ninguém roda isto automaticamente: não é
+-- migration e não foi executado durante o desenvolvimento.
+--
+-- ANTES DE RODAR (nesta ordem):
+--   1. Remova os objetos do Storage (o SQL não apaga arquivos do bucket):
+--        dentro de web/:  node scripts/dev-seed-storage.mjs --limpar
+--      (usa o administrador de teste, então rode ANTES deste script, que apaga esse usuário).
+--      Remove os PDFs fictícios da seed e qualquer documento anexado a pessoas/veículos da seed
+--      ou criados pelos testes E2E. A parte 2 abaixo para com erro se ainda sobrar objeto.
+--   2. Crie o primeiro administrador real (supabase/criar-primeiro-admin.sql) e confira que ele
+--      entra no sistema: depois desta limpeza os usuários de teste deixam de existir.
+--   3. Rode só a PARTE 1 (prévia, só leitura) e confira as contagens.
+--   4. Rode a PARTE 2 inteira (uma transação: ou apaga tudo, ou nada).
+--
+-- O QUE É APAGADO
+--   Seed (supabase/seed/dev_dados_ficticios.sql, ids fixos 00000000-0000-4000-8000-<12 dígitos>):
+--     pessoa ...000000000101 a ...112, veículo ...201 a ...221, conjunto ...301 a ...305; o resto da
+--     seed (motorista, proprietário, endereços, telefones, e-mails, referências, contas, Pix e
+--     arquivos 401-454) sai em cascata com a pessoa ou o veículo.
+--   Testes E2E (web/tests/e2e/*.spec.ts):
+--     pessoas com nome "E2E Motorista …" ou "E2E Proprietário …" (prefixo "E2E "), veículos com
+--     modelo "E2E Teste", e tudo o que pende deles (cascata). Conjuntos montados pelos testes sobre
+--     veículos da seed (o montador remonta o cavalo da seed) também saem: todo conjunto cujo cavalo,
+--     peça ou motorista esteja nesta limpeza. Sem isso o `on delete restrict` de conjunto/
+--     conjunto_item impediria apagar os veículos.
+--   Usuários de teste (auth.users + auth.identities + sessões em cascata + perfil_usuario):
+--     e2e00000-0000-4000-8000-000000000001  teste.admin@nilt.test      (admin)
+--     e2e00000-0000-4000-8000-000000000002  teste.semperfil@nilt.test  (sem perfil)
+--     e2e00000-0000-4000-8000-000000000003  teste.operacao@nilt.test   (operacao)
+--   Auditoria: as linhas sobre os registros apagados (inclusive as de "delete" que esta própria
+--   limpeza gera) e as linhas de ações feitas pelos usuários de teste.
+--
+-- O QUE NÃO É APAGADO: catálogos (tipos de veículo, marcas, bancos, tipos de arquivo…), cadastros
+-- reais e os usuários reais. Se algum cadastro real apontar para um proprietário/motorista da seed
+-- (ex.: veículo real com proprietário "TSC Transportes"), a parte 2 para com erro de chave
+-- estrangeira e nada é apagado: a prévia mostra esses casos em "bloqueios".
+-- =============================================================================================
+
+
+-- =============================================================================================
+-- PARTE 1: PRÉVIA (só leitura). Rode e confira antes da parte 2.
+-- =============================================================================================
+with
+pessoas as (
+  select id from public.pessoa
+  where id between '00000000-0000-4000-8000-000000000101' and '00000000-0000-4000-8000-000000000112'
+     or nome like 'E2E %'
+),
+veiculos as (
+  select id from public.veiculo
+  where id between '00000000-0000-4000-8000-000000000201' and '00000000-0000-4000-8000-000000000221'
+     or modelo = 'E2E Teste'
+),
+conjuntos as (
+  select c.id, c.fim from public.conjunto c
+  where c.id between '00000000-0000-4000-8000-000000000301' and '00000000-0000-4000-8000-000000000305'
+     or c.cavalo_id in (select id from veiculos)
+     or c.motorista_id in (select id from pessoas)
+     or exists (select 1 from public.conjunto_item i where i.conjunto_id = c.id and i.veiculo_id in (select id from veiculos))
+),
+usuarios as (
+  select id from auth.users
+  where id in ('e2e00000-0000-4000-8000-000000000001', 'e2e00000-0000-4000-8000-000000000002', 'e2e00000-0000-4000-8000-000000000003')
+)
+select o_que, quantos from (values
+  (1,  'pessoas (seed + E2E)',                (select count(*) from pessoas)),
+  (2,  '  das quais E2E',                     (select count(*) from public.pessoa where nome like 'E2E %')),
+  (3,  'motoristas (cascata)',                (select count(*) from public.motorista where pessoa_id in (select id from pessoas))),
+  (4,  'proprietários (cascata)',             (select count(*) from public.proprietario where pessoa_id in (select id from pessoas))),
+  (5,  'endereços/telefones/e-mails',         (select (select count(*) from public.pessoa_endereco where pessoa_id in (select id from pessoas))
+                                                    + (select count(*) from public.pessoa_telefone where pessoa_id in (select id from pessoas))
+                                                    + (select count(*) from public.pessoa_email where pessoa_id in (select id from pessoas)))),
+  (6,  'referências',                         (select count(*) from public.motorista_referencia where motorista_id in (select id from pessoas))),
+  (7,  'contas e chaves Pix',                 (select (select count(*) from public.pessoa_conta_bancaria where pessoa_id in (select id from pessoas))
+                                                    + (select count(*) from public.pessoa_chave_pix where pessoa_id in (select id from pessoas)))),
+  (8,  'veículos (seed + E2E)',               (select count(*) from veiculos)),
+  (9,  '  dos quais E2E',                     (select count(*) from public.veiculo where modelo = 'E2E Teste')),
+  (10, 'conjuntos (abertos + encerrados)',    (select count(*) from conjuntos)),
+  (11, '  abertos',                           (select count(*) from conjuntos where fim is null)),
+  (12, 'itens de conjunto',                   (select count(*) from public.conjunto_item where conjunto_id in (select id from conjuntos))),
+  (13, 'arquivos (linhas)',                   (select count(*) from public.arquivo where pessoa_id in (select id from pessoas) or veiculo_id in (select id from veiculos))),
+  (14, 'objetos ainda no Storage (deve ser 0)', (select count(*) from storage.objects o
+                                                  where o.bucket_id = 'documentos'
+                                                    and o.name in (select a.storage_path from public.arquivo a
+                                                                   where a.pessoa_id in (select id from pessoas) or a.veiculo_id in (select id from veiculos)))),
+  (15, 'usuários de teste',                   (select count(*) from usuarios)),
+  (16, 'perfis dos usuários de teste',        (select count(*) from public.perfil_usuario where user_id in (select id from usuarios))),
+  (17, 'auditoria feita pelos usuários de teste', (select count(*) from public.auditoria where usuario_id in (select id from usuarios))),
+  (18, 'bloqueios: veículos reais ligados a pessoas da limpeza (deve ser 0)',
+                                              (select count(*) from public.veiculo v
+                                               where v.id not in (select id from veiculos)
+                                                 and (v.proprietario_documento_id in (select id from pessoas)
+                                                      or v.proprietario_posse_id in (select id from pessoas)
+                                                      or v.ultimo_motorista_id in (select id from pessoas)))),
+  (19, 'usuários que NÃO são de teste (ficam)', (select count(*) from auth.users where id not in (select id from usuarios))),
+  (20, 'pessoas que ficam',                   (select count(*) from public.pessoa where id not in (select id from pessoas))),
+  (21, 'veículos que ficam',                  (select count(*) from public.veiculo where id not in (select id from veiculos)))
+) as t(ordem, o_que, quantos)
+order by ordem;
+
+
+-- =============================================================================================
+-- PARTE 2: LIMPEZA (uma transação). Selecione daqui até o `commit;` e rode de uma vez.
+-- =============================================================================================
+begin;
+
+-- Alvos (mesmos critérios da prévia), guardados antes de apagar.
+create temporary table limpeza_pessoa on commit drop as
+  select id from public.pessoa
+  where id between '00000000-0000-4000-8000-000000000101' and '00000000-0000-4000-8000-000000000112'
+     or nome like 'E2E %';
+
+create temporary table limpeza_veiculo on commit drop as
+  select id from public.veiculo
+  where id between '00000000-0000-4000-8000-000000000201' and '00000000-0000-4000-8000-000000000221'
+     or modelo = 'E2E Teste';
+
+create temporary table limpeza_conjunto on commit drop as
+  select c.id from public.conjunto c
+  where c.id between '00000000-0000-4000-8000-000000000301' and '00000000-0000-4000-8000-000000000305'
+     or c.cavalo_id in (select id from limpeza_veiculo)
+     or c.motorista_id in (select id from limpeza_pessoa)
+     or exists (select 1 from public.conjunto_item i where i.conjunto_id = c.id and i.veiculo_id in (select id from limpeza_veiculo));
+
+create temporary table limpeza_usuario on commit drop as
+  select id from auth.users
+  where id in ('e2e00000-0000-4000-8000-000000000001', 'e2e00000-0000-4000-8000-000000000002', 'e2e00000-0000-4000-8000-000000000003');
+
+-- Para a auditoria: (tabela, registro_id) de tudo o que vai sair, no formato do gatilho fn_auditoria
+-- (chave primária; chave composta unida por ':').
+create temporary table limpeza_registro (tabela text, registro_id text) on commit drop;
+insert into limpeza_registro
+  select 'pessoa', id::text from limpeza_pessoa
+  union all select 'motorista', pessoa_id::text from public.motorista where pessoa_id in (select id from limpeza_pessoa)
+  union all select 'proprietario', pessoa_id::text from public.proprietario where pessoa_id in (select id from limpeza_pessoa)
+  union all select 'pessoa_endereco', id::text from public.pessoa_endereco where pessoa_id in (select id from limpeza_pessoa)
+  union all select 'pessoa_telefone', id::text from public.pessoa_telefone where pessoa_id in (select id from limpeza_pessoa)
+  union all select 'pessoa_email', id::text from public.pessoa_email where pessoa_id in (select id from limpeza_pessoa)
+  union all select 'motorista_referencia', id::text from public.motorista_referencia where motorista_id in (select id from limpeza_pessoa)
+  union all select 'pessoa_conta_bancaria', id::text from public.pessoa_conta_bancaria where pessoa_id in (select id from limpeza_pessoa)
+  union all select 'pessoa_chave_pix', id::text from public.pessoa_chave_pix where pessoa_id in (select id from limpeza_pessoa)
+  union all select 'veiculo', id::text from limpeza_veiculo
+  union all select 'conjunto', id::text from limpeza_conjunto
+  union all select 'conjunto_item', conjunto_id::text || ':' || posicao::text from public.conjunto_item where conjunto_id in (select id from limpeza_conjunto)
+  union all select 'arquivo', id::text from public.arquivo
+            where pessoa_id in (select id from limpeza_pessoa) or veiculo_id in (select id from limpeza_veiculo)
+  union all select 'perfil_usuario', id::text from limpeza_usuario;
+
+-- Trava: objetos do Storage precisam sair antes (node web/scripts/dev-seed-storage.mjs --limpar).
+do $$
+begin
+  if exists (
+    select 1 from storage.objects o
+    join public.arquivo a on a.storage_path = o.name
+    where o.bucket_id = 'documentos'
+      and (a.pessoa_id in (select id from limpeza_pessoa) or a.veiculo_id in (select id from limpeza_veiculo))
+  ) then
+    raise exception 'Ainda há documentos destes cadastros no Storage. Rode antes, dentro de web/: node scripts/dev-seed-storage.mjs --limpar';
+  end if;
+end $$;
+
+-- 1. Conjuntos (os itens saem em cascata). Antes dos veículos e motoristas: on delete restrict.
+delete from public.conjunto where id in (select id from limpeza_conjunto);
+
+-- 2. Veículos (arquivos do veículo em cascata). Antes das pessoas: o veículo aponta para o
+--    proprietário (documento e posse) e para o último motorista com on delete restrict.
+delete from public.veiculo where id in (select id from limpeza_veiculo);
+
+-- 3. Pessoas: motorista, proprietário, endereços, telefones, e-mails, referências, contas, Pix e
+--    arquivos da pessoa saem em cascata.
+delete from public.pessoa where id in (select id from limpeza_pessoa);
+
+-- 4. Usuários de teste: perfil_usuario, auth.identities, sessões e fatores saem em cascata de
+--    auth.users; identities apagadas explicitamente antes, por clareza.
+delete from auth.identities where user_id in (select id from limpeza_usuario);
+delete from public.perfil_usuario where user_id in (select id from limpeza_usuario);
+delete from auth.users where id in (select id from limpeza_usuario);
+
+-- 5. Auditoria por último (os deletes acima também geraram linhas, com as mesmas chaves).
+delete from public.auditoria a
+using limpeza_registro r
+where a.tabela = r.tabela and a.registro_id = r.registro_id;
+delete from public.auditoria where usuario_id in (select id from limpeza_usuario);
+
+-- Conferência: tudo zerado (se algo sobrar, o erro desfaz a transação inteira).
+do $$
+begin
+  if exists (select 1 from public.pessoa where id in (select id from limpeza_pessoa))
+     or exists (select 1 from public.veiculo where id in (select id from limpeza_veiculo))
+     or exists (select 1 from public.conjunto where id in (select id from limpeza_conjunto))
+     or exists (select 1 from auth.users where id in (select id from limpeza_usuario)) then
+    raise exception 'A limpeza não apagou tudo; nada foi alterado.';
+  end if;
+end $$;
+
+commit;

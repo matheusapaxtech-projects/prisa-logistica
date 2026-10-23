@@ -8,13 +8,18 @@
 
    Uso (dentro de web/):
      node scripts/dev-seed-storage.mjs           envia os objetos que faltam
-     node scripts/dev-seed-storage.mjs --limpar  remove esses objetos (rode antes da produção)
+     node scripts/dev-seed-storage.mjs --limpar  remove esses objetos e os dos documentos que os testes
+                                                 E2E anexaram (rode antes de supabase/seed/limpar_dados_ficticios.sql)
 
    - Lê NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY de web/.env.local e
      E2E_EMAIL/E2E_SENHA (o administrador de teste) de web/.env.test.local.
    - Entra como esse administrador com a chave publicável (nunca a service role): vale o RLS.
-   - Só toca nos ids do bloco `arquivo` da seed (00000000-0000-4000-8000-000000000401 a ...454,
+   - O envio só toca nos ids do bloco `arquivo` da seed (00000000-0000-4000-8000-000000000401 a ...454,
      ver o cabeçalho do arquivo da seed). Envio com upsert: false; "já existe" conta como ok.
+   - --limpar remove também os objetos de qualquer outra linha de `arquivo` ligada ao que a limpeza
+     SQL apaga: pessoas e veículos da seed (blocos 1xx e 2xx) e os criados pelos testes E2E (pessoa
+     com nome "E2E …", veículo com modelo "E2E Teste"). Depois que a linha some, o objeto fica
+     invisível (a leitura do Storage exige a linha): por isso este passo vem antes do SQL.
    - A remoção é pela API do Storage (DELETE em storage.objects por SQL é bloqueado).
    - Nunca imprime a senha nem tokens.
    ============================================================================================= */
@@ -96,8 +101,36 @@ const bucket = supabase.storage.from("documentos");
 let ok = 0;
 let falhas = 0;
 
+/** Linhas de `arquivo` dos alvos da limpeza SQL que não são do bloco da seed (ex.: anexadas pelos E2E). */
+async function arquivosDosTestes() {
+  const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+  const pessoasSeed = Array.from({ length: 12 }, (_, i) => id(101 + i));
+  const veiculosSeed = Array.from({ length: 21 }, (_, i) => id(201 + i));
+  const [pE2e, vE2e] = await Promise.all([
+    supabase.from("pessoa").select("id").like("nome", "E2E %"),
+    supabase.from("veiculo").select("id").eq("modelo", "E2E Teste"),
+  ]);
+  for (const r of [pE2e, vE2e]) if (r.error) throw new Error(r.error.message);
+  const pessoas = [...pessoasSeed, ...pE2e.data.map((r) => r.id)];
+  const veiculos = [...veiculosSeed, ...vE2e.data.map((r) => r.id)];
+  const [porPessoa, porVeiculo] = await Promise.all([
+    supabase.from("arquivo").select("id, storage_path").in("pessoa_id", pessoas),
+    supabase.from("arquivo").select("id, storage_path").in("veiculo_id", veiculos),
+  ]);
+  for (const r of [porPessoa, porVeiculo]) if (r.error) throw new Error(r.error.message);
+  return [...porPessoa.data, ...porVeiculo.data].filter((l) => !IDS.includes(l.id));
+}
+
 if (process.argv.includes("--limpar")) {
-  const caminhos = linhas.map((l) => l.storage_path);
+  let extras;
+  try {
+    extras = await arquivosDosTestes();
+  } catch (e) {
+    console.error(`Falha ao ler os arquivos dos testes: ${e.message}`);
+    process.exit(1);
+  }
+  console.log(`${extras.length} outras linhas de arquivo (anexadas pelos testes) entram na remoção.`);
+  const caminhos = [...new Set([...linhas, ...extras].map((l) => l.storage_path))];
   for (let i = 0; i < caminhos.length; i += 50) {
     const { data, error: e } = await bucket.remove(caminhos.slice(i, i + 50));
     if (e) {

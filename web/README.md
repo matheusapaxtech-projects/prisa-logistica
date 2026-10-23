@@ -1,36 +1,151 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NILT — sistema web (fase 1)
 
-## Getting Started
+TMS próprio da Prisa Logística: motoristas, proprietários, veículos, conjuntos, pendências,
+documentos, usuários e auditoria. Next.js 16 (App Router) ligado ao banco Supabase do NILT
+(projeto `tkfpbpqbnasabtzatojk`). O visual segue o protótipo aprovado (`../prototipo/`) e o
+`../DESIGN.md`.
 
-First, run the development server:
+## Requisitos
+
+- Node.js 24 (testado com 24.14) e npm.
+- Acesso ao projeto Supabase do NILT (para pegar a URL e a chave publicável).
+- Para os testes de ponta a ponta: o Chromium do Playwright (`npx playwright install chromium`).
+
+## Como rodar
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd web
+npm install
+cp .env.example .env.local   # e preencha os dois valores
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`web/.env.local` (nunca vai para o git) tem só duas variáveis públicas:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variável | O que é |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | URL do projeto (`https://tkfpbpqbnasabtzatojk.supabase.co`) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | chave publicável do projeto (painel do Supabase → Project Settings → API Keys) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+O app **nunca** usa a chave secreta (service role): toda leitura e gravação passa pelo login do
+usuário e pelas regras de acesso (RLS) do banco.
 
-## Learn More
+Outros comandos: `npm run build` (build de produção), `npm run start` (serve o build),
+`npm run lint`.
 
-To learn more about Next.js, take a look at the following resources:
+## Testes
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Comando | O que roda |
+|---|---|
+| `npm test` | testes unitários (Vitest, `tests/unit/`) |
+| `npm run test:e2e` | testes de ponta a ponta (Playwright, `tests/e2e/*.spec.ts`) contra o banco de desenvolvimento |
+| `npm run test:prints` | prints de todas as rotas em 1440, 768 e 390 ao lado do protótipo (`tests/e2e/rotas.prints.ts`) |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Os testes E2E precisam de `web/.env.test.local` (nunca vai para o git) com as credenciais dos
+  usuários de teste: `E2E_EMAIL`/`E2E_SENHA` (administrador), `E2E_SEMPERFIL_EMAIL`/`E2E_SEMPERFIL_SENHA`
+  (sem perfil) e `E2E_OPERACAO_EMAIL`/`E2E_OPERACAO_SENHA` (operação). Sem elas os testes se pulam.
+- O Playwright sobe sozinho o servidor de produção (`npm run build && npm run start`) na porta 3000;
+  se já houver um `npm run dev` aberto na 3000, ele é reaproveitado.
+- O administrador de teste entra **uma vez** por execução (`tests/e2e/sessao.setup.ts`, sessão em
+  `tests/e2e/.sessao/`, fora do git) e os specs reaproveitam essa sessão: o Supabase Auth limita os
+  logins por IP e, com um login por teste, duas execuções seguidas recebiam HTTP 429.
+- Os testes E2E são re-executáveis e não apagam nada: o que criam leva o prefixo `E2E ` no nome
+  (ou modelo `E2E Teste` no veículo), CPF e placa aleatórios. Isso some com o script de limpeza
+  abaixo.
+- `npm run test:prints` fica fora da suíte padrão porque abre o protótipo por `file://`, que carrega
+  os ícones (lucide) da internet. Os prints vão para `tests/e2e/prints/fase1/` (fora do git).
+- Testes do banco (pgTAP): `../supabase/tests/README.md`.
 
-## Deploy on Vercel
+## Primeiro administrador
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. No painel do Supabase, **Authentication → Users → Add user**: crie a conta (e-mail e senha) de
+   quem vai administrar o NILT.
+2. No SQL Editor do painel, abra `../supabase/criar-primeiro-admin.sql`, troque `<nome>` e `<email>`
+   e execute.
+3. Entre no sistema com essa conta. As próximas pessoas são criadas do mesmo jeito (passo 1) e
+   aparecem em **Usuários** como "Sem acesso definido": o administrador escolhe o papel ali
+   (admin, operação, financeiro ou leitura).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Antes de usar com dados reais (limpeza do ambiente)
+
+O projeto Supabase atual é o mesmo que vai para produção, e hoje ele tem dados fictícios:
+
+- **Seed de desenvolvimento** (`../supabase/seed/dev_dados_ficticios.sql`): os dados do protótipo
+  (12 pessoas, 15 veículos, 5 conjuntos, 27 documentos…), com ids fixos `00000000-0000-4000-8000-…`.
+- **PDFs fictícios no Storage**, um para cada documento da seed, enviados por
+  `node scripts/dev-seed-storage.mjs` (dentro de `web/`).
+- **O que os testes E2E criaram** (pessoas "E2E …", veículos "E2E Teste", conjuntos montados nos
+  veículos da seed).
+- **Três usuários de teste**, que precisam ser apagados:
+
+  | Usuário | Id | Papel |
+  |---|---|---|
+  | `teste.admin@nilt.test` | `e2e00000-0000-4000-8000-000000000001` | admin |
+  | `teste.semperfil@nilt.test` | `e2e00000-0000-4000-8000-000000000002` | sem perfil |
+  | `teste.operacao@nilt.test` | `e2e00000-0000-4000-8000-000000000003` | operação |
+
+Para limpar, nesta ordem:
+
+1. Crie o primeiro administrador real (seção acima) e confira que ele entra.
+2. Dentro de `web/`: `node scripts/dev-seed-storage.mjs --limpar` — remove do Storage os PDFs da
+   seed e os documentos anexados pelos testes (usa o administrador de teste, por isso vem antes).
+3. No SQL Editor do Supabase, abra `../supabase/seed/limpar_dados_ficticios.sql`: rode a **parte 1**
+   (prévia, só leitura) e confira as contagens; depois rode a **parte 2** inteira (uma transação:
+   apaga tudo ou nada; para com erro se ainda houver arquivo no Storage ou se algum cadastro real
+   depender de um registro fictício).
+4. Apague `web/.env.test.local`: as credenciais deixam de valer.
+
+## Como o sistema se comporta (decisões aceitas)
+
+- **Fichas:** os campos simples (dados pessoais, CNH, ANTT, CRLV…) são gravados pela barra
+  "Salvar alterações". Os itens de lista — contatos (endereço, telefone, e-mail), referências,
+  contas, chaves Pix e documentos — são **gravados na hora**, em cada diálogo de inclusão, sem
+  esperar o "Salvar".
+- **Consulta de CEP e CNPJ:** BrasilAPI primeiro; se ela falhar, ViaCEP (CEP) e ReceitaWS (CNPJ).
+  Cada provedor tem até 8 segundos, então a consulta pode levar até 16 segundos antes de dizer
+  "A consulta não respondeu". "Não encontrado" só aparece quando todos os provedores dizem que o
+  CEP/CNPJ não existe.
+- **Documentos restritos** (ex.: contrato de arrendamento, CNH marcada como restrita) só abrem para
+  o administrador, mas **contam como anexados** para as pendências de todo mundo: a operação não vê
+  o arquivo, e também não vê uma pendência falsa de "sem contrato" / "sem CNH".
+- Um documento só conta como anexado depois que o arquivo chegou ao Storage (um envio que falhou
+  aparece como "envio falhou" e a pendência continua).
+- Abrir um documento sempre registra quem viu e quando (Auditoria → "Quem viu documentos").
+- **Conjuntos:** "Trocar peças" encerra o conjunto e abre outro (fica no histórico); "Trocar
+  motorista" muda o motorista no próprio conjunto (a troca fica só na Auditoria). Um cavalo com
+  conjunto aberto não aparece livre no montador: mude pela ficha do conjunto.
+- A regra de 18 anos na data de nascimento vale no cadastro novo de motorista, não na ficha.
+
+## Limitações conhecidas
+
+- **Listas grandes:** as listas de veículos, motoristas e proprietários e as contagens carregam
+  todos os registros (a de veículos mostra até 300 linhas); com milhares de cadastros será preciso
+  levar filtros e contagens para o banco.
+- **Duas pessoas na mesma ficha:** o "Salvar" regrava todos os campos simples da ficha; quem salvar
+  por último prevalece.
+- **Auditoria:** a tela carrega até 500 eventos por filtro e ainda não tem índice por data (fica
+  mais lenta com o tempo); o histórico da ficha mostra até 200 alterações.
+- **Busca de proprietário** no veículo diferencia acentos ("Ivai" não acha "Ivaí").
+- **CNPJ alfanumérico** (novo formato da Receita a partir de 2026) ainda não é aceito, nem no app nem
+  no banco.
+- **Leitura direta do Storage:** um usuário logado que use a API do Supabase por fora do sistema
+  consegue baixar um documento sem passar pelo registro de "quem viu" (fechar isso exige uma Edge
+  Function com a chave secreta).
+- **Montagem simultânea do mesmo cavalo:** em uma colisão de menos de um segundo entre duas pessoas,
+  um conjunto pode ser encerrado pelo outro (fica visível no histórico).
+- **Senha vazada:** a proteção contra senhas vazadas do Supabase Auth (aviso do painel) está
+  desligada; dá para ligar nas opções de senha do provedor Email, em Authentication no painel
+  (recurso dos planos pagos).
+- Na seed de desenvolvimento, "desde" de alguns conjuntos aparece um dia antes (data gravada à
+  meia-noite UTC); dados reais não têm esse efeito.
+
+## O que fica para depois
+
+- **Deploy na Vercel:** só com a confirmação do responsável. Configure as duas variáveis
+  `NEXT_PUBLIC_SUPABASE_*` no projeto da Vercel e acrescente a URL do site em Authentication →
+  URL Configuration no Supabase.
+- **Supabase CLI:** as migrations foram aplicadas pelo MCP, que grava versões com a data da
+  aplicação (diferentes dos nomes em `../supabase/migrations/`). Antes de qualquer
+  `supabase db push` ou outro comando do CLI, rode `supabase migration repair` para alinhar o
+  histórico (detalhes em `../supabase/tests/README.md`), senão o CLI tenta reaplicar tudo.
+- App do motorista (Expo) e as fases seguintes (frota, risco, CT-e, financeiro).
