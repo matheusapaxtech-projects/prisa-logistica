@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useState, useTransition, type FormEvent } from "react";
+import { useId, useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { CircleAlert, Eye, Lock, RotateCw, Trash2, Upload } from "lucide-react";
-import { LIMITE_BYTES, TIPOS_ACEITOS, mimeDoArquivo, type DonoArquivo } from "@/lib/arquivos";
+import { TIPOS_ACEITOS, erroDoArquivo, mimeDoArquivo, type DonoArquivo } from "@/lib/arquivos";
 import { formato } from "@/lib/formato";
 import { createBrowserClient } from "@/lib/supabase/client";
 import { abrirDocumento, apagarDocumento, conferirDocumento, prepararEnvio } from "@/components/documentos-acoes";
@@ -40,6 +40,8 @@ type Props = {
   titulo: string;
   vazio: string;
   tipoSugerido?: string;
+  /** `id` da seção "Enviar documento" (para o botão "Anexar documento" da ficha rolar até ela). */
+  idEnvio?: string;
 };
 
 const MSG_FALHA_ENVIO =
@@ -53,17 +55,23 @@ async function enviarObjeto(caminho: string, arquivo: File): Promise<boolean> {
   return !error || /exists|duplicate/i.test(error.message);
 }
 
-function erroDoArquivo(arquivo: File | undefined): string | null {
-  if (!arquivo || !arquivo.size) return "Escolha o arquivo antes de enviar.";
-  if (arquivo.size > LIMITE_BYTES)
-    return `O arquivo tem ${formato.kb(arquivo.size)}; o limite é 20 MB. Reduza ou envie em partes.`;
-  if (!TIPOS_ACEITOS.split(",").includes(mimeDoArquivo(arquivo.name, arquivo.type)))
-    return "Envie o arquivo em PDF, JPG, PNG ou HEIC.";
-  return null;
-}
-
 /* Parte interativa de <Documentos> (marcação da aba Documentos de prototipo/motorista.html). */
-export function DocumentosLista({ dono, linhas, tipos, podeEditar, admin, nomeUsuario, titulo, vazio, tipoSugerido }: Props) {
+export function DocumentosLista({
+  dono,
+  linhas,
+  tipos,
+  podeEditar,
+  admin,
+  nomeUsuario,
+  titulo,
+  vazio,
+  tipoSugerido,
+  idEnvio,
+}: Props) {
+  // Ids únicos por instância: duas listas na mesma página não colidem.
+  const base = useId();
+  const id = (parte: string) => `${base}-${parte}`;
+  const campoArquivo = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [ocupado, iniciar] = useTransition();
   const [enviando, iniciarEnvio] = useTransition();
@@ -146,7 +154,7 @@ export function DocumentosLista({ dono, linhas, tipos, podeEditar, admin, nomeUs
     setErroGeral(null);
     setErroArquivo(erro);
     if (erro || !(arquivo instanceof File)) {
-      form.querySelector<HTMLInputElement>("#up-arquivo")?.focus();
+      campoArquivo.current?.focus();
       return;
     }
     iniciarEnvio(async () => {
@@ -301,8 +309,8 @@ export function DocumentosLista({ dono, linhas, tipos, podeEditar, admin, nomeUs
       </div>
 
       {podeEditar && (
-        <section className="subsecao bloco bloco-corpo" aria-labelledby="h-enviar" id="enviar">
-          <h2 id="h-enviar" className="enviar-titulo">
+        <section className="subsecao bloco bloco-corpo" aria-labelledby={id("h-enviar")} id={idEnvio ?? id("enviar")}>
+          <h2 id={id("h-enviar")} className="enviar-titulo">
             Enviar documento
           </h2>
           <form onSubmit={enviar} noValidate>
@@ -314,8 +322,8 @@ export function DocumentosLista({ dono, linhas, tipos, podeEditar, admin, nomeUs
                 </div>
               )}
               <div className="campo f4">
-                <label htmlFor="up-tipo">Tipo de arquivo</label>
-                <select id="up-tipo" name="tipo" defaultValue={sugerido}>
+                <label htmlFor={id("tipo")}>Tipo de arquivo</label>
+                <select id={id("tipo")} name="tipo" defaultValue={sugerido}>
                   {tipos.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.nome}
@@ -324,40 +332,45 @@ export function DocumentosLista({ dono, linhas, tipos, podeEditar, admin, nomeUs
                 </select>
               </div>
               <div className="campo f4">
-                <label htmlFor="up-validade">
+                <label htmlFor={id("validade")}>
                   Validade <span className="opcional">(opcional)</span>
                 </label>
-                <input id="up-validade" name="validade" type="date" />
+                <input id={id("validade")} name="validade" type="date" />
               </div>
               <div className="campo f4">
-                <label htmlFor="up-numero">
+                <label htmlFor={id("numero")}>
                   Número do documento <span className="opcional">(opcional)</span>
                 </label>
-                <input id="up-numero" name="numero" autoComplete="off" />
+                <input id={id("numero")} name="numero" autoComplete="off" />
               </div>
               <div className="campo f8" data-invalido={erroArquivo ? "" : undefined}>
-                <label htmlFor="up-arquivo">Arquivo</label>
+                <label htmlFor={id("arquivo")}>Arquivo</label>
                 <input
-                  id="up-arquivo"
+                  ref={campoArquivo}
+                  id={id("arquivo")}
                   name="arquivo"
                   type="file"
                   accept={TIPOS_ACEITOS}
-                  aria-describedby="up-arquivo-ajuda"
+                  aria-describedby={erroArquivo ? `${id("arquivo-ajuda")} ${id("arquivo-erro")}` : id("arquivo-ajuda")}
                   aria-invalid={erroArquivo ? true : undefined}
                   onChange={() => setErroArquivo(null)}
                 />
-                <span className="ajuda" id="up-arquivo-ajuda">
+                <span className="ajuda" id={id("arquivo-ajuda")}>
                   PDF, JPG, PNG ou HEIC, até 20 MB. Fica no armazenamento privado; cada abertura é registrada.
                 </span>
-                {erroArquivo && <span className="erro">{erroArquivo}</span>}
+                {erroArquivo && (
+                  <span className="erro" id={id("arquivo-erro")}>
+                    {erroArquivo}
+                  </span>
+                )}
               </div>
               {admin && (
                 <div className="campo f4">
                   <span className="rotulo" aria-hidden="true">
                     &nbsp;
                   </span>
-                  <label className="marcar" htmlFor="up-restrito">
-                    <input type="checkbox" id="up-restrito" name="restrito" />
+                  <label className="marcar" htmlFor={id("restrito")}>
+                    <input type="checkbox" id={id("restrito")} name="restrito" />
                     Restrito ao administrador
                   </label>
                 </div>

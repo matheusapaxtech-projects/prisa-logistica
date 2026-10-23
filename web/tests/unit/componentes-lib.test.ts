@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { sanitizarTermo, termoBusca } from "@/lib/busca";
-import { caminhoArquivo, nomeSeguro } from "@/lib/arquivos";
+import { caminhoArquivo, erroDoArquivo, mimeDoArquivo, nomeSeguro } from "@/lib/arquivos";
 import { resumoEvento } from "@/lib/auditoria";
 
 describe("busca global: sanitização do termo (vai para um filtro .or() do PostgREST)", () => {
@@ -31,6 +31,27 @@ describe("arquivos: caminho no Storage", () => {
   it("caminhoArquivo segue a convenção pessoa/<id>/<arquivo>-<nome> ou veiculo/…", () => {
     expect(caminhoArquivo({ pessoaId: "p1" }, "a1", "Comprovante.jpg")).toBe("pessoa/p1/a1-comprovante.jpg");
     expect(caminhoArquivo({ veiculoId: "v1" }, "a2", "crlv 2026.pdf")).toBe("veiculo/v1/a2-crlv-2026.pdf");
+  });
+});
+
+describe("arquivos: tipo e tamanho (M2)", () => {
+  it("mimeDoArquivo: usa o tipo do navegador; sem ele, a extensão conhecida; senão vazio", () => {
+    expect(mimeDoArquivo("x.pdf", "application/pdf")).toBe("application/pdf");
+    expect(mimeDoArquivo("foto.HEIC", "")).toBe("image/heic");
+    expect(mimeDoArquivo("foto.jpg", "")).toBe("image/jpeg");
+    expect(mimeDoArquivo("planilha.xlsx", "")).toBe("");
+    expect(mimeDoArquivo("sem-extensao", "")).toBe("");
+  });
+
+  it("erroDoArquivo: vazio, grande demais, tipo recusado, ok", () => {
+    expect(erroDoArquivo(undefined)).toBe("Escolha o arquivo antes de enviar.");
+    expect(erroDoArquivo({ name: "a.pdf", size: 0, type: "application/pdf" })).toBe("Escolha o arquivo antes de enviar.");
+    expect(erroDoArquivo({ name: "a.pdf", size: 25e6, type: "application/pdf" })).toBe(
+      "O arquivo tem 25 MB; o limite é 20 MB. Reduza ou envie em partes.",
+    );
+    expect(erroDoArquivo({ name: "a.xlsx", size: 10, type: "" })).toBe("Envie o arquivo em PDF, JPG, PNG ou HEIC.");
+    expect(erroDoArquivo({ name: "a.txt", size: 10, type: "text/plain" })).toBe("Envie o arquivo em PDF, JPG, PNG ou HEIC.");
+    expect(erroDoArquivo({ name: "a.heic", size: 10, type: "" })).toBeNull();
   });
 });
 

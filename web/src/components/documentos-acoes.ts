@@ -14,6 +14,7 @@ import { getPerfil, pode } from "@/lib/permissoes";
 const ID = z.guid();
 const SEM_PERMISSAO = { code: "42501", message: "row-level security" };
 
+const MSG_JA_CONFERIDO = "Este documento já foi conferido. Atualize a página para ver quem conferiu.";
 const MSG_ARQUIVO_AUSENTE =
   "Este documento não está no armazenamento: o envio não terminou. Use “Enviar de novo”.";
 
@@ -50,13 +51,15 @@ const Envio = z
 export type DadosEnvio = z.input<typeof Envio>;
 
 /** Grava a linha de `arquivo` (id gerado aqui) e devolve o caminho onde o navegador deve enviar o
-   objeto. `restrito` só vale para o administrador (para os demais é sempre falso). */
+   objeto. `restrito: true` só o administrador pode pedir: para os demais a ação recusa com
+   "Só o administrador pode fazer isso." (não grava nada). */
 export async function prepararEnvio(dados: DadosEnvio): Promise<ResultadoAcao<{ id: string; caminho: string }>> {
   const v = Envio.safeParse(dados);
   if (!v.success) return { ok: false, erro: "Confira o tipo e o arquivo: envie PDF, JPG, PNG ou HEIC de até 20 MB." };
   const e = v.data;
   return comSessao(async ({ supabase }) => {
     const admin = pode(await getPerfil(), "admin");
+    if (e.restrito && !admin) throw SEM_PERMISSAO;
     const id = crypto.randomUUID();
     const dono = e.pessoaId ? { pessoaId: e.pessoaId } : { veiculoId: e.veiculoId! };
     const caminho = caminhoArquivo(dono, id, e.nome);
@@ -73,21 +76,28 @@ export async function prepararEnvio(dados: DadosEnvio): Promise<ResultadoAcao<{ 
         tamanho_bytes: e.tamanho,
         validade: e.validade,
         numero: e.numero || null,
-        restrito: admin && e.restrito,
+        restrito: e.restrito,
       });
     if (error) throw error;
     return { id, caminho };
-  });
+  }, { somenteAdmin: e.restrito });
 }
 
-/** Marca o documento como conferido por quem está logado (validado_em/validado_por). */
+/** Marca o documento como conferido por quem está logado (validado_em/validado_por). Só confere o
+   que ainda não foi conferido: a primeira conferência fica (quem e quando). */
 export async function conferirDocumento(arquivoId: string): Promise<ResultadoAcao<void>> {
   if (!ID.safeParse(arquivoId).success) return { ok: false, erro: "Documento não encontrado." };
   return comSessao(async ({ supabase, userId }) => {
-    const { data, error } = await tipado(supabase)
+    const db = tipado(supabase);
+    const atual = await db.from("arquivo").select("validado_em").eq("id", arquivoId).maybeSingle();
+    if (atual.error) throw atual.error;
+    if (!atual.data) throw { code: "P0001", message: "Documento não encontrado." };
+    if (atual.data.validado_em) throw { code: "P0001", message: MSG_JA_CONFERIDO };
+    const { data, error } = await db
       .from("arquivo")
       .update({ validado_em: new Date().toISOString(), validado_por: userId })
       .eq("id", arquivoId)
+      .is("validado_em", null)
       .select("id");
     if (error) throw error;
     if (!data?.length) throw SEM_PERMISSAO;

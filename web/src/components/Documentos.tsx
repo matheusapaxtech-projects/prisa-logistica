@@ -17,13 +17,15 @@ type Props = Dono & {
   vazio?: string;
   /** Nome do tipo pré-selecionado no envio (ex.: "CNH", "CRLV"). */
   tipoSugerido?: string;
+  /** `id` da seção "Enviar documento" (alvo do botão "Anexar documento" da ficha). Padrão: um id gerado. */
+  idEnvio?: string;
 };
 
 /* Documentos de uma pessoa ou de um veículo (aba "Documentos" das fichas): lista com tipo, validade,
    conferência e acesso; abrir (registra a visualização e gera link de 60 s), conferir, enviar e,
    para o administrador, apagar e marcar como restrito. Linhas cujo objeto não está no Storage
    (envio interrompido) aparecem como "envio falhou", com "Enviar de novo". */
-export async function Documentos({ podeEditar, titulo, vazio, tipoSugerido, ...dono }: Props) {
+export async function Documentos({ podeEditar, titulo, vazio, tipoSugerido, idEnvio, ...dono }: Props) {
   const perfil = await getPerfil();
   const admin = pode(perfil, "admin");
   const supabase = await createClient();
@@ -52,12 +54,10 @@ export async function Documentos({ podeEditar, titulo, vazio, tipoSugerido, ...d
   // Sem conseguir listar o Storage, não acusa falha de envio em ninguém.
   const noStorage = objetos.error ? null : new Set((objetos.data ?? []).map((o) => o.name));
 
-  // Nome de quem conferiu: o RLS de perfil_usuario só mostra todos para o administrador;
-  // para os demais aparece o próprio nome (e "outro usuário" para os outros).
+  // Nome de quem conferiu: `nomes_usuarios` devolve só user_id e nome para quem tem pode_ler()
+  // (o RLS de perfil_usuario esconderia os outros usuários de quem não é admin).
   const conferentes = [...new Set((arquivos.data ?? []).map((a) => a.validado_por).filter((u): u is string => !!u))];
-  const perfis = conferentes.length
-    ? await db.from("perfil_usuario").select("user_id, nome").in("user_id", conferentes)
-    : null;
+  const perfis = conferentes.length ? await db.rpc("nomes_usuarios", { p_ids: conferentes }) : null;
   if (perfis?.error) throw perfis.error;
   const nomes = new Map((perfis?.data ?? []).map((p) => [p.user_id, p.nome]));
 
@@ -73,7 +73,7 @@ export async function Documentos({ podeEditar, titulo, vazio, tipoSugerido, ...d
       validade: a.validade,
       estado: e.cls,
       textoValidade: e.dias === null ? null : e.cls === "normal" ? "em dia" : formato.dias(e.dias),
-      conferidoPor: a.validado_por ? (nomes.get(a.validado_por) ?? "outro usuário") : null,
+      conferidoPor: a.validado_por ? (nomes.get(a.validado_por) ?? "usuário removido") : null,
       conferidoEm: a.validado_em ? formato.dataHora(a.validado_em).slice(0, 10) : null,
       restrito: a.restrito,
       caminho: a.storage_path,
@@ -93,6 +93,7 @@ export async function Documentos({ podeEditar, titulo, vazio, tipoSugerido, ...d
       titulo={titulo ?? "Documentos"}
       vazio={vazio ?? "Nenhum arquivo anexado."}
       tipoSugerido={tipoSugerido}
+      idEnvio={idEnvio}
     />
   );
 }

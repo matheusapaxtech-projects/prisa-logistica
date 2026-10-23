@@ -1,6 +1,7 @@
 /* Caminho dos documentos no bucket `documentos` (convenção da migration 0800 e do
    "Fluxo canônico de upload" em supabase/tests/README.md):
    pessoa/<pessoa_id>/<arquivo_id>-<nome> ou veiculo/<veiculo_id>/<arquivo_id>-<nome>. */
+import { formato } from "@/lib/formato";
 
 export type DonoArquivo = { pessoaId: string; veiculoId?: undefined } | { veiculoId: string; pessoaId?: undefined };
 
@@ -32,9 +33,27 @@ export function caminhoArquivo(dono: DonoArquivo, arquivoId: string, nome: strin
 export const LIMITE_BYTES = 20e6;
 export const TIPOS_ACEITOS = "application/pdf,image/jpeg,image/png,image/heic";
 
-/** MIME pelo nome quando o navegador não informa (HEIC costuma vir vazio). */
+/** MIME pelo nome quando o navegador não informa (HEIC costuma vir vazio). Extensão desconhecida → "". */
 export function mimeDoArquivo(nome: string, tipo: string): string {
   if (tipo) return tipo;
   const ext = nome.toLowerCase().split(".").pop();
-  return ext === "pdf" ? "application/pdf" : ext === "png" ? "image/png" : ext === "heic" ? "image/heic" : "image/jpeg";
+  const MIME: Record<string, string> = {
+    pdf: "application/pdf",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    heic: "image/heic",
+  };
+  return (ext && MIME[ext]) || "";
+}
+
+/** Confere um arquivo escolhido contra os limites do bucket (envio e "Enviar de novo").
+   Nulo = pode enviar; senão a frase do erro (textos do protótipo). */
+export function erroDoArquivo(arquivo: { name: string; size: number; type: string } | null | undefined): string | null {
+  if (!arquivo || !arquivo.size) return "Escolha o arquivo antes de enviar.";
+  if (arquivo.size > LIMITE_BYTES)
+    return `O arquivo tem ${formato.kb(arquivo.size)}; o limite é 20 MB. Reduza ou envie em partes.`;
+  if (!TIPOS_ACEITOS.split(",").includes(mimeDoArquivo(arquivo.name, arquivo.type)))
+    return "Envie o arquivo em PDF, JPG, PNG ou HEIC.";
+  return null;
 }

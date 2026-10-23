@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Sinal } from "@/components/Sinal";
 import { Placa } from "@/components/Placa";
@@ -146,6 +146,69 @@ describe("Campo", () => {
     expect(screen.getByText("Confira o número.")).toHaveClass("erro");
     fireEvent.input(input, { target: { value: "4199999888" } });
     expect(screen.queryByText("Confira o número.")).toBeNull();
+  });
+});
+
+describe("Campo (M7)", () => {
+  it("form.reset() limpa a validação e volta o valor inicial", () => {
+    const { container } = render(
+      <form>
+        <Campo label="CPF" name="cpf" mascara="cpf" valida="cpf" defaultValue="52998224725" />
+      </form>,
+    );
+    const input = screen.getByLabelText("CPF");
+    fireEvent.input(input, { target: { value: "52998224700" } });
+    fireEvent.blur(input);
+    expect(input.closest(".campo")).toHaveAttribute("data-invalido");
+    act(() => (container.querySelector("form") as HTMLFormElement).reset());
+    expect(input.closest(".campo")).not.toHaveAttribute("data-invalido");
+    expect(screen.queryByText(/CPF inválido/)).toBeNull();
+    expect(input).toHaveValue("529.982.247-25");
+  });
+
+  it("ajuda e erro entram no aria-describedby (junto com o que vier de fora)", () => {
+    render(<Campo id="tel" label="Telefone" ajuda="Com DDD." erro="Confira." aria-describedby="extra" />);
+    expect(screen.getByLabelText("Telefone")).toHaveAttribute("aria-describedby", "extra tel-ajuda tel-erro");
+    expect(screen.getByText("Com DDD.")).toHaveAttribute("id", "tel-ajuda");
+  });
+
+  it("com controle: erro externo some ao mudar o select e reset limpa", () => {
+    const { container } = render(
+      <form>
+        <Campo
+          id="uf"
+          label="UF"
+          erro="Escolha a UF."
+          controle={
+            <select id="uf" name="uf" defaultValue="">
+              <option value="">UF</option>
+              <option value="PR">PR</option>
+            </select>
+          }
+        />
+      </form>,
+    );
+    expect(screen.getByText("Escolha a UF.")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("UF"), { target: { value: "PR" } });
+    expect(screen.queryByText("Escolha a UF.")).toBeNull();
+    expect(container.querySelector(".campo")).not.toHaveAttribute("data-invalido");
+  });
+
+  it("controle com valida (ou sem id) é erro de uso em desenvolvimento", () => {
+    const erro = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(() => render(<Campo id="x" label="X" valida="cpf" controle={<select id="x" />} />)).toThrow(
+      "Campo: `mascara` e `valida` não funcionam com `controle`.",
+    );
+    expect(() => render(<Campo label="Y" controle={<select />} />)).toThrow("Campo: com `controle`, passe o `id` do controle.");
+    erro.mockRestore();
+  });
+
+  it("value é descartado: o campo continua não controlado", () => {
+    const props = { label: "Nome", name: "nome", value: "fixo" } as unknown as Parameters<typeof Campo>[0];
+    render(<Campo {...props} />);
+    const input = screen.getByLabelText("Nome");
+    fireEvent.input(input, { target: { value: "novo" } });
+    expect(input).toHaveValue("novo");
   });
 });
 
