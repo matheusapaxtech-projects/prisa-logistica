@@ -134,6 +134,10 @@ begin
   values (1, v_prop, 'teste/apoio/antt.pdf', current_date + 15);
   insert into public.arquivo (tipo_arquivo_id, veiculo_id, storage_path, validade)
   values (9, v_vei, 'teste/apoio/crlv.pdf', current_date + 7);
+  -- motorista cancelado: o arquivo CNH é o mesmo documento da linha de cadastro (que não conta); o CND não
+  insert into public.arquivo (tipo_arquivo_id, pessoa_id, storage_path, validade)
+  values (5, v_canc, 'teste/apoio/cnh-cancelado.pdf', current_date - 30),
+         (4, v_canc, 'teste/apoio/cnd-cancelado.pdf', current_date + 40);
 
   return next is(
     array(select tipo from public.v_vencimentos where pessoa_id = v_mot order by tipo),
@@ -143,8 +147,12 @@ begin
     (select dias from public.v_vencimentos where pessoa_id = v_mot and tipo = 'Consulta de risco'),
     5, 'consulta de risco: dias até a validade');
   return next is(
-    (select count(*) from public.v_vencimentos where pessoa_id = v_canc),
-    0::bigint, 'motorista com cadastro cancelado não gera vencimento');
+    (select count(*) from public.v_vencimentos where pessoa_id = v_canc and tipo in ('CNH', 'Consulta de risco')),
+    0::bigint, 'motorista cancelado: nem CNH e consulta de risco do cadastro nem o arquivo CNH viram vencimento');
+  return next is(
+    array(select tipo from public.v_vencimentos where pessoa_id = v_canc order by tipo),
+    array['CND'],
+    'motorista cancelado: arquivo de outro documento (CND) segue na lista');
   return next is(
     array(select tipo from public.v_vencimentos where pessoa_id = v_prop order by tipo),
     array['RNTRC'],
