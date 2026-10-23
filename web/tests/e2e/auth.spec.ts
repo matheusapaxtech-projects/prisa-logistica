@@ -41,7 +41,7 @@ test.describe("com usuários de teste", () => {
   test("login certo leva para /, e /login logado volta para /", async ({ page }) => {
     await entrar(page, E2E_EMAIL!, E2E_SENHA!);
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByLabel("Placa ABC1D23")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Início" })).toBeVisible();
     await page.goto("/login");
     await expect(page).toHaveURL(/\/$/);
   });
