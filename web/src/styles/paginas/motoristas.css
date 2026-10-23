@@ -1,0 +1,82 @@
+/* NILT — grupo Motoristas (/motoristas, /motoristas/novo, /motoristas/[id]).
+   Porta de prototipo/assets/paginas/motoristas.css sem o que já está em componentes.css
+   (validade, documentos, histórico, barra de salvar, campo de arquivo) e em paginas/pessoa.css
+   (diálogos, "novo", avisos de painel). */
+
+/* ---------- lista ---------- */
+.tabela .cel-pessoa { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.tabela .cel-pessoa > span:last-child { min-width: 0; }
+.tabela .cel-pessoa .id { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.x-tab, .tabela .linha2.x-cel-b, .tabela .linha2.x-tab-b { display: none; }
+.tabela .cod, .tabela .num { white-space: nowrap; }
+.filtro-gr { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.lista-vazia td { cursor: default; }
+.lista-vazia:hover { background: transparent !important; }
+.lista-vazia .vazio-bloco { margin: 12px 0; }
+
+/* ---------- novo motorista ---------- */
+.novo { max-width: 1040px; }
+.novo .resultado { margin-top: 8px; }
+
+/* ---------- ficha ---------- */
+.ficha-cab { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ficha-cab .sinais { display: flex; gap: 6px; flex-wrap: wrap; }
+.resumo { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); margin-bottom: var(--gap); }
+.resumo > div { padding: 16px 20px; min-width: 0; }
+.resumo > div + div { border-left: 1px solid var(--rule); }
+.resumo .kv { row-gap: 8px; }
+.resumo .kv dd { min-width: 0; }
+.resumo h2 { font-size: 14px; line-height: 20px; font-weight: 600; margin-bottom: 10px; }
+.resumo .veiculo-linha { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.resumo .engate { margin-top: 12px; }
+/* papel leitura: a ficha aparece inteira, sem edição */
+.ficha-leitura { border: 0; padding: 0; margin: 0; min-width: 0; }
+
+/* validade em destaque: marco de quilômetro da CNH e da gerenciadora */
+.marco-validade { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 24px; align-items: center; padding: 16px 20px; margin-bottom: var(--gap); }
+.marco-validade .placa-km {
+  display: grid; justify-items: center; align-content: center; min-width: 92px; padding: 8px 12px 10px;
+  border: 2px solid var(--ink); border-radius: 6px; background: #fff; line-height: 1;
+}
+.marco-validade .placa-km span { font-size: 12px; color: var(--muted); }
+.marco-validade .placa-km b { font-size: 28px; line-height: 32px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 4px; }
+.marco-validade .placa-km.vencendo { background: var(--amarelo); border-color: #1e2327; }
+.marco-validade .placa-km.vencendo span { color: var(--amarelo-tinta); }
+.marco-validade .placa-km.vencido { border-color: var(--vermelho); }
+.marco-validade .placa-km.vencido b { color: var(--vermelho-tinta); }
+.marco-validade .placa-km.normal { background: var(--verde); border-color: var(--verde); color: #fff; box-shadow: inset 0 0 0 2px var(--verde), inset 0 0 0 3px #fff; }
+.marco-validade .placa-km.normal span { color: #d8eee0; }
+.marco-validade .regua { display: grid; gap: 8px; }
+.marco-validade .regua b { font-weight: 600; }
+.marco-validade .trilho.ok i { background: var(--verde); }
+.marco-validade .escala { position: relative; height: 16px; font-size: 12px; line-height: 16px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.marco-validade .escala span { position: absolute; top: 0; white-space: nowrap; }
+.marco-validade .escala .meio { transform: translateX(-50%); }
+.marco-validade .trilho { position: relative; }
+.marco-validade .corte { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); border-radius: 1px; }
+.marco-validade .fim { text-align: right; }
+.marco-validade .fim b { display: block; font-size: 16px; font-weight: 600; }
+.marco-validade .fim span { font-size: 13px; color: var(--muted); }
+
+/* erro amigável (motorista não encontrado / pessoa que não é motorista) */
+.erro-ficha { padding: 24px; display: grid; gap: 16px; justify-items: start; align-content: start; }
+.erro-ficha h2 { font-size: var(--fs-section); }
+.erro-ficha p { color: var(--muted); }
+.marco.erro-item { grid-template-columns: minmax(0, 1fr) auto; }
+.erro-ficha .acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+
+@media (max-width: 1100px) {
+  .x-tab { display: inline; }
+  .tabela .linha2.x-tab-b { display: block; }
+  .tabela .col-tab { display: none; }
+  .resumo { grid-template-columns: minmax(0, 1fr); }
+  .resumo > div + div { border-left: 0; border-top: 1px solid var(--rule); }
+}
+@media (max-width: 640px) {
+  .tabela .linha2.x-cel-b { display: block; }
+  .filtro-gr { width: 100%; }
+  .filtro-gr select { flex: 1; min-width: 0; }
+  .tabela .cel-pessoa .avatar { display: none; }
+  .marco-validade { grid-template-columns: auto minmax(0, 1fr); gap: 16px; }
+  .marco-validade .regua { grid-column: 1 / -1; grid-row: 2; }
+}

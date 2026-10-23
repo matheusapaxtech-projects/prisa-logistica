@@ -1,0 +1,33 @@
+/* NILT — partes de pessoa compartilhadas pelas fichas e telas "novo" de motorista e proprietário
+   (src/app/(app)/_pessoa). Porta das regras de prototipo/assets/paginas/motoristas.css usadas por
+   essas partes; o que <Documentos>/<Historico> usam já está em componentes.css. */
+
+/* diálogos de inclusão */
+.dialogo .campos { gap: 16px; }
+.dialogo { width: min(640px, calc(100vw - 32px)); }
+.btn-link { background: none; border: 0; padding: 0; color: var(--azul); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.marcas { display: flex; gap: 20px; flex-wrap: wrap; }
+
+/* avisos no topo de um painel */
+.pendencias-ficha { display: grid; gap: 8px; margin-bottom: var(--gap); }
+.pendencias-ficha:empty { display: none; }
+
+/* tela "novo": pessoa achada pelo documento e o pé do formulário */
+.achado-pessoa { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 16px 20px; }
+.achado-pessoa .avatar { width: 40px; height: 40px; font-size: 14px; }
+.achado-pessoa b { display: block; font-weight: 600; }
+.achado-pessoa .sub { color: var(--muted); font-size: 13px; }
+.acoes-achado { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.aviso-ligar { margin-top: 12px; }
+.acoes-nota { margin-right: auto; align-self: center; }
+.campo input:disabled, .campo select:disabled { background: var(--raised); color: var(--muted); cursor: not-allowed; }
+.acoes-fim { display: flex; gap: 8px; justify-content: flex-end; padding-top: 24px; border-top: 1px solid var(--rule); margin-top: 8px; }
+
+@media (max-width: 640px) {
+  .achado-pessoa { grid-template-columns: 40px minmax(0, 1fr); }
+  .achado-pessoa > .btn { justify-self: start; }
+  .achado-pessoa > .btn, .achado-pessoa > .acoes-achado { grid-column: 1 / -1; }
+  .acoes-fim { flex-direction: column-reverse; }
+  .acoes-nota { margin-right: 0; }
+  .acoes-fim .btn { width: 100%; height: 44px; }
+}
