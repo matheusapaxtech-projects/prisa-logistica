@@ -71,12 +71,26 @@ test.describe("rotas de consulta", () => {
 });
 
 test("POST de Server Action sem sessão não é redirecionado pelo proxy (a action responde)", async ({ request }) => {
+  // Id de action inexistente: quem responde é o Next (hoje 409, "action não encontrada"), sem erro de
+  // servidor; o proxy não pode intervir.
   const r = await request.post("/", {
     headers: { "Next-Action": "00" + "0".repeat(40) },
     data: "[]",
     maxRedirects: 0,
   });
   // Sem a exceção do Next-Action no proxy, isto seria um 307 para /login.
-  expect(r.status() >= 300 && r.status() < 400).toBe(false);
+  expect(r.status() >= 300 && r.status() < 400, `não pode ser redirecionamento (veio ${r.status()})`).toBe(false);
   expect(r.headers()["location"] ?? "").not.toMatch(/\/login/);
+  expect(r.status(), "não pode ser erro de servidor").toBeLessThan(500);
+});
+
+test("GET com cabeçalho Next-Action não é Server Action: sem sessão vai para /login", async ({ request }) => {
+  // Caminho sem página: só o proxy pode mandar para /login (em "/", o exigirPerfil() da página
+  // também redirecionaria e esconderia a falha do proxy). Com a exceção errada, viria 404.
+  const r = await request.get("/caminho-que-nao-existe", {
+    headers: { "Next-Action": "00" + "0".repeat(40) },
+    maxRedirects: 0,
+  });
+  expect(r.status()).toBe(307);
+  expect(new URL(r.headers()["location"] ?? "", "http://localhost:3000").pathname).toBe("/login");
 });

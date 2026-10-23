@@ -8,8 +8,15 @@ const CABECALHOS_CACHE = ["cache-control", "expires", "pragma"];
  * e faz o desvio de entrada:
  * - sem sessão → `/login`, exceto a própria `/login` e POSTs de Server Action (cabeçalho `Next-Action`):
  *   esses seguem para a action responder "Sua sessão expirou…" sem o formulário perder os campos
- *   (toda action confere a sessão com `comSessao`, e o RLS protege os dados de qualquer jeito);
+ *   (toda action confere a sessão com `comSessao`, e o RLS protege os dados de qualquer jeito).
+ *   Só POST: o Next só trata como Server Action um POST com esse cabeçalho; um GET com ele é página
+ *   comum e passa pelo desvio normalmente;
  * - com sessão em `/login` → `/`.
+ *
+ * O proxy NÃO é a fronteira de segurança (é otimista e tem exceções). Toda página do sistema confere
+ * o acesso no servidor: o layout `(app)` precisa chamar `exigirPerfil()` (de `@/lib/permissoes`),
+ * cada Server Action usa `comSessao()` e cada Route Handler fora do matcher usa `semSessaoNaRota()`
+ * (de `@/lib/acao`). O RLS do banco é a última palavra.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -39,7 +46,7 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const logado = Boolean(data?.claims);
 
-  if (request.headers.has("next-action")) return supabaseResponse;
+  if (request.method === "POST" && request.headers.has("next-action")) return supabaseResponse;
 
   const caminho = request.nextUrl.pathname;
   if (!logado && caminho !== "/login") return redirecionar(request, "/login", supabaseResponse);
