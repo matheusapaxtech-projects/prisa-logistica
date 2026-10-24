@@ -115,10 +115,55 @@
 .livres-rot { font-size: 13px; color: var(--muted); }
 .motivo { font-size: 14px; line-height: 18px; }
 .motivo b { font-weight: 600; }
-/* a barra é sólida e escura: dispensa a sombra larga de nilt.css */
-.montador .barra-salvar { box-shadow: 0 4px 12px rgba(22, 24, 24, 0.07); }
 .barra-salvar .acoes-barra { margin-left: auto; display: flex; gap: 8px; align-items: center; flex: none; }
-.barra-salvar .btn-primario[disabled] { background: #3a4146; border-color: #3a4146; color: #c9cfcb; }
+.barra-salvar .btn-primario[disabled] { background: rgba(255, 255, 255, 0.14); border-color: transparent; color: rgba(255, 255, 255, 0.55); }
+
+/* ---------- montador no visual rapport ---------- */
+/* Desenho do conjunto num painel de vidro, com respiro; cada seção do formulário é um painel. */
+.previa.engate-grande {
+  background: var(--painel); border: 1px solid var(--painel-borda); border-radius: var(--radius-painel);
+  box-shadow: var(--sombra-painel); padding: 28px 28px 22px; min-height: 150px;
+  display: flex; align-items: center; justify-content: safe center;
+}
+#previa-legenda { padding-left: 4px; margin-top: 10px; }
+.montador .secao {
+  background: var(--painel); border: 1px solid var(--painel-borda); border-radius: var(--radius-painel);
+  box-shadow: var(--sombra-painel); padding: 24px 26px; margin-bottom: 16px;
+}
+.montador .secao:first-of-type { padding-top: 24px; }
+.montador .secao-rotulo h2 { font-size: 17px; }
+
+/* listas: vidro claro, cantos de cartão; a de cavalos rola por dentro */
+.lista-op, .pecas { background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(22, 24, 24, 0.08); border-radius: var(--radius-card); }
+#lista-cav { max-height: 432px; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.op-linha { border-top-color: rgba(22, 24, 24, 0.06); transition: background-color 150ms ease, color 150ms ease; }
+@media (hover: hover) and (pointer: fine) { .op-linha:hover { background: rgba(255, 255, 255, 0.85); } }
+.op-linha:has(input:checked) { background: var(--noite); color: #fff; }
+.op-linha:has(input:checked) .desc > span,
+.op-linha:has(input:checked) .num > span,
+.op-linha:has(input:checked) .estado { color: rgba(255, 255, 255, 0.7); }
+.op-linha:has(input:checked) .estado.ocupado { color: var(--amarelo); }
+.op-linha input { accent-color: var(--noite); }
+.op-linha:has(input:checked) input { accent-color: var(--amarelo); }
+.peca-linha { border-top-color: rgba(22, 24, 24, 0.06); }
+.peca-linha .pos { background: var(--noite); border-color: var(--noite); color: #fff; }
+.peca-linha.com-erro .pos { background: var(--vermelho); border-color: var(--vermelho); color: #fff; }
+.pecas-vazio { border-radius: 16px; background: rgba(255, 255, 255, 0.35); }
+
+/* peças livres: faixa que rola, com o fim esmaecido */
+.livres {
+  max-height: 128px; overflow-y: auto; overscroll-behavior: contain; padding: 2px 2px 10px;
+  -webkit-mask-image: linear-gradient(#000 78%, transparent); mask-image: linear-gradient(#000 78%, transparent);
+}
+.livres-rot { flex-basis: 100%; font-weight: 500; color: var(--ink); }
+.livres .btn { height: 32px; padding: 0 12px; background: #fff; border-color: rgba(22, 24, 24, 0.1); font-size: 13px; }
+@media (hover: hover) and (pointer: fine) { .livres .btn:hover { background: var(--noite); border-color: var(--noite); color: #fff; } }
+@media (max-width: 640px) {
+  .montador .secao { padding: 18px 16px; }
+  .previa.engate-grande { padding: 18px 16px; min-height: 0; }
+  #lista-cav { max-height: 360px; }
+  .barra-salvar { flex-wrap: wrap; border-radius: 24px; padding: 12px 10px 10px 16px; }
+}
 
 /* ---------- pendências ---------- */
 .grupos { display: grid; gap: var(--gap); }
