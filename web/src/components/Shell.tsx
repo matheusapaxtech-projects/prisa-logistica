@@ -26,6 +26,7 @@ export function Shell({ perfil, badgePendencias, children }: Props) {
       usuario={{ nome: perfil.nome, papel: PAPEL[perfil.papel] }}
       pendencias={badgePendencias}
       admin={pode(perfil, "admin")}
+      financeiro={pode(perfil, "financeiro")}
       busca={<BuscaGlobal />}
     >
       {children}

@@ -1,0 +1,127 @@
+/* NILT — Financeiro (/financeiro, /financeiro/importar). Usa a base de proprietarios.css (`.prop`:
+   lista, migalha, botão pequeno); aqui só o que é do financeiro, preso a `.fin` (a <main> das telas).
+   Dinheiro sempre em algarismos tabulares e à direita; saída leva "−" e não cor (cor é situação). */
+
+/* ---------- mês ---------- */
+.fin .mes-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.fin .mes-nav b { min-width: 168px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.fin .abas + .mes-nav { margin-top: 0; }
+
+/* ---------- resultado ---------- */
+.fin .aviso-fin { margin-bottom: 24px; align-items: center; flex-wrap: wrap; }
+.fin .aviso-fin .txt { flex: 1 1 320px; }
+.fin .aviso-fin .btn { margin-left: auto; }
+
+.fin .demonstrativo { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.fin .demonstrativo th { text-align: left; font-weight: 400; padding: 0; height: 40px; border-top: 1px solid var(--rule); }
+.fin .demonstrativo td { text-align: right; padding: 0 0 0 16px; height: 40px; border-top: 1px solid var(--rule); white-space: nowrap; }
+.fin .demonstrativo tr:first-child th, .fin .demonstrativo tr:first-child td { border-top: 0; }
+.fin .demonstrativo tr.total th, .fin .demonstrativo tr.total td { font-weight: 600; border-top-color: var(--control); }
+.fin .demonstrativo th a { color: inherit; text-decoration: none; }
+@media (hover: hover) and (pointer: fine) {
+  .fin .demonstrativo th a:hover { color: var(--azul); text-decoration: underline; text-underline-offset: 3px; }
+}
+.fin .demonstrativo th a:focus-visible { outline: 2px solid var(--verde); outline-offset: 2px; border-radius: 2px; }
+
+.fin .saldos { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; row-gap: 12px; margin: 16px 0 0; padding-top: 16px; border-top: 1px solid var(--rule); }
+.fin .saldos dt { min-width: 0; }
+.fin .saldos dt .linha2 { display: block; font-size: 12px; line-height: 16px; color: var(--muted); margin-top: 2px; }
+.fin .saldos dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* mês a mês: tabela larga que rola dentro do bloco */
+.fin .tabela-ano { min-width: 1080px; font-variant-numeric: tabular-nums; }
+/* coluna do rótulo fixa ao rolar a tabela para os lados (como planilha) */
+.fin .tabela-ano th[scope="row"], .fin .tabela-ano thead .col-rotulo { position: sticky; left: 0; z-index: 1; background: var(--sheet); box-shadow: 1px 0 0 var(--rule); }
+.fin .tabela-ano td, .fin .tabela-ano thead th.num { padding: 0 8px; }
+.fin .tabela-ano tbody tr { cursor: default; }
+.fin .tabela-ano th[scope="row"] { text-align: left; font-weight: 400; font-size: 14px; color: var(--ink); white-space: nowrap; padding-left: 0; }
+.fin .tabela-ano td { height: 40px; white-space: nowrap; }
+.fin .tabela-ano tbody th { border-top: 1px solid var(--rule); height: 40px; }
+.fin .tabela-ano tr.total th, .fin .tabela-ano tr.total td { font-weight: 600; border-top-color: var(--control); }
+.fin .tabela-ano thead a { color: var(--muted); text-decoration: none; }
+.fin .tabela-ano thead th.atual a { color: var(--ink); font-weight: 600; }
+.fin .tabela-ano .atual { background: var(--raised); }
+.fin .tabela-ano .col-total { font-weight: 600; }
+.fin .tabela-ano thead .col-total { color: var(--ink); }
+.fin .tabela-ano .col-rotulo { width: 190px; }
+@media (hover: hover) and (pointer: fine) {
+  .fin .tabela-ano thead a:hover { color: var(--azul); text-decoration: underline; text-underline-offset: 3px; }
+  .fin .tabela-ano tbody tr:hover { background: none; }
+}
+
+/* ---------- lançamentos ---------- */
+.fin .ferramentas .lembrar { min-height: var(--control-h); font-size: 14px; }
+.fin .ferramentas .lembrar input { width: 16px; height: 16px; }
+.fin .tabela-lanc .col-data { width: 104px; }
+.fin .tabela-lanc .col-categoria { width: 240px; }
+.fin .tabela-lanc .col-valor { width: 150px; }
+.fin .tabela-lanc td.data { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fin .tabela .desc { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.fin .tabela-lanc td.valor { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+.fin .data-cel { display: none; }
+.fin .sel-categoria {
+  width: 100%; max-width: 240px; height: var(--control-h); padding: 0 30px 0 10px;
+  border: 1px solid var(--control); border-radius: var(--radius-control); background: var(--sheet); color: var(--ink);
+  transition: border-color 120ms ease;
+}
+/* Sem categoria: tracejado de "ainda não existe" (DESIGN.md, Shapes) e texto fraco. */
+.fin .sel-categoria[data-vazio] { border-style: dashed; color: var(--muted); }
+.fin .sel-categoria:focus-visible { outline: none; border-color: var(--verde); box-shadow: 0 0 0 3px rgba(11, 107, 58, 0.16); }
+.fin .sel-categoria[aria-disabled="true"] { background: var(--raised); cursor: progress; }
+.fin .sel-categoria option { color: var(--ink); }
+.fin .confira { display: block; margin-top: 4px; }
+.fin .tabela tr.sem-link { cursor: default; }
+@media (hover: hover) and (pointer: fine) { .fin .tabela tr.sem-link:hover { background: var(--raised); } }
+
+/* ---------- regras ---------- */
+.fin .explica-aba { margin: 0 0 16px; max-width: 760px; font-size: 13px; line-height: 18px; color: var(--muted); }
+.fin .tabela .col-acao { width: 48px; text-align: right; }
+.fin .tabela-importacoes .col-acao { width: 120px; }
+
+/* ---------- importar ---------- */
+.fin .form-importar { display: grid; gap: 16px; }
+.fin .form-importar .aviso .txt { flex: 1 1 auto; }
+.fin .form-importar input[type="file"] { height: auto; padding: 8px 12px; }
+.fin .como-ofx { display: grid; gap: 12px; color: var(--muted); }
+.fin .como-ofx p { margin: 0; }
+.fin .como-ofx b { color: var(--ink); }
+.fin .tabela-importacoes td.data { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fin .tabela-importacoes .btn { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------- carregando ---------- */
+.fin .linha-carregando { display: flex; justify-content: space-between; margin: 0; padding: 12px 0; border-top: 1px solid var(--rule); }
+.fin .linha-carregando:first-child { border-top: 0; }
+
+@media (max-width: 1100px) {
+  .fin .tabela .some-tablet { display: none; }
+}
+@media (max-width: 640px) {
+  .fin .mes-nav b { min-width: 0; flex: 1 1 auto; }
+  /* coluna fixa do rótulo mais estreita: sobra lugar para o mês ao lado */
+  .fin .tabela-ano .col-rotulo { width: 112px; }
+  .fin .tabela-ano th[scope="row"] { white-space: normal; max-width: 112px; font-size: 13px; line-height: 16px; padding-right: 8px; }
+  .fin .ferramentas .busca-lista { width: 100%; }
+  .fin .ferramentas select { flex: 1 1 auto; }
+  .fin .ferramentas .total { margin-left: 0; width: 100%; }
+  /* cada lançamento vira um bloco: histórico em cima, categoria e valor embaixo */
+  .fin .tabela-lanc thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .fin .tabela-lanc, .fin .tabela-lanc tbody { display: block; }
+  .fin .tabela-lanc tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 8px; align-items: center; padding: 12px 0; border-top: 1px solid var(--rule); }
+  .fin .tabela-lanc tbody td { display: block; height: auto; padding: 0; border: 0; }
+  .fin .tabela-lanc td.col-desc { grid-column: 1 / -1; }
+  .fin .tabela-lanc td.some-celular { display: none; }
+  .fin .tabela-lanc td.valor { text-align: right; }
+  .fin .tabela-lanc tr.vazio-linha { display: block; padding: 0; border: 0; }
+  .fin .data-cel { display: inline; }
+  .fin .sel-categoria { max-width: none; height: 44px; }
+  .fin .aviso-fin .btn { margin-left: 0; }
+}
+
+/* ---------- visual novo (rapport) ---------- */
+/* Selo de pendente (laranja), como os cartões "a planejar" do Início. */
+.fin .selo-laranja { background: var(--laranja); color: #2a1606; margin-left: 8px; vertical-align: 4px; }
+.fin .kpi-valor .selo { margin-left: 8px; vertical-align: 4px; }
+.fin .linha-valor { margin-bottom: 14px; }
+/* A coluna fixa da tabela do ano precisa de fundo opaco: o do painel, não o branco dos campos. */
+.fin .tabela-ano th[scope="row"], .fin .tabela-ano thead .col-rotulo { background: var(--raised); }
+.fin .tabela-ano .atual { background: rgba(22, 24, 24, 0.035); }

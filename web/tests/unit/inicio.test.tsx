@@ -73,7 +73,7 @@ function bancoFalso(respostas: Record<string, { data?: unknown; count?: number; 
   const from = (tabela: string) => {
     const r = respostas[tabela] ?? { data: [] };
     const q: Record<string, unknown> = {};
-    for (const m of ["select", "eq", "gt", "is", "order", "neq"]) {
+    for (const m of ["select", "eq", "gt", "is", "order", "neq", "abortSignal"]) {
       q[m] = (...args: unknown[]) => {
         chamadas.push({ tabela, metodo: m, args });
         return q;
@@ -115,6 +115,9 @@ describe("resumoOperacao", () => {
     const pedidos = chamadas.filter((c) => c.tabela === "v_pedido_saldo");
     expect(pedidos.some((c) => c.metodo === "eq" && c.args[0] === "situacao" && c.args[1] === "aberto")).toBe(true);
     expect(pedidos.some((c) => c.metodo === "gt" && c.args[0] === "saldo_kg" && c.args[1] === 0)).toBe(true);
+    // as consultas do quadro (carregarQuadro) têm tempo máximo: uma consulta pendurada vira erro
+    for (const t of ["v_quadro", "quadro_limite", "viagem_pausa"])
+      expect(chamadas.some((c) => c.tabela === t && c.metodo === "abortSignal" && c.args[0] instanceof AbortSignal)).toBe(true);
   });
 
   it("erro de banco sobe (a tela mostra o error boundary)", async () => {

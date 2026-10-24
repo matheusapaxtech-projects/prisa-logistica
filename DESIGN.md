@@ -351,6 +351,8 @@ Escala atual (o resto da hierarquia abaixo vale com estes ajustes): título de t
 
 **A Regra dos Números Alinhados.** Toda quantidade, data, contagem e peso usa algarismos tabulares; colunas numéricas encostam à direita.
 
+**A Regra do Dinheiro sem Cor.** Valor em reais é tabular e à direita; saída leva o sinal tipográfico "−" (U+2212) na frente do "R$" ("−R$ 1.234,56"), nunca vermelho: cor é situação, e um mês com saída não está "bloqueado". Linha de soma em 600 com filete meio-fio acima.
+
 **A Regra do Ponto com Ar.** O separador " · " da Overpass encosta na palavra seguinte; o build o envolve em `.ponto` com margem (0.32em / 0.42em). Todo texto com " · " passa por isso.
 
 ## Layout

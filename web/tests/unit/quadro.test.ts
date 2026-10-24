@@ -315,4 +315,23 @@ describe("estado da conexão", () => {
     expect(proximoEstado(vivo, { tipo: "recarregou", em: as1500 })).toEqual({ tipo: "ao_vivo", atualizadoEm: as1500 });
     expect(proximoEstado(vivo, { tipo: "inscrito", em: as1500 })).toEqual(vivo);
   });
+
+  it("ao vivo + recarga_falhou vira “Desatualizado desde 14:32”; a próxima recarga que dá certo volta a ao vivo", () => {
+    const vivo: EstadoConexao = { tipo: "ao_vivo", atualizadoEm: as1432 };
+    const falhou = proximoEstado(vivo, { tipo: "recarga_falhou", em: as1500 });
+    expect(falhou).toEqual({ tipo: "desatualizado", desde: as1432, inscrito: true });
+    expect(textoConexao(falhou)).toBe("Desatualizado desde 14:32");
+    // falhar de novo não muda o "desde"
+    expect(proximoEstado(falhou, { tipo: "recarga_falhou", em: as1500 })).toEqual(falhou);
+    expect(proximoEstado(falhou, { tipo: "recarregou", em: as1500 })).toEqual({ tipo: "ao_vivo", atualizadoEm: as1500 });
+  });
+
+  it("recarga_falhou em conectando ou com o canal fora do ar não muda o estado", () => {
+    const conectando: EstadoConexao = { tipo: "conectando", inscrito: true };
+    expect(proximoEstado(conectando, { tipo: "recarga_falhou", em: as1500 })).toEqual(conectando);
+    const des: EstadoConexao = { tipo: "desatualizado", desde: as1432, inscrito: false };
+    expect(proximoEstado(des, { tipo: "recarga_falhou", em: as1500 })).toEqual(des);
+    // com o canal fora do ar, nem a recarga seguinte volta a ao vivo
+    expect(proximoEstado(proximoEstado(des, { tipo: "recarga_falhou", em: as1500 }), { tipo: "recarregou", em: as1500 })).toEqual(des);
+  });
 });

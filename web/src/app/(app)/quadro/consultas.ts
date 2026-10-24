@@ -15,12 +15,17 @@ export type DadosQuadro = {
   origensDaPausa: Record<string, StatusCampo>;
 };
 
+/** Tempo máximo de uma leitura do quadro: uma consulta pendurada (rede ruim no celular) vira erro, e a
+   tela marca "Desatualizado" em vez de continuar dizendo "Ao vivo" sobre dados velhos. */
+export const TEMPO_MAXIMO_CARGA_MS = 10_000;
+
 /** Cartões do quadro, tempos-limite e a origem das pausas abertas, numa ida ao banco (em paralelo). */
 export async function carregarQuadro(cliente: Banco): Promise<DadosQuadro> {
+  const sinal = AbortSignal.timeout(TEMPO_MAXIMO_CARGA_MS);
   const [cartoes, limites, pausas] = await Promise.all([
-    cliente.from("v_quadro").select("*"),
-    cliente.from("quadro_limite").select("chave, minutos_ambar, minutos_vermelho"),
-    cliente.from("viagem_pausa").select("viagem_id, coluna_origem").is("fim", null),
+    cliente.from("v_quadro").select("*").abortSignal(sinal),
+    cliente.from("quadro_limite").select("chave, minutos_ambar, minutos_vermelho").abortSignal(sinal),
+    cliente.from("viagem_pausa").select("viagem_id, coluna_origem").is("fim", null).abortSignal(sinal),
   ]);
   if (cartoes.error) throw cartoes.error;
   if (limites.error) throw limites.error;

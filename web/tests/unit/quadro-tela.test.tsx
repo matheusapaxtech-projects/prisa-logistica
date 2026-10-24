@@ -15,14 +15,18 @@ vi.mock("@/app/(app)/quadro/actions", () => ({
 }));
 vi.mock("@/app/(app)/viagens/actions", () => ({ confirmarPagamentoSaida: vi.fn(async () => ({ ok: true, dados: undefined })) }));
 vi.mock("@/app/(app)/viagens/envio", () => ({ enviarCanhotoDoNavegador: (...a: unknown[]) => enviarCanhotoDoNavegador(...a) }));
+/** Só o teste do canal (fonteDoNavegador) põe um cliente falso aqui; os outros nunca criam o cliente. */
+const supabaseFalso: { atual: unknown } = { atual: null };
 vi.mock("@/lib/supabase/client", () => ({
   createBrowserClient: () => {
-    throw new Error("o teste não usa o Supabase do navegador");
+    if (!supabaseFalso.atual) throw new Error("o teste não usa o Supabase do navegador");
+    return supabaseFalso.atual;
   },
 }));
 
-import { QuadroCliente, type FonteQuadro, type OuvinteQuadro } from "@/app/(app)/quadro/quadro-cliente";
+import { fonteDoNavegador, QuadroCliente, type FonteQuadro, type OuvinteQuadro } from "@/app/(app)/quadro/quadro-cliente";
 import type { DadosQuadro } from "@/app/(app)/quadro/consultas";
+import { ehArquivoDeViagem, esperaDaNovaTentativa, msAteMeiaNoiteBrasilia } from "@/app/(app)/quadro/regras";
 import { Toaster } from "@/components/Toast";
 
 beforeAll(() => {
@@ -50,7 +54,11 @@ beforeEach(() => {
     /* sem armazenamento */
   }
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+  supabaseFalso.atual = null;
+});
 
 /** 14:32 em Brasília (17:32 UTC). */
 const AGORA = Date.parse("2026-10-23T17:32:00Z");
@@ -398,5 +406,147 @@ describe("Quadro da operação: tela", () => {
       fireEvent.click(within(dlg).getByRole("button", { name: "Salvar" }));
       expect(await within(dlg).findByRole("alert")).toHaveTextContent("Só o administrador pode fazer isso.");
     });
+  });
+});
+
+describe("Quadro da operação: recargas e tempo real", () => {
+  /** Relógio falso começando às 14:32 de Brasília (ou no instante dado). */
+  function relogio(em = AGORA) {
+    vi.useFakeTimers();
+    vi.setSystemTime(em);
+  }
+  const passar = (ms: number) => act(() => vi.advanceTimersByTimeAsync(ms));
+  const status = () => screen.getByRole("status");
+  const vazio: DadosQuadro = { cartoes: [], limites: LIMITES, origensDaPausa: {} };
+
+  it("recarga que falha mostra “Desatualizado desde 14:32” e a nova tentativa que dá certo volta a “Ao vivo”", async () => {
+    relogio();
+    const f = fonteFalsa();
+    f.fonte.carregar
+      .mockResolvedValueOnce(vazio) // inscrito: primeira recarga
+      .mockRejectedValueOnce(new Error("sem rede")) // a do tempo real falha
+      .mockResolvedValueOnce(vazio); // a nova tentativa, 2 s depois
+    const erro = vi.spyOn(console, "error").mockImplementation(() => {});
+    montar([cartao()], { fonte: f.fonte });
+    await act(async () => f.ouvinte()!.estado("inscrito"));
+    expect(status()).toHaveTextContent("Ao vivo");
+
+    await passar(60_000); // um minuto depois, ainda ao vivo
+    act(() => f.ouvinte()!.mudou());
+    await passar(300);
+    expect(f.fonte.carregar).toHaveBeenCalledTimes(2);
+    expect(status()).toHaveTextContent("Desatualizado desde 14:32");
+    expect(screen.getByRole("button", { name: "Reconectar" })).toBeInTheDocument();
+
+    await passar(1_999);
+    expect(f.fonte.carregar).toHaveBeenCalledTimes(2);
+    await passar(1);
+    expect(f.fonte.carregar).toHaveBeenCalledTimes(3);
+    expect(status()).toHaveTextContent("Ao vivo");
+    erro.mockRestore();
+  });
+
+  it("enquanto falha, tenta de novo em 2 s, 5 s, 15 s e depois a cada 15 s; para ao desmontar", async () => {
+    relogio();
+    const f = fonteFalsa();
+    f.fonte.carregar.mockResolvedValueOnce(vazio).mockRejectedValue(new Error("banco fora do ar"));
+    const erro = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { unmount } = montar([cartao()], { fonte: f.fonte });
+    await act(async () => f.ouvinte()!.estado("inscrito"));
+    act(() => f.ouvinte()!.mudou());
+    await passar(300); // 2ª carga: falha
+    const chamadas = () => f.fonte.carregar.mock.calls.length;
+    expect(chamadas()).toBe(2);
+    for (const [espera, total] of [[2_000, 3], [5_000, 4], [15_000, 5], [15_000, 6], [15_000, 7]] as const) {
+      await passar(espera - 1);
+      expect(chamadas()).toBe(total - 1);
+      await passar(1);
+      expect(chamadas()).toBe(total);
+    }
+    expect(status()).toHaveTextContent("Desatualizado desde 14:32");
+    unmount();
+    await passar(120_000);
+    expect(chamadas()).toBe(7);
+    erro.mockRestore();
+  });
+
+  it("mudanças sem parar: recarrega no máximo 2 s depois da primeira mudança pendente", async () => {
+    relogio();
+    const f = fonteFalsa();
+    montar([cartao()], { fonte: f.fonte });
+    // uma mudança a cada 200 ms (o agrupamento de 300 ms nunca "acalma")
+    for (let t = 0; t < 2_000; t += 200) {
+      act(() => f.ouvinte()!.mudou());
+      await passar(200);
+    }
+    expect(f.fonte.carregar).toHaveBeenCalledTimes(1); // aos 2 s, mesmo com as mudanças chegando
+    for (let t = 0; t < 1_800; t += 200) {
+      act(() => f.ouvinte()!.mudou());
+      await passar(200);
+    }
+    expect(f.fonte.carregar).toHaveBeenCalledTimes(1);
+    act(() => f.ouvinte()!.mudou());
+    await passar(200);
+    expect(f.fonte.carregar).toHaveBeenCalledTimes(2); // e de novo 2 s depois da primeira pendente seguinte
+  });
+
+  it("mudança isolada recarrega 300 ms depois", async () => {
+    relogio();
+    const f = fonteFalsa();
+    montar([cartao()], { fonte: f.fonte });
+    act(() => f.ouvinte()!.mudou());
+    await passar(299);
+    expect(f.fonte.carregar).not.toHaveBeenCalled();
+    await passar(1);
+    expect(f.fonte.carregar).toHaveBeenCalledTimes(1);
+  });
+
+  it("recarrega à meia-noite de Brasília (com folga de 5 s) e de novo no dia seguinte", async () => {
+    relogio(Date.parse("2026-10-24T02:59:50Z")); // 23:59:50 em Brasília
+    const f = fonteFalsa();
+    const { unmount } = montar([cartao()], { fonte: f.fonte });
+    await passar(14_999);
+    expect(f.fonte.carregar).not.toHaveBeenCalled();
+    await passar(1);
+    expect(f.fonte.carregar).toHaveBeenCalledTimes(1);
+    await passar(86_400_000);
+    expect(f.fonte.carregar).toHaveBeenCalledTimes(2);
+    unmount();
+    await passar(86_400_000);
+    expect(f.fonte.carregar).toHaveBeenCalledTimes(2);
+  });
+
+  it("o canal escuta viagem, viagem_ocorrencia e arquivo; arquivo sem viagem_id não recarrega", () => {
+    const handlers: { tabela: string; f: (e: unknown) => void }[] = [];
+    const canal = {
+      on: (_tipo: string, filtro: { table: string }, f: (e: unknown) => void) => {
+        handlers.push({ tabela: filtro.table, f });
+        return canal;
+      },
+      subscribe: () => canal,
+    };
+    supabaseFalso.atual = { channel: () => canal, removeChannel: vi.fn() };
+    const mudou = vi.fn();
+    fonteDoNavegador().assinar({ mudou, estado: vi.fn() });
+    expect(handlers.map((h) => h.tabela)).toEqual(["viagem", "viagem_ocorrencia", "arquivo"]);
+    const de = (t: string) => handlers.find((h) => h.tabela === t)!.f;
+    de("viagem_ocorrencia")({ eventType: "INSERT", new: { viagem_id: "v1" }, old: {} });
+    expect(mudou).toHaveBeenCalledTimes(1);
+    de("arquivo")({ eventType: "INSERT", new: { viagem_id: null, pessoa_id: "p1" }, old: {} });
+    de("arquivo")({ eventType: "DELETE", new: {}, old: { id: "a1" } });
+    expect(mudou).toHaveBeenCalledTimes(1);
+    de("arquivo")({ eventType: "INSERT", new: { viagem_id: "v1" }, old: {} });
+    expect(mudou).toHaveBeenCalledTimes(2);
+  });
+
+  it("regras: esperas da nova tentativa, meia-noite de Brasília e arquivo de viagem", () => {
+    expect([1, 2, 3, 4, 10].map(esperaDaNovaTentativa)).toEqual([2_000, 5_000, 15_000, 15_000, 15_000]);
+    expect(msAteMeiaNoiteBrasilia(Date.parse("2026-10-24T02:59:50Z"))).toBe(10_000); // 23:59:50 BRT
+    expect(msAteMeiaNoiteBrasilia(Date.parse("2026-10-23T17:32:00Z"))).toBe((9 * 60 + 28) * 60_000); // 14:32 BRT
+    expect(msAteMeiaNoiteBrasilia(Date.parse("2026-10-24T03:00:00Z"))).toBe(86_400_000); // 00:00 BRT
+    expect(ehArquivoDeViagem({ new: { viagem_id: "v" } })).toBe(true);
+    expect(ehArquivoDeViagem({ new: {}, old: { viagem_id: "v" } })).toBe(true);
+    expect(ehArquivoDeViagem({ new: { viagem_id: null } })).toBe(false);
+    expect(ehArquivoDeViagem({ new: {}, old: { id: "a" } })).toBe(false);
   });
 });

@@ -26,6 +26,10 @@ const OBJETO: Record<string, string> = {
   pessoa_chave_pix: "a chave Pix",
   motorista_referencia: "a referência",
   perfil_usuario: "o perfil de usuário",
+  fin_conta: "a conta do financeiro",
+  fin_importacao: "o extrato importado",
+  fin_lancamento: "o lançamento",
+  fin_regra: "a regra de categoria",
 };
 
 /** "em …" da linha de baixo. Mesmos textos de `TABELA` em prototipo/motorista.html. */
@@ -44,6 +48,10 @@ export const TABELA_ROTULO: Record<string, string> = {
   pessoa_chave_pix: "chave Pix",
   motorista_referencia: "referência",
   perfil_usuario: "usuário",
+  fin_conta: "financeiro",
+  fin_importacao: "financeiro",
+  fin_lancamento: "financeiro",
+  fin_regra: "financeiro",
 };
 
 /** Rótulo da ação. Mesmos textos de `ROT.acao` em prototipo/assets/paginas/motoristas.js. */
@@ -55,7 +63,16 @@ export const ACAO_ROTULO: Record<string, string> = {
 };
 
 /** Carimbos que mudam em toda gravação: não contam como "campo alterado". */
-const IGNORAR = new Set(["created_at", "created_by", "updated_at", "updated_by", "dados_brasilapi"]);
+const IGNORAR = new Set([
+  "created_at",
+  "created_by",
+  "updated_at",
+  "updated_by",
+  "dados_brasilapi",
+  // mudam junto com a categoria do lançamento
+  "classificado_em",
+  "classificado_por",
+]);
 
 /** Rótulos das colunas mais comuns; as demais viram o nome da coluna com espaços. */
 const CAMPO: Record<string, string> = {
@@ -130,6 +147,11 @@ const CAMPO: Record<string, string> = {
   uf: "UF",
   papel: "papel",
   ativo: "ativo",
+  categoria: "categoria",
+  descricao: "histórico",
+  chave: "descrição da regra",
+  nome_arquivo: "arquivo",
+  novos: "lançamentos novos",
 };
 
 function lista(itens: string[]): string {

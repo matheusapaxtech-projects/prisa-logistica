@@ -10,6 +10,7 @@ import {
   History,
   IdCard,
   KeyRound,
+  Landmark,
   Link2,
   LogOut,
   Menu,
@@ -37,6 +38,8 @@ const SECOES: Item[] = [
   { href: "/clientes", rotulo: "Clientes", Icone: Store },
   { href: "/pendencias", rotulo: "Pendências", Icone: TriangleAlert },
 ];
+/** Só para admin e financeiro (`pode(perfil, "financeiro")`): mais uma pílula no topo. */
+const FINANCEIRO: Item = { href: "/financeiro", rotulo: "Financeiro", Icone: Landmark };
 const CADASTROS: Item[] = [
   { href: "/motoristas", rotulo: "Motoristas", Icone: IdCard },
   { href: "/proprietarios", rotulo: "Proprietários", Icone: Building2 },
@@ -62,11 +65,11 @@ function Selo({ n }: { n: number }) {
 }
 
 /** Seções em pílulas no topo: a pílula preta é um só elemento que desliza até o item atual. */
-function NavSecoes({ caminho, pendencias }: { caminho: string; pendencias: number }) {
+function NavSecoes({ secoes, caminho, pendencias }: { secoes: Item[]; caminho: string; pendencias: number }) {
   return (
     <LayoutGroup id="nav-secoes">
       <nav className="nav nav-topo" aria-label="Seções">
-        {SECOES.map(({ href, rotulo }) => {
+        {secoes.map(({ href, rotulo }) => {
           const atual = ativo(href, caminho);
           return (
             <Link key={href} href={href} aria-current={atual ? "page" : undefined}>
@@ -104,14 +107,17 @@ type Props = {
   usuario: { nome: string; papel: string };
   pendencias: number;
   admin: boolean;
+  /** Mostra o Financeiro (admin e financeiro). */
+  financeiro?: boolean;
   busca: ReactNode;
   children: ReactNode;
 };
 
 /** Estrutura `.shell`: topo + trilho (gaveta no celular, `.menu-aberto`): abre no botão, fecha ao clicar
    fora do trilho e ao trocar de página. */
-export function MolduraShell({ usuario, pendencias, admin, busca, children }: Props) {
+export function MolduraShell({ usuario, pendencias, admin, financeiro = false, busca, children }: Props) {
   const caminho = usePathname();
+  const secoes = financeiro ? [...SECOES, FINANCEIRO] : SECOES;
   const [aberto, setAberto] = useState(false);
   const [caminhoAnterior, setCaminhoAnterior] = useState(caminho);
   if (caminho !== caminhoAnterior) {
@@ -149,7 +155,7 @@ export function MolduraShell({ usuario, pendencias, admin, busca, children }: Pr
             </span>
             <span className="marca-nome">NILT</span>
           </Link>
-          <NavSecoes caminho={caminho} pendencias={pendencias} />
+          <NavSecoes secoes={secoes} caminho={caminho} pendencias={pendencias} />
           <div className="topo-dir">
             {busca}
             <span className="usuario-topo" role="img" aria-label={`${usuario.nome}, ${usuario.papel}`} title={`${usuario.nome} · ${usuario.papel}`}>
@@ -174,7 +180,7 @@ export function MolduraShell({ usuario, pendencias, admin, busca, children }: Pr
             </span>
           </div>
           <nav className="trilho-nav" aria-label="Cadastros e administração">
-            {SECOES.map((item) => (
+            {secoes.map((item) => (
               <ItemTrilho key={item.href} item={item} caminho={caminho} gaveta pendencias={item.href === "/pendencias" ? pendencias : undefined} />
             ))}
             <hr className="so-gaveta" />

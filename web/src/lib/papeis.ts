@@ -10,15 +10,17 @@ export type Perfil = {
   ativo: boolean;
 };
 
-export type AcaoPermitida = "editar" | "editarFinanceiro" | "admin";
+export type AcaoPermitida = "editar" | "editarFinanceiro" | "financeiro" | "admin";
 
 // Mesmas regras das funções do banco:
 // - editar           = pode_editar()                                  (migration 0200)
 // - editarFinanceiro = tem_papel('admin','operacao','financeiro')     (contas e Pix, migration 0400)
+// - financeiro       = pode_financeiro() (extrato, lançamentos e resultado; migration 20261026000100)
 // - admin            = eh_admin()                                     (migration 0200)
 const REGRAS: Record<AcaoPermitida, readonly Papel[]> = {
   editar: ["admin", "operacao"],
   editarFinanceiro: ["admin", "operacao", "financeiro"],
+  financeiro: ["admin", "financeiro"],
   admin: ["admin"],
 };
 
