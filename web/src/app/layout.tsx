@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Outfit, Overpass_Mono } from "next/font/google";
+import { ReactGrabDev } from "@/components/ReactGrabDev";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -26,7 +27,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR" className={`${outfit.variable} ${overpassMono.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <ReactGrabDev />
+      </body>
     </html>
   );
 }
