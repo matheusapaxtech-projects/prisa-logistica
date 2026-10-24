@@ -9,6 +9,7 @@ import {
   Columns3,
   History,
   IdCard,
+  Landmark,
   Link2,
   Menu,
   Route,
@@ -37,6 +38,8 @@ const NAV: Item[] = [
   { href: "/conjuntos", rotulo: "Conjuntos", Icone: Link2 },
   { href: "/pendencias", rotulo: "Pendências", Icone: TriangleAlert },
 ];
+/** Só para admin e financeiro (`pode(perfil, "financeiro")`). */
+const FINANCEIRO: Item = { href: "/financeiro", rotulo: "Financeiro", Icone: Landmark };
 const ADMIN: Item[] = [
   { href: "/usuarios", rotulo: "Usuários", Icone: Users },
   { href: "/auditoria", rotulo: "Auditoria", Icone: History },
@@ -48,7 +51,7 @@ function ativo(href: string, caminho: string) {
 }
 
 /** Menu principal com o item atual marcado (`aria-current="page"`) e o selo de pendências. */
-export function NavPrincipal({ pendencias, admin }: { pendencias: number; admin: boolean }) {
+export function NavPrincipal({ pendencias, admin, financeiro = false }: { pendencias: number; admin: boolean; financeiro?: boolean }) {
   const caminho = usePathname();
   const item = ({ href, rotulo, Icone }: Item) => (
     <Link key={href} href={href} aria-current={ativo(href, caminho) ? "page" : undefined}>
@@ -64,6 +67,7 @@ export function NavPrincipal({ pendencias, admin }: { pendencias: number; admin:
   return (
     <nav className="nav">
       {NAV.map(item)}
+      {financeiro && item(FINANCEIRO)}
       {admin && (
         <>
           <div className="nav-grupo">Administração</div>

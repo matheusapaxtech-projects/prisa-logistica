@@ -48,7 +48,7 @@ export function Shell({ perfil, badgePendencias, children }: Props) {
           <span>Prisa Logística</span>
         </span>
       </Link>
-      <NavPrincipal pendencias={badgePendencias} admin={pode(perfil, "admin")} />
+      <NavPrincipal pendencias={badgePendencias} admin={pode(perfil, "admin")} financeiro={pode(perfil, "financeiro")} />
       <div className="sidebar-pe">
         <div className="usuario">
           <Avatar nome={perfil.nome} />
