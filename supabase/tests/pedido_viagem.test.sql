@@ -279,7 +279,7 @@ declare
   v_op uuid := tests.criar_usuario('op@exemplo.test', 'operacao');
   v_lei uuid := tests.criar_usuario('lei@exemplo.test', 'leitura');
   r record;
-  v_oc uuid := gen_random_uuid();
+  v_oc uuid;
 begin
   select * into r from tests.cenario();
   return next throws_ok(
@@ -291,9 +291,11 @@ begin
       r.viagem),
     '23514', null, 'resolução sem resolvida_em é recusada');
   return next lives_ok(
-    format($f$select tests.executar_como(%L, $q$insert into public.viagem_ocorrencia (id, viagem_id, tipo, descricao)
-       values (%L, %L, 'avaria', 'lona rasgada')$q$)$f$, v_op, v_oc, r.viagem),
+    format($f$select tests.executar_como(%L, $q$insert into public.viagem_ocorrencia (viagem_id, tipo, descricao)
+       values (%L, 'avaria', 'lona rasgada')$q$)$f$, v_op, r.viagem),
     'operação registra ocorrência');
+  -- o id não é coluna liberada no insert (migration realtime_sinais): acha a ocorrência pela viagem
+  select id into v_oc from public.viagem_ocorrencia where viagem_id = r.viagem and descricao = 'lona rasgada';
   return next is((select aberta_por from public.viagem_ocorrencia where id = v_oc), v_op, 'aberta_por = auth.uid()');
   return next lives_ok(
     format($f$select tests.executar_como(%L, $q$update public.viagem_ocorrencia set resolvida_em = now(), resolvida_por = %L,
@@ -305,6 +307,59 @@ begin
     '42501', null, 'leitura não registra ocorrência');
   return next ok(exists (select 1 from public.auditoria where tabela = 'viagem_ocorrencia' and registro_id = v_oc::text),
     'ocorrência auditada');
+end $$;
+
+-- Migration realtime_sinais: authenticated só escreve as colunas da tela; quem resolve é o usuário da sessão.
+create function tests.test_ocorrencia_colunas_e_quem_resolve() returns setof text language plpgsql as $$
+declare
+  v_op uuid := tests.criar_usuario('op@exemplo.test', 'operacao');
+  v_outro uuid := tests.criar_usuario('outro@exemplo.test', 'operacao');
+  r record;
+  v_oc uuid := gen_random_uuid();
+  c text;
+begin
+  select * into r from tests.cenario();
+  foreach c in array array['viagem_id', 'tipo', 'descricao'] loop
+    return next ok(has_column_privilege('authenticated', 'public.viagem_ocorrencia', c, 'insert'),
+      format('viagem_ocorrencia.%s: insert liberado', c));
+  end loop;
+  foreach c in array array['id', 'aberta_em', 'aberta_por', 'resolvida_em', 'resolvida_por', 'resolucao'] loop
+    return next ok(not has_column_privilege('authenticated', 'public.viagem_ocorrencia', c, 'insert'),
+      format('viagem_ocorrencia.%s: insert negado', c));
+  end loop;
+  foreach c in array array['resolvida_em', 'resolvida_por', 'resolucao', 'descricao'] loop
+    return next ok(has_column_privilege('authenticated', 'public.viagem_ocorrencia', c, 'update'),
+      format('viagem_ocorrencia.%s: update liberado', c));
+  end loop;
+  foreach c in array array['id', 'viagem_id', 'tipo', 'aberta_em', 'aberta_por'] loop
+    return next ok(not has_column_privilege('authenticated', 'public.viagem_ocorrencia', c, 'update'),
+      format('viagem_ocorrencia.%s: update negado', c));
+  end loop;
+
+  return next throws_ok(
+    format($f$select tests.executar_como(%L, $q$insert into public.viagem_ocorrencia (viagem_id, tipo, descricao, aberta_por)
+       values (%L, 'atraso', 'chuva', %L)$q$)$f$, v_op, r.viagem, v_outro),
+    '42501', null, 'operação não escolhe aberta_por ao registrar');
+
+  insert into public.viagem_ocorrencia (id, viagem_id, tipo, descricao) values (v_oc, r.viagem, 'avaria', 'lona rasgada');
+  return next throws_ok(
+    format($f$select tests.executar_como(%L, $q$update public.viagem_ocorrencia set viagem_id = %L where id = %L$q$)$f$,
+      v_op, r.viagem, v_oc),
+    '42501', null, 'operação não muda a viagem da ocorrência');
+
+  return next lives_ok(
+    format($f$select tests.executar_como(%L, $q$update public.viagem_ocorrencia set resolvida_em = now(), resolvida_por = %L,
+       resolucao = 'lona trocada' where id = %L$q$)$f$, v_op, v_outro, v_oc),
+    'operação resolve mandando outro usuário em resolvida_por');
+  return next is((select resolvida_por from public.viagem_ocorrencia where id = v_oc), v_op,
+    'resolvida_por = quem resolveu (auth.uid()), não o valor mandado');
+
+  return next lives_ok(
+    format($f$select tests.executar_como(%L, $q$update public.viagem_ocorrencia set resolvida_por = %L,
+       descricao = 'lona rasgada na carreta 2' where id = %L$q$)$f$, v_outro, v_outro, v_oc),
+    'outro usuário edita a descrição da ocorrência já resolvida');
+  return next is((select resolvida_por from public.viagem_ocorrencia where id = v_oc), v_op,
+    'quem resolveu não muda depois');
 end $$;
 
 create function tests.test_uma_pausa_aberta() returns setof text language plpgsql as $$

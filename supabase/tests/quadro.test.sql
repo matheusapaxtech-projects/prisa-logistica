@@ -410,6 +410,13 @@ create function tests.test_viagem_na_publicacao_realtime() returns setof text la
 begin
   return next ok(exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and tablename='viagem'),
     'viagem está na publicação supabase_realtime');
+  -- Ruling R18: os sinais (ocorrência aberta, canhoto) também chegam em tempo real.
+  return next ok(exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public'
+                        and tablename='viagem_ocorrencia'),
+    'viagem_ocorrencia está na publicação supabase_realtime');
+  return next ok(exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public'
+                        and tablename='arquivo'),
+    'arquivo está na publicação supabase_realtime');
 end $$;
 
 -- ---------------------------------------------------------------------------
