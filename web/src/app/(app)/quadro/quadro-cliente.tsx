@@ -30,20 +30,37 @@ import { carregarQuadro, type DadosQuadro, type Limite } from "./consultas";
 import { DialogoPagamento, DialogoPassagem, MenuMover, type EnviarCanhoto, type Passagem } from "./dialogos-passagem";
 import { FiltrosQuadro } from "./filtros";
 import { TemposLimite } from "./tempos-limite";
-import { buscaDe, foiAtualizado, nivelDoCartao, opcoesDe, paraFiltros, type EstadoFiltros } from "./regras";
+import {
+  AGRUPAR_MS,
+  buscaDe,
+  ehArquivoDeViagem,
+  ESPERA_MAXIMA_MS,
+  esperaDaNovaTentativa,
+  FOLGA_MEIA_NOITE_MS,
+  foiAtualizado,
+  msAteMeiaNoiteBrasilia,
+  nivelDoCartao,
+  opcoesDe,
+  paraFiltros,
+  type EstadoFiltros,
+} from "./regras";
 
 /* Quadro da operação em tempo real (Client Component): estado dos cartões, tempo real, filtros,
    arrastar e "Mover". O banco é a autoridade: a tela só mostra e chama `mover_viagem`.
 
-   Tempo real (Ruling R9): canal `postgres_changes` só na tabela `viagem`. Contrato com `proximoEstado`:
+   Tempo real (Rulings R9 e R18): um canal `postgres_changes` em `viagem` (coluna), `viagem_ocorrencia`
+   (sinal de ocorrência) e `arquivo` (canhoto: só os arquivos de viagem). Contrato com `proximoEstado`:
    canal SUBSCRIBED → `inscrito` → recarrega `v_quadro` → `recarregou` (só aí "Ao vivo"); CHANNEL_ERROR /
-   TIMED_OUT → `erro`; CLOSED → `fechado`. Cada mudança recarrega o quadro (agrupando em 300 ms); também
-   recarrega ao voltar o foco da janela e depois de cada ação do próprio usuário (canhoto e ocorrência
-   lançados por outra pessoa aparecem na próxima recarga). Sem rede (evento `offline`), o quadro marca
-   "Desatualizado" na hora e, com a rede de volta, assina de novo. */
+   TIMED_OUT → `erro`; CLOSED → `fechado`. Cada mudança recarrega o quadro (agrupando em 300 ms, no máximo
+   2 s depois da primeira mudança pendente); também recarrega ao voltar o foco da janela, depois de cada
+   ação do próprio usuário e à meia-noite de Brasília (o "Frete finalizado" de ontem sai do quadro).
+   Recarga que falha (ou estoura o tempo da consulta) → `recarga_falhou`: "Desatualizado desde hh:mm" e
+   nova tentativa em 2 s, 5 s, 15 s e depois a cada 15 s, até uma dar certo (aí volta a "Ao vivo").
+   Sem rede (evento `offline`), o quadro marca "Desatualizado" na hora e, com a rede de volta, assina de
+   novo. */
 
 export type OuvinteQuadro = {
-  /** Algo mudou na tabela `viagem`. */
+  /** Algo que o quadro mostra mudou (`viagem`, `viagem_ocorrencia` ou um arquivo de viagem). */
   mudou: () => void;
   /** Estado do canal de tempo real. */
   estado: (s: "inscrito" | "erro" | "fechado") => void;
@@ -67,6 +84,10 @@ export function fonteDoNavegador(): FonteQuadro {
       const canal = sb
         .channel(`quadro-viagem-${Math.random().toString(36).slice(2)}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "viagem" }, () => ouvinte.mudou())
+        .on("postgres_changes", { event: "*", schema: "public", table: "viagem_ocorrencia" }, () => ouvinte.mudou())
+        .on("postgres_changes", { event: "*", schema: "public", table: "arquivo" }, (e) => {
+          if (ehArquivoDeViagem(e)) ouvinte.mudou(); // documento de cadastro não mexe no quadro
+        })
         .subscribe((status) => {
           if (status === "SUBSCRIBED") ouvinte.estado("inscrito");
           else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") ouvinte.estado("erro");
@@ -171,6 +192,11 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
   const ultimaRecarga = useRef<Promise<void>>(Promise.resolve());
   const ultimaCarga = useRef(new Date(carregadoEm));
   const reconectar = useRef<() => void>(() => {});
+  /** Nova tentativa agendada depois de uma recarga que falhou, e quantas falharam seguidas. */
+  const novaTentativa = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const falhasSeguidas = useRef(0);
+  const montado = useRef(true);
+  const recarregarRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   const podeMover = pode(perfil, "editar");
   const podePagar = pode(perfil, "editarFinanceiro");
@@ -181,18 +207,27 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
      de "pendente") nunca vê o quadro de antes por ter sido passado para trás por uma recarga do tempo real. */
   const recarregar = useCallback((): Promise<void> => {
     const minha = ++seq.current;
+    clearTimeout(novaTentativa.current); // esta recarga já faz o papel da nova tentativa
     const lida = (async (): Promise<boolean> => {
       try {
         const d = await fonte.carregar();
         if (minha !== seq.current) return false;
         const em = new Date();
         ultimaCarga.current = em;
+        falhasSeguidas.current = 0;
         setDados(d);
         setAgora(em.getTime());
         despachar({ tipo: "recarregou", em });
       } catch (e) {
-        // Sem rede ou banco fora do ar: o quadro continua com o que tinha; o canal diz se está desatualizado.
+        // Sem rede, banco fora do ar ou consulta que estourou o tempo: o quadro continua com o que tinha,
+        // mas deixa de dizer "Ao vivo" e tenta de novo sozinho (2 s, 5 s, 15 s, depois a cada 15 s).
         console.error("Falha ao recarregar o Quadro:", e);
+        if (minha === seq.current && montado.current) {
+          despachar({ tipo: "recarga_falhou", em: new Date() });
+          falhasSeguidas.current += 1;
+          clearTimeout(novaTentativa.current);
+          novaTentativa.current = setTimeout(() => void recarregarRef.current(), esperaDaNovaTentativa(falhasSeguidas.current));
+        }
       }
       return minha === seq.current;
     })();
@@ -201,6 +236,31 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
     ultimaRecarga.current = pronta;
     return pronta;
   }, [fonte]);
+  useEffect(() => {
+    recarregarRef.current = recarregar;
+  }, [recarregar]);
+
+  // Desmontou: nenhuma nova tentativa fica agendada.
+  useEffect(() => {
+    montado.current = true;
+    return () => {
+      montado.current = false;
+      clearTimeout(novaTentativa.current);
+    };
+  }, []);
+
+  // Meia-noite de Brasília: o "Frete finalizado" de ontem sai do quadro (v_quadro só traz o de hoje).
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const agendar = () => {
+      t = setTimeout(() => {
+        void recarregar();
+        agendar(); // e de novo no dia seguinte
+      }, msAteMeiaNoiteBrasilia(Date.now()) + FOLGA_MEIA_NOITE_MS);
+    };
+    agendar();
+    return () => clearTimeout(t);
+  }, [recarregar]);
 
   // Tempo na coluna: "há 2 h 15 min", atualizado a cada minuto.
   useEffect(() => {
@@ -211,14 +271,23 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
   // Tempo real, foco da janela e rede.
   useEffect(() => {
     let espera: ReturnType<typeof setTimeout> | undefined;
+    let prazo: number | null = null; // até quando a recarga pendente pode esperar (2 s depois da 1ª mudança)
     let parar = () => {};
     const conectar = () => {
       let ativo = true; // respostas atrasadas de um canal já desligado não contam
       const desligar = fonte.assinar({
         mudou: () => {
           if (!ativo) return;
+          const ja = Date.now();
+          prazo ??= ja + ESPERA_MAXIMA_MS;
           clearTimeout(espera);
-          espera = setTimeout(() => void recarregar(), 300);
+          espera = setTimeout(
+            () => {
+              prazo = null;
+              void recarregar();
+            },
+            Math.max(0, Math.min(AGRUPAR_MS, prazo - ja)),
+          );
         },
         estado: (s) => {
           if (!ativo) return;

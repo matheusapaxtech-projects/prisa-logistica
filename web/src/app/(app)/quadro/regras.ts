@@ -83,6 +83,43 @@ export function opcoesDe(valores: (string | null)[]): string[] {
 /** Recusa do banco por tela atrasada (mover_viagem: "…; o quadro foi atualizado"): a tela recarrega. */
 export { foiAtualizado } from "../viagens/regras";
 
+/* ---------- tempo real (recargas) ---------- */
+
+/** Mudanças em sequência viram uma recarga só: espera 300 ms de calma, mas nunca mais que 2 s depois da
+   primeira mudança ainda não recarregada (com mudanças sem parar, o quadro não fica para trás). */
+export const AGRUPAR_MS = 300;
+export const ESPERA_MAXIMA_MS = 2_000;
+
+/** Espera antes de tentar de novo uma recarga que falhou: 2 s, 5 s, 15 s e depois a cada 15 s. */
+const ESPERAS_NOVA_TENTATIVA = [2_000, 5_000, 15_000] as const;
+export function esperaDaNovaTentativa(falhasSeguidas: number): number {
+  return ESPERAS_NOVA_TENTATIVA[Math.min(Math.max(falhasSeguidas, 1), ESPERAS_NOVA_TENTATIVA.length) - 1];
+}
+
+/** Folga depois da meia-noite: o relógio do aparelho pode estar um pouco adiantado em relação ao banco. */
+export const FOLGA_MEIA_NOITE_MS = 5_000;
+const RELOGIO_BRASILIA = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Sao_Paulo",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+});
+
+/** Milissegundos até a próxima meia-noite de Brasília (quando "Frete finalizado" troca de dia). */
+export function msAteMeiaNoiteBrasilia(agora: number): number {
+  const p = Object.fromEntries(RELOGIO_BRASILIA.formatToParts(agora).map((x) => [x.type, Number(x.value)]));
+  const passados = ((p.hour * 60 + p.minute) * 60 + p.second) * 1000 + (((agora % 1000) + 1000) % 1000);
+  return 86_400_000 - passados;
+}
+
+/** Evento do tempo real em `arquivo`: só conta o arquivo de uma viagem (o canhoto); os de cadastro não. */
+export function ehArquivoDeViagem(evento: { new?: unknown; old?: unknown }): boolean {
+  const viagemDe = (linha: unknown) =>
+    linha && typeof linha === "object" ? (linha as { viagem_id?: unknown }).viagem_id : undefined;
+  return Boolean(viagemDe(evento.new) ?? viagemDe(evento.old));
+}
+
 /* ---------- tempos-limite (diálogo do admin) ---------- */
 
 /** As 8 linhas de `quadro_limite`, na ordem das colunas; a Pausa tem uma linha por tipo. */
