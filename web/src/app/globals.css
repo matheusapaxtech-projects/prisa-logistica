@@ -4,63 +4,75 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
-/* Tokens de DESIGN.md (frontmatter). Mesmos valores de :root em nilt.css. */
+/* Tokens de DESIGN.md (visual rapport). Mesmos valores de :root em nilt.css. */
 @theme {
-  --color-frame: #eef1ef;
-  --color-sheet: #ffffff;
-  --color-raised: #f5f7f6;
-  --color-active: #e2e7e4;
-  --color-border: #e1e5e2;
-  --color-rule: #edf0ee;
-  --color-control: #c5ccc7;
-  --color-ink: #1e2327;
-  --color-muted: #535b57;
-  --color-faint: #656c68;
-  --color-verde: #0b6b3a;
-  --color-verde-forte: #08552e;
-  --color-verde-claro: #e3f1e8;
-  --color-verde-tinta: #0a4426;
-  --color-laranja: #d9580d;
-  --color-laranja-claro: #fdebdd;
-  --color-laranja-tinta: #873505;
-  --color-amarelo: #f2b705;
-  --color-amarelo-claro: #fdf3cb;
-  --color-amarelo-tinta: #5c4500;
-  --color-amarelo-borda: #c99700;
-  --color-vermelho: #c8102e;
-  --color-vermelho-claro: #fbe3e6;
-  --color-vermelho-tinta: #8a0b1f;
-  --color-perigo-borda: #e7b3bb;
-  --color-azul: #1f5fa8;
-  --color-azul-claro: #e3edf8;
-  --color-azul-tinta: #163f73;
+  --color-frame: #e8e6de;
+  --color-sheet: #fbf8f2;
+  --color-painel: rgba(250, 246, 238, 0.68);
+  --color-raised: #f3eee4;
+  --color-active: #e7e0d3;
+  --color-border: #e4ddd0;
+  --color-rule: #ebe5da;
+  --color-control: #cdc5b6;
+  --color-circulo: #f5f3eb;
+  --color-ink: #161818;
+  --color-muted: #55574f;
+  --color-faint: #66675f;
+  --color-noite: #161818;
+  --color-verde: #2c5a4d;
+  --color-verde-forte: #234a3f;
+  --color-verde-claro: #e1ebe4;
+  --color-verde-tinta: #1f4237;
+  --color-laranja: #e38b3d;
+  --color-laranja-claro: #f8e7d4;
+  --color-laranja-tinta: #7a3c0b;
+  --color-amarelo: #e7c14b;
+  --color-amarelo-claro: #f7edc8;
+  --color-amarelo-tinta: #574300;
+  --color-amarelo-borda: #b8901a;
+  --color-vermelho: #b9381a;
+  --color-vermelho-claro: #f6e1d9;
+  --color-vermelho-tinta: #8a2a12;
+  --color-perigo-borda: rgba(185, 56, 26, 0.35);
+  --color-azul: #2f5f8a;
+  --color-azul-claro: #e2eaf1;
+  --color-azul-tinta: #1d3f5e;
   --color-placa-azul: #1a4fa0;
-  --color-neutro-marca: #8a928d;
-  --color-neutro-tinta: #383f3b;
+  --color-neutro-marca: #8a8a82;
+  --color-neutro-tinta: #3d3e39;
 
-  --radius-chip: 4px;
-  --radius-control: 6px;
-  --radius-card: 8px;
-  --radius-toast: 10px;
-  --radius-dialogo: 14px;
-  --radius-sheet: 16px;
-  --radius-pill: 9px;
+  --radius-chip: 999px;
+  --radius-control: 999px;
+  --radius-campo: 12px;
+  --radius-card: 18px;
+  --radius-painel: 24px;
+  --radius-toast: 999px;
+  --radius-dialogo: 26px;
+  --radius-sheet: 28px;
+  --radius-pill: 999px;
   --radius-round: 50%;
 
-  --spacing-sheet-inset: 8px;
+  --shadow-painel: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 18px 40px -26px rgba(60, 40, 20, 0.28);
+  --shadow-cartao: 0 10px 24px -14px rgba(22, 24, 24, 0.45);
+  --shadow-flutua: 0 28px 60px -18px rgba(22, 24, 24, 0.45);
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-mola: cubic-bezier(0.34, 1.36, 0.64, 1);
+
+  --spacing-sheet-inset: 12px;
   --spacing-campo-gap: 16px;
-  --spacing-gap: 24px;
-  --spacing-pad: 24px;
+  --spacing-gap: 20px;
+  --spacing-pad: 28px;
   --spacing-pad-celular: 16px;
-  --spacing-bloco-x: 20px;
-  --spacing-sidebar: 228px;
-  --spacing-topbar: 48px;
-  --spacing-control-h: 32px;
-  --spacing-field-h: 38px;
-  --spacing-row-h: 48px;
+  --spacing-bloco-x: 22px;
+  --spacing-sidebar: 236px;
+  --spacing-topbar: 64px;
+  --spacing-control-h: 36px;
+  --spacing-field-h: 42px;
+  --spacing-row-h: 52px;
   --spacing-toque: 44px;
 
-  --font-sans: var(--font-overpass), "Segoe UI", system-ui, sans-serif;
+  --font-sans: var(--font-outfit), "Segoe UI", system-ui, sans-serif;
   --font-mono: var(--font-overpass-mono), ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
 

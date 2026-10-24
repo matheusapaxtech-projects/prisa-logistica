@@ -185,7 +185,7 @@ test.describe("Financeiro", () => {
   test("o item Financeiro do menu abre a tela (admin)", async ({ page }) => {
     // O usuário de teste é admin. Que a operação não vê nada é coberto no banco (financeiro.test.sql).
     await page.goto("/");
-    await page.getByRole("navigation").getByRole("link", { name: "Financeiro" }).click();
+    await page.getByRole("navigation", { name: "Seções" }).getByRole("link", { name: "Financeiro" }).click();
     await expect(page).toHaveURL(/\/financeiro/);
     await expect(page.getByRole("heading", { level: 1, name: "Financeiro" })).toBeVisible();
   });

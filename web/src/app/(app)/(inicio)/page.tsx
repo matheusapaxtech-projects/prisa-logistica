@@ -1,17 +1,35 @@
 import { Fragment } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Link2 } from "lucide-react";
+import { ArrowUpRight, Link2, Route, Truck, Weight } from "lucide-react";
+import { Anel } from "@/components/Anel";
+import { Avatar } from "@/components/Avatar";
 import { Capacidade } from "@/components/Capacidade";
 import { Engate } from "@/components/Engate";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import { MarcoKm } from "@/components/MarcoKm";
+import { Numero } from "@/components/Numero";
 import { Ponto } from "@/components/Ponto";
 import { formato } from "@/lib/formato";
 import { getPerfil, pode } from "@/lib/permissoes";
 import { createClient } from "@/lib/supabase/server";
 import { tipado } from "@/lib/banco";
-import { carregarInicio, resumoOperacao, type Cadastros, type Placas, type ResumoOperacao, type Vencimento } from "./consultas";
+import { rotuloDe } from "@/lib/quadro";
+import { duracao } from "../viagens/regras";
+import {
+  carregarInicio,
+  carregarPainel,
+  destaquesDoQuadro,
+  resumoOperacao,
+  situacaoDoQuadro,
+  type Cadastros,
+  type Destaque,
+  type Placas,
+  type ResumoOperacao,
+  type SituacaoQuadro,
+  type Vencimento,
+} from "./consultas";
+import { GraficoToneladas } from "./grafico-toneladas";
 import { MenuNovo } from "./menu-novo";
 
 export const metadata: Metadata = { title: "Início" };
@@ -92,24 +110,120 @@ function advertencias(p: Placas): Advertencia[] {
   ];
 }
 
+/** Cartão sólido na cor da situação (vermelho = círculo, laranja/amarelo = losango); zero fica apagado,
+   em vidro, com a forma tracejada. O número grande conta até o valor. */
 function PlacaAdvertencia({ a }: { a: Advertencia }) {
   const vazio = a.n === 0;
   return (
-    <Link className="advertencia" href={a.href} aria-label={`${a.n} ${a.rotulo}`}>
-      {a.forma === "circulo" ? (
-        <span className={`circulo-proibido${vazio ? " vazio" : ""}`} aria-hidden="true">
-          <b>{a.n}</b>
-        </span>
-      ) : (
-        <span className={`losango ${vazio ? "vazio" : a.forma}`} aria-hidden="true">
-          <b>{a.n}</b>
-        </span>
-      )}
+    <Link className={`advertencia tom-${vazio ? "vazio" : a.forma}`} href={a.href} aria-label={`${a.n} ${a.rotulo}`}>
+      <b className="adv-n">
+        <Numero valor={a.n} />
+      </b>
+      <span className={`adv-forma forma-${a.forma === "circulo" ? "circulo" : "losango"}${vazio ? " vazio" : ""}`} aria-hidden="true" />
       <span className="txt">
         <b>{a.rotulo}</b>
         <span>{vazio ? (a.zero ?? "nada pendente") : a.sub}</span>
       </span>
     </Link>
+  );
+}
+
+/** Indicador ao lado do título: círculo com ícone, número que conta, selo opcional e legenda. */
+function Kpi({ Icone, n, sufixo, rotulo, href, selo }: { Icone: typeof Truck; n: number; sufixo?: string; rotulo: string; href: string; selo?: React.ReactNode }) {
+  return (
+    <Link className="kpi" href={href}>
+      <span className="kpi-icone" aria-hidden="true">
+        <Icone size={18} strokeWidth={1.7} />
+      </span>
+      <span>
+        <b className="kpi-valor">
+          <Numero valor={n} />
+          {sufixo}
+          {selo}
+        </b>
+        <span className="kpi-rot">{rotulo}</span>
+      </span>
+    </Link>
+  );
+}
+
+const cidade = (c: string | null, uf: string | null) => (c ? `${c}${uf ? `/${uf}` : ""}` : "—");
+const FORMA: Record<Destaque["nivel"], { classe: string; texto: string }> = {
+  vermelho: { classe: "forma-circulo tom-vermelho", texto: "passou do tempo-limite" },
+  ambar: { classe: "forma-losango tom-mostarda", texto: "perto do tempo-limite" },
+  normal: { classe: "forma-ret tom-verde", texto: "no prazo" },
+};
+
+/** Cartão escuro dos destaques (os "Hot deals" do template): a viagem parada há mais tempo, com a forma
+   da situação no canto, a coluna no alto, a rota em destaque e o tempo grande embaixo. */
+function CartaoDestaque({ d, agora }: { d: Destaque; agora: number }) {
+  const c = d.cartao;
+  const f = FORMA[d.nivel];
+  return (
+    <Link
+      className="destaque"
+      href={`/viagens/${c.viagem_id}`}
+      aria-label={`Viagem #${c.numero}, ${c.status_campo ? rotuloDe(c.status_campo) : ""}, ${f.texto}, ${c.status_desde ? duracao(c.status_desde, new Date(agora)) : ""}`}
+    >
+      <span className="dest-topo">
+        <span>{c.status_campo ? rotuloDe(c.status_campo) : "—"}</span>
+        <span className={`dest-forma ${f.classe}`} aria-hidden="true" />
+      </span>
+      <b className="dest-titulo">
+        {cidade(c.origem_cidade, c.origem_uf).split("/")[0]} → {cidade(c.destino_cidade, c.destino_uf).split("/")[0]}
+      </b>
+      <span className="dest-sub">{c.cliente_nome ?? "—"}</span>
+      <span className="dest-pe">
+        <span>
+          <b className="dest-valor">{c.status_desde ? duracao(c.status_desde, new Date(agora)).replace(/^há /, "") : "—"}</b>
+          <span className="dest-meta">
+            #{c.numero} · {c.cavalo_placa ?? "sem placa"}
+          </span>
+        </span>
+        <Avatar nome={c.motorista_nome} />
+      </span>
+    </Link>
+  );
+}
+
+/** Barra da situação das viagens do quadro (a "Stage mix" do template), cor = situação. */
+function PainelSituacao({ s }: { s: SituacaoQuadro }) {
+  const total = s.normal + s.ambar + s.vermelho + s.finalizadas;
+  const partes = [
+    { k: "normal", n: s.normal, rot: "No prazo", forma: "forma-ret tom-verde" },
+    { k: "ambar", n: s.ambar, rot: "Perto do tempo-limite", forma: "forma-losango tom-mostarda" },
+    { k: "vermelho", n: s.vermelho, rot: "Passaram do tempo-limite", forma: "forma-circulo tom-vermelho" },
+    { k: "finalizadas", n: s.finalizadas, rot: "Frete finalizado", forma: "forma-ponto tom-noite" },
+  ];
+  return (
+    <section className="painel painel-situacao" aria-labelledby="h-sit">
+      <div className="painel-cab">
+        <h2 id="h-sit">Situação das viagens</h2>
+        <Link className="redondo" href="/quadro" aria-label="Abrir o Quadro">
+          <ArrowUpRight size={16} strokeWidth={1.8} aria-hidden="true" />
+        </Link>
+      </div>
+      <div className="linha-valor">
+        <span className="valor-medio">
+          <Numero valor={total} />
+        </span>
+        <span className="nota">viagens no quadro agora</span>
+      </div>
+      <div className="barra-sit" aria-hidden="true">
+        {partes.map((p, i) => (p.n > 0 ? <i key={p.k} className={`sit-${p.k}`} style={{ flexGrow: p.n, animationDelay: `${250 + i * 70}ms` }} /> : null))}
+        {total === 0 && <i className="sit-vazio" />}
+      </div>
+      <ul className="sit-lista">
+        {partes.map((p) => (
+          <li key={p.k}>
+            <span className={`adv-forma ${p.forma}`} aria-hidden="true" />
+            <span>{p.rot}</span>
+            <b className="num">{p.n}</b>
+            <span className="num pct">{total ? Math.round((p.n / total) * 100) : 0}%</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -201,16 +315,35 @@ export default async function Inicio() {
   const perfil = await getPerfil();
   const podeEditar = pode(perfil, "editar");
   const supabase = await createClient();
-  const [{ placas, vencimentos, cadastros, conjuntos }, operacao] = await Promise.all([carregarInicio(supabase), resumoOperacao(tipado(supabase))]);
+  const db = tipado(supabase);
+  const agora = new Date().getTime();
+  const [{ placas, vencimentos, cadastros, conjuntos }, painel] = await Promise.all([carregarInicio(supabase), carregarPainel(db, agora)]);
+  const operacao = await resumoOperacao(db, agora, painel.quadro);
+  const destaques = destaquesDoQuadro(painel.quadro, agora);
+  const situacao = situacaoDoQuadro(painel.quadro, agora);
+  const noQuadro = situacao.normal + situacao.ambar + situacao.vermelho;
+  const tonMes = painel.meses[painel.meses.length - 1]?.toneladas ?? 0;
+  const docs = cadastros.documentos;
 
   return (
     <main>
-      <div className="titulo">
+      <div className="titulo titulo-inicio">
         <div>
           <h1>Início</h1>
           <p className="sub" id="achado">
             <Partes itens={achadoDoDia(placas)} />
           </p>
+        </div>
+        <div className="kpis">
+          <Kpi
+            Icone={Route}
+            n={noQuadro}
+            rotulo="Viagens no quadro"
+            href="/quadro"
+            selo={situacao.vermelho > 0 ? <span className="selo selo-vermelho">{situacao.vermelho} no vermelho</span> : <span className="selo selo-verde">tudo no prazo</span>}
+          />
+          <Kpi Icone={Weight} n={Math.round(tonMes)} sufixo=" t" rotulo="Transportadas neste mês" href="/viagens?aba=finalizadas" />
+          <Kpi Icone={Truck} n={conjuntos.length} rotulo="Conjuntos rodando" href="/conjuntos" />
         </div>
         {podeEditar && (
           <div className="acoes">
@@ -221,6 +354,45 @@ export default async function Inicio() {
             <MenuNovo />
           </div>
         )}
+      </div>
+
+      <div className="painel-operacao">
+        <GraficoToneladas meses={painel.meses} />
+
+        <section className="painel painel-destaques" aria-labelledby="h-dest">
+          <div className="painel-cab">
+            <h2 id="h-dest">Paradas há mais tempo</h2>
+            <span className="nota">pelo tempo na coluna</span>
+            <Link className="redondo" href="/quadro?problema=1" aria-label="Ver no Quadro as que têm problema">
+              <ArrowUpRight size={16} strokeWidth={1.8} aria-hidden="true" />
+            </Link>
+          </div>
+          {destaques.length ? (
+            <div className="destaques">
+              {destaques.map((d) => (
+                <CartaoDestaque key={d.cartao.viagem_id} d={d} agora={agora} />
+              ))}
+            </div>
+          ) : (
+            <EstadoVazio>Nenhuma viagem no quadro agora.</EstadoVazio>
+          )}
+        </section>
+
+        <Link className="painel painel-verde" href="/pendencias?aba=documentos" aria-labelledby="h-docs">
+          <span className="painel-cab">
+            <span className="h2" id="h-docs">
+              Documentos conferidos
+            </span>
+          </span>
+          <Anel
+            fracao={docs.total ? docs.conferidos / docs.total : 0}
+            rotulo={`${docs.conferidos} de ${docs.total} documentos conferidos`}
+            tamanho={150}
+            legenda={`${docs.conferidos} de ${docs.total}`}
+          />
+        </Link>
+
+        <PainelSituacao s={situacao} />
       </div>
 
       <div className="grade">
@@ -268,7 +440,7 @@ export default async function Inicio() {
               )}
             </div>
             <div style={{ paddingTop: 12 }}>
-              <Link className="btn" href="/pendencias?aba=vencimentos" style={{ height: 30 }}>
+              <Link className="btn" href="/pendencias?aba=vencimentos">
                 Ver todos os vencimentos
               </Link>
             </div>

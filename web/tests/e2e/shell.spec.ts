@@ -10,14 +10,18 @@ test.describe("shell", () => {
 
   test("menu, usuário e selo de pendências", async ({ page }) => {
     await entrar(page);
-    const menu = page.getByRole("complementary", { name: "Menu principal" });
-    for (const item of ["Início", "Motoristas", "Proprietários", "Veículos", "Conjuntos", "Pendências", "Usuários", "Auditoria"]) {
-      await expect(menu.getByRole("link", { name: new RegExp(`^${item}`) })).toBeVisible();
+    // Visual rapport: seções em pílulas no topo; cadastros, administração, senha e sair no trilho escuro.
+    const secoes = page.getByRole("navigation", { name: "Seções" });
+    for (const item of ["Início", "Quadro", "Pedidos", "Viagens", "Clientes", "Pendências"]) {
+      await expect(secoes.getByRole("link", { name: new RegExp(`^${item}`) })).toBeVisible();
     }
-    await expect(menu.getByRole("link", { name: "Início", exact: true })).toHaveAttribute("aria-current", "page");
-    await expect(menu.getByText("Administração")).toBeVisible();
-    await expect(menu.getByText("Administrador")).toBeVisible();
-    const selo = menu.locator(".nav .contagem");
+    await expect(secoes.getByRole("link", { name: "Início", exact: true })).toHaveAttribute("aria-current", "page");
+    const menu = page.getByRole("complementary", { name: "Menu principal" });
+    for (const item of ["Motoristas", "Proprietários", "Veículos", "Conjuntos", "Usuários", "Auditoria"]) {
+      await expect(menu.getByRole("link", { name: item })).toBeVisible();
+    }
+    await expect(page.getByRole("img", { name: /, Administrador$/ })).toBeVisible();
+    const selo = secoes.locator(".contagem");
     await expect(selo).toHaveText(/^\d+$/);
     await expect(selo).toHaveAttribute("aria-label", /^\d+ pendências$/);
     await expect(menu.getByRole("button", { name: "Sair" })).toBeVisible();

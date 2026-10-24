@@ -27,6 +27,10 @@ vi.mock("@/app/(app)/(inicio)/consultas", async (original) => ({
     conjuntos: [],
   })),
   resumoOperacao: vi.fn(async () => operacaoDoTeste),
+  carregarPainel: vi.fn(async () => ({
+    quadro: { cartoes: [], limites: [], origensDaPausa: {} },
+    meses: Array.from({ length: 12 }, (_, i) => ({ mes: `2026-${String(i + 1).padStart(2, "0")}`, rotulo: `m${i + 1}`, toneladas: i * 10 })),
+  })),
 }));
 
 import Inicio from "@/app/(app)/(inicio)/page";

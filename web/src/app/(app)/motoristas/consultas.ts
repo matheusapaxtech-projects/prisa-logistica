@@ -149,10 +149,10 @@ type VeiculoDb = {
   pbt_t: number | null;
   tara_t: number | null;
   marca_veiculo: { nome: string } | null;
-  tipo_veiculo: { categoria: PecaEngate["categoria"]; configuracao_cavalo: "toco" | "trucado" | null; eixos: number } | null;
+  tipo_veiculo: { nome: string; categoria: PecaEngate["categoria"]; configuracao_cavalo: "toco" | "trucado" | null; eixos: number } | null;
 };
 const COLUNAS_VEICULO =
-  "id, placa, modelo, capacidade_carga_t, pbt_t, tara_t, marca_veiculo(nome), tipo_veiculo(categoria, configuracao_cavalo, eixos)";
+  "id, placa, modelo, capacidade_carga_t, pbt_t, tara_t, marca_veiculo(nome), tipo_veiculo(nome, categoria, configuracao_cavalo, eixos)";
 
 const resumoVeiculo = (v: VeiculoDb): VeiculoResumo => ({
   id: v.id,
@@ -168,6 +168,7 @@ function peca(v: VeiculoDb): PecaEngate {
     configuracao_cavalo: v.tipo_veiculo?.configuracao_cavalo ?? null,
     eixos: v.tipo_veiculo?.eixos ?? 0,
     capacidade_carga_t: cap,
+    tipo: v.tipo_veiculo?.nome ?? null,
   };
 }
 

@@ -7,3 +7,6 @@ node_modules/
 # saídas de inspeção visual (regeráveis)
 .taste-skill/inspect/
 .impeccable/review/
+
+# vercel (ligação local do projeto)
+.vercel

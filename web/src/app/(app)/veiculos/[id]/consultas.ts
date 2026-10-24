@@ -114,7 +114,7 @@ type PecaBruta = {
   pbt_t: number | null;
   tara_t: number | null;
   capacidade_carga_t: number | null;
-  tipo_veiculo: Embutido<{ categoria: PecaEngate["categoria"]; configuracao_cavalo: "toco" | "trucado" | null; eixos: number }>;
+  tipo_veiculo: Embutido<{ nome: string; categoria: PecaEngate["categoria"]; configuracao_cavalo: "toco" | "trucado" | null; eixos: number }>;
 };
 
 function peca(b: PecaBruta): PecaEngate {
@@ -125,10 +125,11 @@ function peca(b: PecaBruta): PecaEngate {
     configuracao_cavalo: t?.configuracao_cavalo ?? null,
     eixos: t?.eixos ?? 0,
     capacidade_carga_t: t?.categoria === "carreta" ? capacidadeEfetiva(b) : null,
+    tipo: t?.nome ?? null,
   };
 }
 
-const PECA = "id, placa, pbt_t, tara_t, capacidade_carga_t, tipo_veiculo(categoria, configuracao_cavalo, eixos)";
+const PECA = "id, placa, pbt_t, tara_t, capacidade_carga_t, tipo_veiculo(nome, categoria, configuracao_cavalo, eixos)";
 const CONJUNTO = `id, cavalo_id, inicio, fim, motorista_id, cavalo:veiculo!conjunto_cavalo_id_fkey(${PECA}), conjunto_item(posicao, veiculo(${PECA})), motorista(pessoa(nome))`;
 
 /** Todos os conjuntos de que o veículo já fez parte (o aberto primeiro, depois os encerrados, mais novos antes). */

@@ -134,13 +134,16 @@ export function PainelResultado({ mes, ano, linhasAno, saldos, semCategoriaTotal
         <section className="bloco c7" aria-labelledby="t-resultado">
           <div className="bloco-cab">
             <h2 id="t-resultado">Resultado de {nome}</h2>
-            {margem !== null && (
-              <span className="dir">
-                margem do frete de {margem.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
-              </span>
-            )}
           </div>
           <div className="bloco-corpo">
+            <div className="linha-valor">
+              <span className="valor-grande">{dinheiro(r.resultado)}</span>
+              <span className="nota">
+                {margem !== null
+                  ? `margem do frete de ${margem.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+                  : "sem receita de frete no mês"}
+              </span>
+            </div>
             <Demonstrativo linhas={RESULTADO} r={r} hrefLancamentos={hrefLancamentos} />
           </div>
         </section>

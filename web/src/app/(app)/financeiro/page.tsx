@@ -1,12 +1,13 @@
 import { Fragment } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Upload } from "lucide-react";
+import { ChevronLeft, ChevronRight, Percent, Tag, Upload, Wallet, type LucideIcon } from "lucide-react";
 import { Abas } from "@/components/Abas";
 import { EstadoVazio } from "@/components/EstadoVazio";
+import { Numero } from "@/components/Numero";
 import { Ponto } from "@/components/Ponto";
 import { tipado } from "@/lib/banco";
-import { ehCategoria, mesDeHoje, mesValido, nomeDoMes, somarMes, somarResultado } from "@/lib/financeiro";
+import { ehCategoria, mesDeHoje, mesValido, nomeDoMes, percentualMargem, somarMes, somarResultado } from "@/lib/financeiro";
 import { getPerfil, pode } from "@/lib/permissoes";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -40,6 +41,21 @@ function href(p: { aba?: AbaFinanceiro; mes?: string; ver?: string; q?: string }
   if (p.q) u.set("q", p.q);
   const s = u.toString();
   return s ? `/financeiro?${s}` : "/financeiro";
+}
+
+/** Indicador ao lado do título (o mesmo do Início): círculo com ícone, número que conta e legenda. */
+function Kpi({ Icone, children, rotulo, href }: { Icone: LucideIcon; children: React.ReactNode; rotulo: string; href: string }) {
+  return (
+    <Link className="kpi" href={href} scroll={false}>
+      <span className="kpi-icone" aria-hidden="true">
+        <Icone size={18} strokeWidth={1.7} />
+      </span>
+      <span>
+        <b className="kpi-valor">{children}</b>
+        <span className="kpi-rot">{rotulo}</span>
+      </span>
+    </Link>
+  );
 }
 
 function SemAcesso() {
@@ -106,13 +122,14 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
     ...(doMes.semCategoriaQtd ? [`${doMes.semCategoriaQtd} sem categoria`] : []),
   ];
 
+  const margem = percentualMargem(doMes);
   const ver = um(sp.ver);
   const filtro = ver === SEM_CATEGORIA || ehCategoria(ver) ? ver : "";
   const busca = um(sp.q).trim();
 
   return (
     <main className="prop fin">
-      <div className="titulo">
+      <div className="titulo titulo-inicio">
         <div>
           <h1>Financeiro</h1>
           <p className="sub" id="achado">
@@ -123,6 +140,19 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
               </Fragment>
             ))}
           </p>
+        </div>
+        <div className="kpis">
+          <Kpi Icone={Wallet} rotulo={`Resultado da operação em ${nomeDoMes(mes).split(" ")[0]}`} href={href({ mes })}>
+            {doMes.resultado < 0 && "−"}
+            <Numero valor={Math.abs(Math.round(doMes.resultado))} formato="moeda" />
+          </Kpi>
+          <Kpi Icone={Percent} rotulo="Margem do frete" href={href({ mes })}>
+            {margem === null ? "—" : `${margem.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`}
+          </Kpi>
+          <Kpi Icone={Tag} rotulo="Sem categoria no mês" href={href({ aba: "lancamentos", mes, ver: SEM_CATEGORIA })}>
+            <Numero valor={doMes.semCategoriaQtd} />
+            {doMes.semCategoriaQtd > 0 ? <span className="selo selo-laranja">classificar</span> : <span className="selo selo-verde">em dia</span>}
+          </Kpi>
         </div>
         <div className="acoes">
           <Link className="btn btn-primario" href="/financeiro/importar">

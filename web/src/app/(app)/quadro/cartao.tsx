@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowRightLeft, Wallet } from "lucide-react";
+import { motion } from "motion/react";
+import { MoreHorizontal, Wallet } from "lucide-react";
+import { Avatar } from "@/components/Avatar";
 import { Placa } from "@/components/Placa";
 import { Ponto } from "@/components/Ponto";
 import { Sinal, type TipoSinal } from "@/components/Sinal";
@@ -9,9 +12,10 @@ import { formato } from "@/lib/formato";
 import type { Cartao as DadosCartao, Nivel } from "@/lib/quadro";
 import { duracao, TIPOS_PAUSA } from "../viagens/regras";
 
-/* Cartão da viagem no Quadro: o mínimo para decidir sem abrir. Placa do cavalo, motorista, cliente,
-   origem → destino, há quanto tempo está na coluna (âmbar e vermelho pelo tempo-limite) e os sinais
-   da parte administrativa. Clicar abre a ficha da viagem; "Mover" é a alternativa ao arrastar. */
+/* Cartão da viagem no Quadro, na anatomia do template: no alto o tempo na coluna (com a forma do sinal
+   quando âmbar ou vermelho) e o botão "…" (Mover, a alternativa ao arrastar); a rota grande; cliente e
+   motorista; os sinais da parte administrativa; embaixo o número da viagem (abre a ficha), a placa do
+   cavalo e o avatar do motorista. A cor sólida do cartão é o tempo-limite. */
 
 type Sinalizado = { tipo: TipoSinal; texto: string };
 
@@ -45,6 +49,7 @@ export function sinaisDoCartao(c: DadosCartao): Sinalizado[] {
 }
 
 const cidade = (c: string | null, uf: string | null) => (c ? `${c}${uf ? `/${uf}` : ""}` : "—");
+const soCidade = (c: string | null) => c ?? "—";
 
 type Props = {
   cartao: DadosCartao;
@@ -59,17 +64,31 @@ type Props = {
   aoMover: () => void;
   aoPagar: () => void;
   aoArrastar: (arrastando: boolean) => void;
+  /** Clique no cartão (fora do número e dos botões): abre a ficha rápida. */
+  aoAbrir: () => void;
 };
 
-export function CartaoQuadro({ cartao: c, nivel, agora, podeMover, podePagar, movendo, aoMover, aoPagar, aoArrastar }: Props) {
+export function CartaoQuadro({ cartao: c, nivel, agora, podeMover, podePagar, movendo, aoMover, aoPagar, aoArrastar, aoAbrir }: Props) {
   const tempo = c.status_desde ? duracao(c.status_desde, new Date(agora)) : "—";
   const desde = c.status_desde ? `Na coluna desde ${formato.dataHora(c.status_desde)}` : undefined;
   const sinais = sinaisDoCartao(c);
   const n = c.numero ?? "—";
+  /** Sendo arrastado: o lugar de origem fica apagado enquanto a imagem do arraste segue o ponteiro. */
+  const [levantado, setLevantado] = useState(false);
 
   return (
+    // O invólucro do Motion só anima a posição: ao trocar de coluna o cartão voa até a nova (mesmo
+    // layoutId) e os vizinhos se reacomodam. O arraste nativo fica no <article> de dentro, porque o Motion
+    // toma para si os onDragStart/onDragEnd do elemento animado.
+    <motion.div
+      className="quadro-cartao-mov"
+      layoutId={c.viagem_id ? `viagem-${c.viagem_id}` : undefined}
+      layout
+      transition={{ layout: { type: "spring", stiffness: 380, damping: 34 } }}
+      style={{ borderRadius: 18 }}
+    >
     <article
-      className={`quadro-cartao nivel-${nivel}${movendo ? " movendo" : ""}`}
+      className={`quadro-cartao nivel-${nivel}${movendo ? " movendo" : ""}${levantado ? " levantado" : ""}`}
       data-nivel={nivel}
       aria-label={`Viagem #${n}, ${c.cavalo_placa ?? "sem placa"}, ${c.motorista_nome ?? "sem motorista"}`}
       aria-busy={movendo || undefined}
@@ -77,36 +96,39 @@ export function CartaoQuadro({ cartao: c, nivel, agora, podeMover, podePagar, mo
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", c.viagem_id ?? "");
         e.dataTransfer.effectAllowed = "move";
+        setLevantado(true);
         aoArrastar(true);
       }}
-      onDragEnd={() => aoArrastar(false)}
+      onDragEnd={() => {
+        setLevantado(false);
+        aoArrastar(false);
+      }}
+      onClick={(e) => {
+        if (!(e.target as HTMLElement).closest("a, button")) aoAbrir();
+      }}
     >
-      <div className="quadro-cartao-cab">
-        {c.cavalo_placa ? <Placa placa={c.cavalo_placa} /> : <span className="sem-placa">—</span>}
-        <Link className="quadro-cartao-link" href={`/viagens/${c.viagem_id}`} draggable={false} aria-label={`Abrir a viagem #${n}`}>
-          #{n}
-        </Link>
+      <div className="qc-topo">
+        <span className="qc-tempo" title={desde}>
+          {nivel !== "normal" && <span className={`qc-forma ${nivel === "vermelho" ? "forma-circulo" : "forma-losango"}`} aria-hidden="true" />}
+          {tempo}
+        </span>
+        {podeMover && (
+          <button className="qc-mais" type="button" onClick={aoMover} disabled={movendo} aria-label={`Mover a viagem #${n}`} title="Mover">
+            <MoreHorizontal size={16} strokeWidth={2} aria-hidden="true" />
+          </button>
+        )}
       </div>
-      <p className="quem">
-        <b>{c.motorista_nome ?? "—"}</b>
-        <Ponto />
-        {c.cliente_nome ?? "—"}
-      </p>
-      <p className="rota">
-        {cidade(c.origem_cidade, c.origem_uf)}
+      <p className="qc-titulo" title={`${cidade(c.origem_cidade, c.origem_uf)} → ${cidade(c.destino_cidade, c.destino_uf)}`}>
+        {soCidade(c.origem_cidade)}
         <span className="seta" aria-label="para">
           {" → "}
         </span>
-        {cidade(c.destino_cidade, c.destino_uf)}
+        {soCidade(c.destino_cidade)}
       </p>
-      <p className="tempo" title={desde}>
-        {nivel === "vermelho" ? (
-          <Sinal tipo="bloqueado" texto={tempo} />
-        ) : nivel === "ambar" ? (
-          <Sinal tipo="vencendo" texto={tempo} />
-        ) : (
-          <span className="tempo-normal">{tempo}</span>
-        )}
+      <p className="qc-sub">
+        {c.cliente_nome ?? "—"}
+        <Ponto />
+        {c.motorista_nome ?? "sem motorista"}
       </p>
       {sinais.length > 0 && (
         <ul className="quadro-sinais" aria-label="Sinais">
@@ -117,22 +139,24 @@ export function CartaoQuadro({ cartao: c, nivel, agora, podeMover, podePagar, mo
           ))}
         </ul>
       )}
-      {(podeMover || podePagar) && (
+      {podePagar && (
         <div className="quadro-cartao-acoes">
-          {podePagar && (
-            <button className="btn btn-texto" type="button" onClick={aoPagar} aria-label={`Confirmar pagamento de saída da viagem #${n}`}>
-              <Wallet size={16} strokeWidth={1.6} aria-hidden="true" />
-              Confirmar pagamento de saída
-            </button>
-          )}
-          {podeMover && (
-            <button className="btn" type="button" onClick={aoMover} disabled={movendo} aria-label={`Mover a viagem #${n}`}>
-              <ArrowRightLeft size={16} strokeWidth={1.6} aria-hidden="true" />
-              Mover
-            </button>
-          )}
+          <button className="btn btn-texto" type="button" onClick={aoPagar} aria-label={`Confirmar pagamento de saída da viagem #${n}`}>
+            <Wallet size={16} strokeWidth={1.6} aria-hidden="true" />
+            Confirmar pagamento de saída
+          </button>
         </div>
       )}
+      <div className="qc-pe">
+        <Link className="quadro-cartao-link" href={`/viagens/${c.viagem_id}`} draggable={false} aria-label={`Abrir a viagem #${n}`}>
+          #{n}
+        </Link>
+        <span className="qc-quem">
+          {c.cavalo_placa ? <Placa placa={c.cavalo_placa} /> : <span className="sem-placa">sem placa</span>}
+          <Avatar nome={c.motorista_nome} />
+        </span>
+      </div>
     </article>
+    </motion.div>
   );
 }

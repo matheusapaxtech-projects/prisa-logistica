@@ -116,3 +116,12 @@
   .fin .sel-categoria { max-width: none; height: 44px; }
   .fin .aviso-fin .btn { margin-left: 0; }
 }
+
+/* ---------- visual novo (rapport) ---------- */
+/* Selo de pendente (laranja), como os cartões "a planejar" do Início. */
+.fin .selo-laranja { background: var(--laranja); color: #2a1606; margin-left: 8px; vertical-align: 4px; }
+.fin .kpi-valor .selo { margin-left: 8px; vertical-align: 4px; }
+.fin .linha-valor { margin-bottom: 14px; }
+/* A coluna fixa da tabela do ano precisa de fundo opaco: o do painel, não o branco dos campos. */
+.fin .tabela-ano th[scope="row"], .fin .tabela-ano thead .col-rotulo { background: var(--raised); }
+.fin .tabela-ano .atual { background: rgba(22, 24, 24, 0.035); }

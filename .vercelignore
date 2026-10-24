@@ -1,0 +1,16 @@
+# Sobe só o app (web/) e os tipos do banco que ele importa (supabase/types/). Nunca sobem: variáveis
+# locais (as de produção ficam no painel da Vercel), a sessão dos testes (tem token de login) e
+# resultados de teste.
+/*
+!/web
+!/supabase
+/supabase/*
+!/supabase/types
+web/.env*
+web/node_modules
+web/.next
+web/tests/e2e/.sessao
+web/test-results
+web/playwright-report
+web/playwright.redesign.config.ts
+web/tests/e2e/redesign.cap.ts

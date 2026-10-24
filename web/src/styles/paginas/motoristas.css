@@ -40,7 +40,7 @@
 }
 .marco-validade .placa-km span { font-size: 12px; color: var(--muted); }
 .marco-validade .placa-km b { font-size: 28px; line-height: 32px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 4px; }
-.marco-validade .placa-km.vencendo { background: var(--amarelo); border-color: #1e2327; }
+.marco-validade .placa-km.vencendo { background: var(--amarelo); border-color: #161818; }
 .marco-validade .placa-km.vencendo span { color: var(--amarelo-tinta); }
 .marco-validade .placa-km.vencido { border-color: var(--vermelho); }
 .marco-validade .placa-km.vencido b { color: var(--vermelho-tinta); }

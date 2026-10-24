@@ -6,8 +6,9 @@ import { tipado, type Banco } from "@/lib/banco";
 import { resumoDaRequisicao } from "@/lib/resumo-da-requisicao";
 import type { PecaEngate } from "@/components/Engate";
 import type { DadosCapacidade } from "@/components/Capacidade";
-import { carregarQuadro } from "../quadro/consultas";
-import { nivelDoCartao } from "../quadro/regras";
+import type { Cartao, Nivel } from "@/lib/quadro";
+import { carregarQuadro, type DadosQuadro } from "../quadro/consultas";
+import { minutosDesde, nivelDoCartao } from "../quadro/regras";
 
 /** Janela da lista "Vencimentos" e quantas linhas ela mostra (protótipo: `dias <= 90`, `slice(0, 5)`). */
 export const JANELA_VENCIMENTOS = 90;
@@ -73,6 +74,7 @@ type LinhaVeiculo = {
   tara_t: number | null;
   capacidade_carga_t: number | null;
   tipo_veiculo: {
+    nome: string;
     categoria: PecaEngate["categoria"];
     configuracao_cavalo: PecaEngate["configuracao_cavalo"];
     eixos: number;
@@ -90,6 +92,7 @@ function peca(v: LinhaVeiculo): PecaEngate {
     configuracao_cavalo: v.tipo_veiculo?.configuracao_cavalo ?? null,
     eixos: v.tipo_veiculo?.eixos ?? 0,
     capacidade_carga_t: categoria === "carreta" ? efetiva : null,
+    tipo: v.tipo_veiculo?.nome ?? null,
   };
 }
 
@@ -140,8 +143,8 @@ async function carregarConjuntos(db: Cliente): Promise<ConjuntoAberto[]> {
     .from("conjunto")
     .select(
       `id, inicio, motorista_id,
-       cavalo:veiculo!conjunto_cavalo_id_fkey(placa, pbt_t, tara_t, capacidade_carga_t, tipo_veiculo(categoria, configuracao_cavalo, eixos)),
-       conjunto_item(posicao, veiculo(placa, pbt_t, tara_t, capacidade_carga_t, tipo_veiculo(categoria, configuracao_cavalo, eixos)))`,
+       cavalo:veiculo!conjunto_cavalo_id_fkey(placa, pbt_t, tara_t, capacidade_carga_t, tipo_veiculo(nome, categoria, configuracao_cavalo, eixos)),
+       conjunto_item(posicao, veiculo(placa, pbt_t, tara_t, capacidade_carga_t, tipo_veiculo(nome, categoria, configuracao_cavalo, eixos)))`,
     )
     .is("fim", null)
     .order("created_at", { ascending: true })
@@ -298,11 +301,11 @@ export type ResumoOperacao = {
  * vermelhos e as pausas saem de `carregarQuadro` com a mesma regra do Quadro (`nivelDoCartao`),
  * para o número da placa e o que se vê ao clicar nela serem a mesma coisa.
  */
-export async function resumoOperacao(cliente: Banco, agora: number = Date.now()): Promise<ResumoOperacao> {
+export async function resumoOperacao(cliente: Banco, agora: number = Date.now(), quadroLido?: DadosQuadro): Promise<ResumoOperacao> {
   const [pedidosAPlanejar, planejadas, quadro] = await Promise.all([
     contar(cliente.from("v_pedido_saldo").select("*", { count: "exact", head: true }).eq("situacao", "aberto").gt("saldo_kg", 0)),
     cliente.from("v_viagem_planejada").select("travas"),
-    carregarQuadro(cliente),
+    quadroLido ?? carregarQuadro(cliente),
   ]);
   if (planejadas.error) throw planejadas.error;
 
@@ -316,4 +319,74 @@ export async function resumoOperacao(cliente: Banco, agora: number = Date.now())
     cartoesVermelhos: quadro.cartoes.filter((c) => nivelDoCartao(c, limites, agora) === "vermelho").length,
     pausasNaoProgramadas: quadro.cartoes.filter((c) => c.status_campo === "pausa" && c.pausa_programada === false).length,
   };
+}
+
+/* ---------- painel da operação (gráfico, destaques e situação) ---------- */
+
+export type MesToneladas = { mes: string; rotulo: string; toneladas: number };
+
+const FUSO_SP = "America/Sao_Paulo";
+const ANO_MES = new Intl.DateTimeFormat("en-CA", { timeZone: FUSO_SP, year: "numeric", month: "2-digit" });
+const ROTULO_MES = new Intl.DateTimeFormat("pt-BR", { timeZone: FUSO_SP, month: "short" });
+
+/** "2026-10" do instante, no horário de Brasília. */
+function anoMes(d: Date): string {
+  return ANO_MES.format(d).slice(0, 7);
+}
+
+/** Os últimos 12 meses (o atual por último), com as toneladas que saíram nas viagens finalizadas em cada um
+   (`peso_saida_kg` das viagens com `finalizada_em` no mês). Mês sem viagem = 0. */
+export async function toneladasPorMes(cliente: Banco, agora: number = Date.now()): Promise<MesToneladas[]> {
+  const meses: MesToneladas[] = [];
+  const base = new Date(agora);
+  for (let i = 11; i >= 0; i--) {
+    // dia 15 evita que a virada de fuso empurre o mês para o vizinho
+    const d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() - i, 15));
+    meses.push({ mes: anoMes(d), rotulo: ROTULO_MES.format(d).replace(".", ""), toneladas: 0 });
+  }
+  const inicio = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() - 11, 1) - 24 * 3600 * 1000).toISOString();
+  const r = await cliente.from("viagem").select("finalizada_em, peso_saida_kg").gte("finalizada_em", inicio);
+  if (r.error) throw r.error;
+  const porMes = new Map(meses.map((m) => [m.mes, m]));
+  for (const v of r.data ?? []) {
+    if (!v.finalizada_em) continue;
+    const m = porMes.get(anoMes(new Date(v.finalizada_em)));
+    if (m) m.toneladas += Number(v.peso_saida_kg ?? 0) / 1000;
+  }
+  return meses.map((m) => ({ ...m, toneladas: Math.round(m.toneladas * 10) / 10 }));
+}
+
+/** O que o painel do topo do Início lê: o quadro (destaques, situação e cartões no vermelho) e as toneladas. */
+export async function carregarPainel(cliente: Banco, agora: number = Date.now()): Promise<{ quadro: DadosQuadro; meses: MesToneladas[] }> {
+  const [quadro, meses] = await Promise.all([carregarQuadro(cliente), toneladasPorMes(cliente, agora)]);
+  return { quadro, meses };
+}
+
+export type Destaque = { cartao: Cartao; nivel: Nivel; minutos: number };
+
+const PESO_NIVEL: Record<Nivel, number> = { vermelho: 2, ambar: 1, normal: 0 };
+
+/** As viagens paradas há mais tempo no quadro (sem as finalizadas): vermelho primeiro, depois âmbar,
+   cada grupo do mais antigo na coluna para o mais novo. */
+export function destaquesDoQuadro(quadro: DadosQuadro, agora: number, quantos = 6): Destaque[] {
+  const limites = new Map(quadro.limites.map((l) => [l.chave, l]));
+  return quadro.cartoes
+    .filter((c) => c.status_campo && c.status_campo !== "frete_finalizado")
+    .map((c) => ({ cartao: c, nivel: nivelDoCartao(c, limites, agora), minutos: minutosDesde(c.status_desde, agora) }))
+    .sort((a, b) => PESO_NIVEL[b.nivel] - PESO_NIVEL[a.nivel] || b.minutos - a.minutos)
+    .slice(0, quantos);
+}
+
+export type SituacaoQuadro = { normal: number; ambar: number; vermelho: number; finalizadas: number };
+
+/** Quantas viagens do quadro estão no prazo, perto do limite, passaram dele e já finalizaram. */
+export function situacaoDoQuadro(quadro: DadosQuadro, agora: number): SituacaoQuadro {
+  const limites = new Map(quadro.limites.map((l) => [l.chave, l]));
+  const s: SituacaoQuadro = { normal: 0, ambar: 0, vermelho: 0, finalizadas: 0 };
+  for (const c of quadro.cartoes) {
+    if (!c.status_campo) continue;
+    if (c.status_campo === "frete_finalizado") s.finalizadas++;
+    else s[nivelDoCartao(c, limites, agora)]++;
+  }
+  return s;
 }
