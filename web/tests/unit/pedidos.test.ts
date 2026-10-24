@@ -93,6 +93,18 @@ describe("esquemaPedido (salvarPedido)", () => {
     const r = esquemaPedido.safeParse({ ...base, coleta_prevista: "", entrega_prevista: "" });
     expect(r.data).toMatchObject({ coleta_prevista: null, entrega_prevista: null });
   });
+
+  it("produto só com espaços é recusado", () => {
+    const r = esquemaPedido.safeParse({ ...base, produto: "   \t " });
+    expect(r.success).toBe(false);
+    expect(erroDe(r, "produto")).toBe("Informe o produto.");
+  });
+
+  it("produto e observação saem sem espaços nas pontas; observação só com espaços vira nulo", () => {
+    expect(esquemaPedido.safeParse({ ...base, produto: "  Soja   em grão  " }).data?.produto).toBe("Soja em grão");
+    expect(esquemaPedido.safeParse({ ...base, observacao: "   " }).data?.observacao).toBeNull();
+    expect(esquemaPedido.safeParse({ ...base, observacao: "  carga frágil \n" }).data?.observacao).toBe("carga frágil");
+  });
 });
 
 describe("pesoSugerido (Nova viagem)", () => {

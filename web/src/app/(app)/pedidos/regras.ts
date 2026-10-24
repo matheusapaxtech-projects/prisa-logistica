@@ -58,13 +58,22 @@ export const esquemaPedido = z
     destinatario_id: id("Escolha o destinatário"),
     local_coleta_id: id("Escolha o local de coleta"),
     local_descarga_id: id("Escolha o local de descarga"),
-    produto: z.string().default("").pipe(z.string().min(1, "Informe o produto.").max(200, "Até 200 caracteres.")),
+    // Sem espaços nas pontas antes de contar: produto só com espaços é "vazio".
+    produto: z
+      .string()
+      .default("")
+      .transform((v) => v.trim())
+      .pipe(z.string().min(1, "Informe o produto.").max(200, "Até 200 caracteres.")),
     peso_total_kg: numero({ vazio: "Informe o peso total em kg.", casas: 1, positivo: true }),
     coleta_prevista: data,
     entrega_prevista: data,
     frete_empresa_valor: numero({ vazio: "Informe o frete da empresa.", casas: 2, positivo: false }),
     frete_empresa_tipo: tarifa("Escolha se o frete é por tonelada ou total."),
-    observacao: z.string().max(2000, "Até 2000 caracteres.").default(""),
+    observacao: z
+      .string()
+      .default("")
+      .transform((v) => v.trim())
+      .pipe(z.string().max(2000, "Até 2000 caracteres.")),
   })
   .superRefine((v, ctx) => {
     if (v.coleta_prevista && v.entrega_prevista && v.entrega_prevista < v.coleta_prevista)
@@ -84,7 +93,7 @@ export const esquemaPedido = z
     frete_empresa_tipo: v.frete_empresa_tipo,
     // Enquanto a tabela de frete não está integrada, o valor é sempre digitado (spec 6.1).
     frete_empresa_origem: "manual" as const,
-    observacao: nulo(v.observacao),
+    observacao: nulo(v.observacao), // só espaços → nulo
   }));
 
 export type DadosPedido = z.output<typeof esquemaPedido>;
