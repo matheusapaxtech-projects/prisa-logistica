@@ -8,13 +8,85 @@ export type PecaEngate = {
   configuracao_cavalo?: "toco" | "trucado" | null;
   eixos: number;
   capacidade_carga_t?: number | null;
+  /** Nome do tipo (`tipo_veiculo.nome`, ex.: "CARRETA BAU - 3 EIXOS"): escolhe a carroceria do modelinho. */
+  tipo?: string | null;
 };
 
+export type Carroceria = "graneleiro" | "bau" | "sider" | "basculante" | "conteiner";
+
+/** Carroceria do modelinho pelo nome do tipo do cadastro (sem tipo ou desconhecido: graneleiro). */
+export function carroceriaDe(tipo: string | null | undefined): Carroceria {
+  const t = (tipo ?? "").toUpperCase();
+  if (/SIDER/.test(t)) return "sider";
+  if (/BASCULANTE/.test(t)) return "basculante";
+  if (/CONTEINER|CONTAINER/.test(t)) return "conteiner";
+  if (/\bBAU\b|BAÚ|FECHADA|FURG[AÃ]O/.test(t)) return "bau";
+  return "graneleiro";
+}
+
+/** A carroceria desenhada sobre o chassi da carreta (viewBox 104×30, chassi em y = 23). */
+function Carroceria({ tipo }: { tipo: Carroceria }) {
+  if (tipo === "bau") {
+    return (
+      <g>
+        <rect x="1" y="2" width="102" height="21" rx="2" className="pm-carroceria" />
+        {[21, 41, 61, 81].map((x) => (
+          <line key={x} x1={x} y1="4" x2={x} y2="21" className="pm-vinco" />
+        ))}
+        <line x1="97" y1="4" x2="97" y2="21" className="pm-vinco-forte" />
+      </g>
+    );
+  }
+  if (tipo === "sider") {
+    return (
+      <g>
+        <rect x="1" y="2" width="102" height="21" rx="2" className="pm-carroceria pm-lona" />
+        {Array.from({ length: 11 }, (_, i) => 7 + i * 9).map((x) => (
+          <line key={x} x1={x} y1="5" x2={x} y2="21" className="pm-cinta" />
+        ))}
+        <rect x="1" y="2" width="102" height="3" rx="1" className="pm-chassi" />
+      </g>
+    );
+  }
+  if (tipo === "basculante") {
+    return (
+      <g>
+        <path d="M2 23 L2 9 L88 3 Q101 3 101 11 L95 23 Z" className="pm-carroceria" />
+        {[20, 40, 60, 80].map((x) => (
+          <line key={x} x1={x} y1={9 - (x / 88) * 6 + 2} x2={x} y2="21" className="pm-vinco" />
+        ))}
+      </g>
+    );
+  }
+  if (tipo === "conteiner") {
+    return (
+      <g>
+        <rect x="1" y="3" width="102" height="20" rx="1.5" className="pm-carroceria pm-conteiner" />
+        {Array.from({ length: 24 }, (_, i) => 5 + i * 4).map((x) => (
+          <line key={x} x1={x} y1="5" x2={x} y2="21" className="pm-vinco" />
+        ))}
+      </g>
+    );
+  }
+  return (
+    <g>
+      {[8, 22, 36, 50, 64, 78, 92].map((x) => (
+        <rect key={x} x={x} y="3" width="1.8" height="6" className="pm-chassi" />
+      ))}
+      <rect x="1" y="8" width="102" height="15" rx="2" className="pm-carroceria" />
+      {[22, 43, 64, 85].map((x) => (
+        <line key={x} x1={x} y1="10" x2={x} y2="21" className="pm-vinco" />
+      ))}
+    </g>
+  );
+}
+
 const ROT: Record<string, string> = { dolly: "Dolly", carreta: "Carreta", caminhao: "Caminhão", outros: "Outro" };
+const NOME_CARROCERIA: Record<Carroceria, string> = { graneleiro: "graneleiro", bau: "baú", sider: "sider", basculante: "basculante", conteiner: "contêiner" };
 
 /** Silhueta da peça em miniatura (vista lateral, frente para a esquerda). As rodas são os `<i>` de
    `.peca-eixos`, posicionados pelo CSS: no cavalo, o primeiro eixo vai para baixo da cabine. */
-function Modelo({ categoria }: { categoria: string }) {
+function Modelo({ categoria, tipo }: { categoria: string; tipo?: string | null }) {
   if (categoria === "cavalo" || categoria === "caminhao") {
     return (
       <svg className="peca-modelo" viewBox="0 0 64 30" width="64" height="30" aria-hidden="true">
@@ -38,16 +110,10 @@ function Modelo({ categoria }: { categoria: string }) {
       </svg>
     );
   }
-  // carreta (e "outros"): carroceria com fueiros, chassi e pé de apoio
+  // carreta (e "outros"): a carroceria do tipo, o chassi e o pé de apoio
   return (
-    <svg className="peca-modelo" viewBox="0 0 104 30" width="104" height="30" aria-hidden="true">
-      {[8, 22, 36, 50, 64, 78, 92].map((x) => (
-        <rect key={x} x={x} y="3" width="1.8" height="6" className="pm-chassi" />
-      ))}
-      <rect x="1" y="8" width="102" height="15" rx="2" className="pm-carroceria" />
-      {[22, 43, 64, 85].map((x) => (
-        <line key={x} x1={x} y1="10" x2={x} y2="21" className="pm-vinco" />
-      ))}
+    <svg className="peca-modelo" viewBox="0 0 104 30" width="104" height="30" aria-hidden="true" data-carroceria={carroceriaDe(tipo)}>
+      <Carroceria tipo={carroceriaDe(tipo)} />
       <rect x="3" y="23" width="99" height="4" rx="1" className="pm-chassi" />
       <rect x="30" y="27" width="2" height="3" className="pm-chassi" />
     </svg>
@@ -73,11 +139,13 @@ export function Peca({ v, atual = false, fantasma = false, rotulo, nota }: PecaP
       ? v.configuracao_cavalo === "trucado"
         ? "Cavalo trucado"
         : "Cavalo toco"
-      : ROT[v.categoria] || "Veículo");
+      : v.categoria === "carreta" && v.tipo
+        ? `Carreta ${NOME_CARROCERIA[carroceriaDe(v.tipo)]}`
+        : ROT[v.categoria] || "Veículo");
   return (
     <div className={`peca ${v.categoria}${atual ? " atual" : ""}${fantasma ? " fantasma" : ""}`}>
       <div className="peca-corpo">
-        <Modelo categoria={v.categoria} />
+        <Modelo categoria={v.categoria} tipo={v.tipo} />
         <span className="peca-rot">
           {rot}
           {!rotulo && v.categoria === "carreta" && (

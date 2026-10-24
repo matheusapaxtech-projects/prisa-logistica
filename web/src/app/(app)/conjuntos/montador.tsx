@@ -59,6 +59,7 @@ const comoPeca = (v: VeiculoConjunto): PecaEngate => ({
   categoria: v.categoria as PecaEngate["categoria"],
   configuracao_cavalo: v.configuracao_cavalo,
   eixos: v.eixos,
+  tipo: v.tipo,
   capacidade_carga_t: v.capacidade_carga_t ?? (v.pbt_t != null && v.tara_t != null ? Math.round((v.pbt_t - v.tara_t) * 100) / 100 : null),
 });
 

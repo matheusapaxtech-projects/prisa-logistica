@@ -749,6 +749,11 @@ table.tabela { width: 100%; border-collapse: collapse; }
 .pm-cambao { stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
 .pm-carroceria { fill: #fbf7ef; stroke: var(--ink); stroke-width: 1.2; }
 .pm-vinco { stroke: rgba(22, 24, 24, 0.25); stroke-width: 1; }
+.pm-vinco-forte { stroke: rgba(22, 24, 24, 0.55); stroke-width: 1.2; }
+.pm-cinta { stroke: rgba(22, 24, 24, 0.4); stroke-width: 1.1; }
+.pm-lona { fill: #e6e9e1; }
+.pm-conteiner { fill: #efe6d6; }
+.peca.fantasma :is(.pm-vinco-forte, .pm-cinta) { display: none; }
 /* guia e vaga: tracejado, sem preenchimento */
 .peca.fantasma :is(.pm-cabine, .pm-carroceria, .pm-chassi) { fill: none; stroke: rgba(22, 24, 24, 0.35); stroke-width: 1; stroke-dasharray: 3 2.5; }
 .peca.fantasma :is(.pm-vidro, .pm-farol, .pm-vinco) { display: none; }

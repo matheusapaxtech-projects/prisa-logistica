@@ -74,6 +74,7 @@ type LinhaVeiculo = {
   tara_t: number | null;
   capacidade_carga_t: number | null;
   tipo_veiculo: {
+    nome: string;
     categoria: PecaEngate["categoria"];
     configuracao_cavalo: PecaEngate["configuracao_cavalo"];
     eixos: number;
@@ -91,6 +92,7 @@ function peca(v: LinhaVeiculo): PecaEngate {
     configuracao_cavalo: v.tipo_veiculo?.configuracao_cavalo ?? null,
     eixos: v.tipo_veiculo?.eixos ?? 0,
     capacidade_carga_t: categoria === "carreta" ? efetiva : null,
+    tipo: v.tipo_veiculo?.nome ?? null,
   };
 }
 
@@ -141,8 +143,8 @@ async function carregarConjuntos(db: Cliente): Promise<ConjuntoAberto[]> {
     .from("conjunto")
     .select(
       `id, inicio, motorista_id,
-       cavalo:veiculo!conjunto_cavalo_id_fkey(placa, pbt_t, tara_t, capacidade_carga_t, tipo_veiculo(categoria, configuracao_cavalo, eixos)),
-       conjunto_item(posicao, veiculo(placa, pbt_t, tara_t, capacidade_carga_t, tipo_veiculo(categoria, configuracao_cavalo, eixos)))`,
+       cavalo:veiculo!conjunto_cavalo_id_fkey(placa, pbt_t, tara_t, capacidade_carga_t, tipo_veiculo(nome, categoria, configuracao_cavalo, eixos)),
+       conjunto_item(posicao, veiculo(placa, pbt_t, tara_t, capacidade_carga_t, tipo_veiculo(nome, categoria, configuracao_cavalo, eixos)))`,
     )
     .is("fim", null)
     .order("created_at", { ascending: true })
