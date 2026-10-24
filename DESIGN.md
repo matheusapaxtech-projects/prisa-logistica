@@ -355,7 +355,7 @@ Escala atual (o resto da hierarquia abaixo vale com estes ajustes): título de t
 
 ## Layout
 
-**Shell.** Grade de duas colunas: menu escuro flutuante de 236px (recuado 12px das bordas, canto 28px, fixo na altura da janela) + página fluida; duas linhas: barra superior de 64px + conteúdo. A barra leva a busca global em pílula de vidro (até 520px, atalho "/"). Não há mais folha branca: a página fica direto sobre o fundo quente, com padding de 28px e largura máxima de 1480px, e cada bloco é um painel de vidro.
+**Shell.** Topo com marca, seções em pílulas e busca/usuário; trilho escuro fixo à esquerda (a página recua 92px para ele). Não há folha branca: a página fica direto sobre o fundo quente, com padding de 28px à direita e largura máxima de 1480px, e cada bloco é um painel de vidro.
 
 **Grade interna.** 12 colunas com gap de 24px para blocos (`c3`…`c12`). Formulários em `.secao`: rótulo e explicação numa coluna de 260px à esquerda, campos numa grade de 12 colunas à direita (gap 16px vertical × 24px horizontal), larguras `f2`…`f12` conforme o tamanho real do dado. Seções separadas por filete, 24px acima e abaixo.
 
@@ -406,10 +406,15 @@ Pílula de 24px, texto 500 12px, com a forma da placa à esquerda (9px). Seis va
 ### Placa do veículo
 Desenho da placa física: 92×30px, contorno de tinta 1.5px, canto 4px, faixa "BRASIL" de 7px no azul Mercosul, letras em Overpass Mono 600 15px. Placa antiga (padrão cinza) detectada pelo formato: fundo #e8eaea, sem faixa, contorno #6b7270. Versão grande 150×46px para o cabeçalho da ficha do veículo. Gerada por `N.desenhar.placa(placa, grande)`; a placa é o título do objeto veículo.
 
-### Cartões de situação (Início)
-Duas faixas de cinco cartões sólidos (Operação e Pendências), cada um levando à lista filtrada. O cartão tem a cor da situação (ferrugem + círculo para bloqueado/vencido, laranja + losango para pendente, mostarda + losango para atenção), o nome e a explicação no alto e o número grande (40px 600) embaixo, que conta até o valor ao aparecer. Zero vira cartão de vidro apagado com a forma tracejada e a frase de "nada pendente". Hover sobe 3px. Os losangos e círculos desenhados de placa (40–44px) continuam no cabeçalho dos grupos em Pendências.
+### Painel do Início (o "Overview" do template)
+Título "Início" com a frase do dia embaixo e, na mesma linha, os indicadores (círculo creme com ícone, número que conta, selo): viagens no quadro (selo ferrugem "N no vermelho" ou verde "tudo no prazo"), toneladas transportadas no mês e conjuntos rodando. Logo abaixo, a grade do template:
+- **Toneladas transportadas** (o painel "Revenue"): número grande que conta, legenda, curva das toneladas por mês (peso de saída das viagens finalizadas) que se desenha ao aparecer e se transforma ao trocar 6/12 meses (seletor em pílula com fundo que desliza), linha tracejada da média do período, dica que segue o cursor e tabela escondida para leitor de tela. Nada de meta inventada: a referência é a média real.
+- **Paradas há mais tempo** (os "Hot deals"): até seis cartões noite, vermelho primeiro, depois âmbar, cada grupo do mais antigo na coluna. No alto a coluna e a forma da situação num círculo; a rota em destaque; o tempo grande embaixo com número e placa; o avatar do motorista.
+- **Documentos conferidos** (o "Team quota"): painel verde com o anel mostarda que cresce.
+- **Situação das viagens** (a "Stage mix"): total que conta, barra de segmentos que crescem com mola (verde no prazo, mostarda perto do limite, ferrugem passou, noite finalizadas) e a lista com forma, nome, quantidade e porcentagem.
 
-Ao lado do título do Início, uma linha de indicadores: círculo creme com ícone, número que conta e legenda (conjuntos rodando, motoristas, documentos anexados). No bloco Cadastros, um painel verde com o anel mostarda de documentos conferidos.
+### Cartões de situação (Início)
+Duas faixas de cinco cartões sólidos (Operação e Pendências), cada um levando à lista filtrada. O cartão tem a cor da situação (ferrugem + círculo para bloqueado/vencido, laranja + losango para pendente, mostarda + losango para atenção), o nome e a explicação no alto e o número grande (40px 600) embaixo, que conta até o valor ao aparecer. Zero vira cartão de vidro apagado com a forma tracejada. Hover sobe 3px. Os losangos e círculos desenhados de placa (40–44px) continuam no cabeçalho dos grupos em Pendências.
 
 ### Marco de quilômetro (vencimentos)
 Linha de 52px: quem e o quê à esquerda, trilho de 8px no meio, dias à direita (600 16px + legenda). O trilho tem o comprimento exato dos dias restantes dentro da janela (90 dias por padrão): verde acima de 30 dias, amarelo até 30, e vencido vira um toco vermelho de 4px com "Vencido / venceu há N dias" em vermelho tinta. Gerado por `N.desenhar.marco(vencimento, janela)`. Na ficha do motorista, a **placa de km** destaca a validade da CNH e da gerenciadora: quadro de contorno 2px com o número em 700 28px; verde com filete branco quando normal, amarelo com contorno tinta quando vencendo, contorno vermelho quando vencido.
@@ -439,7 +444,11 @@ Abas como pílulas sobre um trilho de tinta a 6% (4px de folga): texto 500 14px 
 - **Busca e filtros da lista:** campo de 32px com lupa, select de 32px, total à direita ("8 motoristas"); segmento para janelas (30/60/90 dias) com o ativo em asfalto pisado.
 
 ### Navigation
-Menu escuro flutuante (noite, canto 28px, recuado 12px, sombra de cartão): marca (placa verde 36px com filete branco e seta para cima + "NILT / Prisa Logística" em branco), itens em pílula de 38px com ícone Lucide 17px e texto claro (#d9d8d0), hover branco a 7%. O item atual é uma **pílula creme (#f5f3eb) com texto tinta que desliza** de um item para o outro ao trocar de página (Motion, `layoutId`, mola 420/36). Grupo "Administração" em 12px branco a 45%. Contagem de pendências como pílula ferrugem. Usuário, "Trocar senha" e "Sair" no pé, separados por filete. Abaixo de 1100px, gaveta que desliza da esquerda.
+Como no template: **topo** com a marca à esquerda (quadrado noite de 38px com a seta branca + "NILT"), as **seções em pílulas no centro** (Início, Quadro, Pedidos, Viagens, Clientes, Pendências) e, à direita, a busca global em pílula de vidro e o avatar do usuário (anel branco; nome e papel no rótulo). O item atual é uma **pílula noite com texto branco que desliza** de uma seção para a outra (Motion, `layoutId`, mola 420/36). A contagem de pendências é uma pílula ferrugem dentro de "Pendências".
+
+À esquerda, o **trilho escuro** (pílula noite de 54px, centrado na altura, fixo): só ícones de 18px em círculos de 40px para Motoristas, Proprietários, Veículos, Conjuntos, Usuários e Auditoria (admin), e no pé Trocar senha e Sair. O nome aparece como dica (pílula noite à direita) no hover e no foco. Item atual: círculo creme com ícone tinta.
+
+Abaixo de 1100px as seções somem do topo e o trilho vira a **gaveta** (até 290px, canto 28px) com tudo e com os nomes, aberta pelo botão de menu.
 
 ### Barra de salvar
 Pílula noite (999px, sombra flutuante) que gruda 8px acima do fim da janela e só aparece quando algo foi alterado. "Descartar" como texto branco a 80%; "Salvar" como pílula mostarda com tinta escura. Se há campo inválido, não salva: avisa e põe o foco no primeiro campo marcado.
@@ -451,7 +460,13 @@ Pílula noite (999px, sombra flutuante) que gruda 8px acima do fim da janela e s
 Pílula noite embaixo, no centro, com uma bolinha verde (ou ferrugem no erro) e o ícone branco à esquerda. Sobe de 28px com mola (Motion), no máximo dois empilhados, fica 3,2s (6s quando tem botão). Pode levar uma ação em pílula mostarda ("Desfazer"): só ofereça quando desfazer é uma operação simples que o banco aceita sem pedir dados (no Quadro, voltar de coluna exige motivo, então não há Desfazer).
 
 ### Quadro da operação
-Colunas de vidro (286px, canto 24px; as de espera estreitam para 60px com o rótulo em pé) com o contador em pílula. O cartão da viagem é sólido na cor do tempo-limite: verde no prazo, mostarda no âmbar, ferrugem no vermelho; a cor muda com transição de 450ms. Ao trocar de coluna (arrastando, pelo "Mover" ou pelo tempo real), o cartão voa até a nova posição e os vizinhos se reacomodam (Motion, `layoutId` por viagem, mola 380/34). Arrastando, o lugar de origem fica apagado e menor, as colunas permitidas ganham contorno tracejado, a coluna sob o ponteiro ganha contorno tinta e sobe 2px, e as proibidas apagam. Acima do quadro, indicadores que contam: viagens na tela, perto do tempo-limite (losango mostarda) e passaram do tempo-limite (círculo ferrugem).
+Colunas de vidro (286px, canto 24px; as de espera estreitam para 60px com o rótulo em pé) com ponto noite, nome e contador em pílula. O cartão segue a anatomia dos cartões de negócio do template: no alto o tempo na coluna (com a forma do sinal quando âmbar ou vermelho) e o botão "…" redondo (Mover); a rota grande; cliente e motorista; os sinais; embaixo o número da viagem grande (abre a página da viagem), a placa e o avatar do motorista. O cartão é sólido na cor do tempo-limite (verde no prazo, mostarda no âmbar, ferrugem no vermelho), com transição de cor de 450ms.
+
+Ao trocar de coluna (arrastando, pelo "Mover" ou pelo tempo real), o cartão voa até a nova posição e os vizinhos se reacomodam (Motion, `layoutId` por viagem). Arrastando, a origem fica apagada e menor, as colunas permitidas ganham contorno tracejado, a coluna sob o ponteiro ganha contorno tinta e sobe 2px, e as proibidas apagam.
+
+**Ficha rápida:** clicar no cartão (fora do número e dos botões) faz o cartão **crescer e virar a ficha** (mesma `layoutId`, mola 300/32) sobre o véu desfocado: desde quando está na coluna, a rota, cliente e motorista, o tempo grande, a situação, a barra das seis etapas (Trânsito, Carregamento, NF e pagamento, Em rota, Descarga, Finalizado) que avança com mola, coluna/placa/cliente, os sinais e as saídas "Abrir a viagem" (pílula vazada) e "Mover" (pílula branca; leva ao menu de destinos com as regras do banco). Esc ou clique fora fecha.
+
+Acima do quadro, na linha do título, indicadores que contam: viagens na tela, perto do tempo-limite (losango mostarda) e passaram do tempo-limite (círculo ferrugem).
 
 ### Avisos e estados
 - **Aviso em bloco:** faixa com canto 8px no fundo claro da cor do sinal e texto na tinta correspondente, ícone 18px, frase que explica a regra (arrendado sem contrato, CPF de proprietário diferente na ANTT).

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import { RotateCw, Route } from "lucide-react";
+import { AnimatePresence } from "motion/react";
 import { Abas } from "@/components/Abas";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import { Numero } from "@/components/Numero";
@@ -29,6 +30,7 @@ import { CartaoQuadro } from "./cartao";
 import { Coluna } from "./coluna";
 import { carregarQuadro, type DadosQuadro, type Limite } from "./consultas";
 import { DialogoPagamento, DialogoPassagem, MenuMover, type EnviarCanhoto, type Passagem } from "./dialogos-passagem";
+import { FichaRapida } from "./ficha-rapida";
 import { FiltrosQuadro } from "./filtros";
 import { TemposLimite } from "./tempos-limite";
 import { buscaDe, foiAtualizado, nivelDoCartao, opcoesDe, paraFiltros, type EstadoFiltros } from "./regras";
@@ -164,6 +166,7 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
   const [pendentes, setPendentes] = useState<Record<string, StatusCampo>>({});
   const [arrastando, setArrastando] = useState<Cartao | null>(null);
   const [menu, setMenu] = useState<Cartao | null>(null);
+  const [resumo, setResumo] = useState<Cartao | null>(null);
   const [passagem, setPassagem] = useState<Passagem | null>(null);
   const [pagando, setPagando] = useState<Cartao | null>(null);
   const estreitas = useSyncExternalStore(assinarEstreitas, lerEstreitas, () => SEM_ESTREITAS);
@@ -356,6 +359,8 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
     return null;
   }
 
+  const fecharResumo = useCallback(() => setResumo(null), []);
+
   /* ---------- desenho ---------- */
 
   const deArrasto = arrastando?.status_campo ?? null;
@@ -364,11 +369,12 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
 
   return (
     <>
-      <div className="titulo">
+      <div className="titulo titulo-inicio">
         <div>
           <h1>Quadro da operação</h1>
           <p className="sub">Onde está cada carga, qual está parada e há quanto tempo.</p>
-          <div className="quadro-kpis">
+        </div>
+          <div className="kpis">
             <span className="kpi">
               <span className="kpi-icone" aria-hidden="true">
                 <Route size={18} strokeWidth={1.7} />
@@ -403,7 +409,6 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
               </span>
             </span>
           </div>
-        </div>
         <div className="acoes quadro-conexao">
           {ehAdmin && <TemposLimite limites={dados.limites} aoSalvar={recarregar} />}
           <p role="status">
@@ -481,6 +486,7 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
                       aoMover={() => setMenu(c)}
                       aoPagar={() => setPagando(c)}
                       aoArrastar={(sim) => setArrastando(sim ? c : null)}
+                      aoAbrir={() => setResumo(c)}
                     />
                   );
                 })
@@ -490,6 +496,23 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
         })}
       </div>
 
+      <AnimatePresence>
+        {resumo && (
+          <FichaRapida
+            key={resumo.viagem_id}
+            cartao={cartoes.find((x) => x.viagem_id === resumo.viagem_id) ?? resumo}
+            nivel={nivelDe(cartoes.find((x) => x.viagem_id === resumo.viagem_id) ?? resumo)}
+            agora={agora}
+            podeMover={podeMover && (destinosDe(resumo).length > 0 || (resumo.status_campo ? colunaAnterior(resumo.status_campo) !== null : false))}
+            aoFechar={fecharResumo}
+            aoMover={() => {
+              const c = resumo;
+              setResumo(null);
+              setMenu(c);
+            }}
+          />
+        )}
+      </AnimatePresence>
       {menu?.status_campo && (
         <MenuMover
           cartao={menu}

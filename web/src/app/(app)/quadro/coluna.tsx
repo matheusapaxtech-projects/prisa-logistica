@@ -57,6 +57,7 @@ export function Coluna({ rotulo, quantidade, espera, estreita, aoAlternarEstreit
       }}
     >
       <header className="quadro-coluna-cab">
+        <span className="coluna-ponto" aria-hidden="true" />
         <h2 id={id}>{rotulo}</h2>
         <span className="n" data-testid="contador">
           {quantidade}
