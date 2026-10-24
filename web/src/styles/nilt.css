@@ -249,7 +249,10 @@ td.num, th.num { text-align: right; }
 
 /* A "folha" deixou de ser branca: a página fica direto sobre o fundo e cada bloco é um painel de vidro. */
 .sheet { min-width: 0; }
-.sheet-inner { padding: 30px 28px 48px 0; max-width: 1480px; }
+/* Topo e folha com a mesma largura máxima, centralizados na área ao lado do trilho: em tela larga o
+   conteúdo não fica encostado à esquerda com a busca solta no canto direito. */
+.topbar, .sheet-inner { max-width: 1480px; margin-inline: auto; }
+.sheet-inner { padding: 30px 28px 48px 0; }
 
 /* Entrada da página: desfocado → nítido, em cascata (só no que é montado; recargas não repetem). */
 @keyframes surgir {
