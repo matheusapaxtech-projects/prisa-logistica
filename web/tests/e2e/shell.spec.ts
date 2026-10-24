@@ -49,7 +49,9 @@ test.describe("shell", () => {
     await expect(lista.locator(".busca-vazio")).toHaveText("Nada encontrado para “ed,son*)”. Confira a placa ou o documento.");
 
     await busca.fill("bra2e19");
-    await expect(lista.getByRole("option")).toHaveCount(1);
+    // Os dígitos da placa ("219") também acham CPFs da seed do Quadro (o Serginho, 957.318.462-19): a placa vem primeiro.
+    await expect(lista.getByRole("option", { name: /BRA2E19/ })).toHaveCount(1);
+    await expect(lista.getByRole("option").first()).toContainText("BRA2E19");
     await busca.press("ArrowDown");
     await expect(lista.getByRole("option").first()).toHaveAttribute("aria-selected", "true");
     await busca.press("Enter");
