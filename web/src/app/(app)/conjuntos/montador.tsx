@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, Check, CircleX, Link2, Plus, Unlink, X } from "lucide-react";
+import { Acoplamento, Peca, type PecaEngate } from "@/components/Engate";
 import { Placa } from "@/components/Placa";
 import { toast } from "@/components/Toast";
 import { capacidade } from "@/lib/conjunto";
@@ -52,59 +53,24 @@ const erroMsg = (msg: string, chave: string | number) => (
   </span>
 );
 
-function Eixos({ n }: { n: number }) {
-  return (
-    <span className="peca-eixos" aria-hidden="true">
-      {Array.from({ length: n }, (_, i) => (
-        <i key={i} />
-      ))}
-    </span>
-  );
-}
+/** A peça do montador como `<Peca>` do Engate (modelinho + rodas + nome + placa). */
+const comoPeca = (v: VeiculoConjunto): PecaEngate => ({
+  placa: v.placa,
+  categoria: v.categoria as PecaEngate["categoria"],
+  configuracao_cavalo: v.configuracao_cavalo,
+  eixos: v.eixos,
+  capacidade_carga_t: v.capacidade_carga_t ?? (v.pbt_t != null && v.tara_t != null ? Math.round((v.pbt_t - v.tara_t) * 100) / 100 : null),
+});
 
-/** Mesma marcação de `<Engate>` (components/Engate.tsx), com a vaga da próxima peça no fim. */
-function PecaDesenho({ v }: { v: VeiculoConjunto }) {
-  const rot =
-    v.categoria === "cavalo"
-      ? v.configuracao_cavalo === "trucado"
-        ? "Cavalo trucado"
-        : "Cavalo toco"
-      : ({ dolly: "Dolly", carreta: "Carreta", caminhao: "Caminhão", outros: "Outro" } as Record<string, string>)[v.categoria] ||
-        "Veículo";
-  const carga = v.capacidade_carga_t ?? (v.pbt_t != null && v.tara_t != null ? Math.round((v.pbt_t - v.tara_t) * 100) / 100 : null);
-  return (
-    <div className={`peca ${v.categoria}`}>
-      <div className="peca-corpo">
-        {rot}
-        {v.categoria === "carreta" && (
-          <>
-            {" "}
-            <span className="muted" style={{ fontWeight: 500 }}>
-              {formato.t(carga)}
-            </span>
-          </>
-        )}
-      </div>
-      <Eixos n={v.eixos} />
-      <span className="peca-placa">{v.placa}</span>
-    </div>
-  );
-}
-
-const Acoplamento = () => <span className="acoplamento" aria-hidden="true" />;
-
+/** Mesmo desenho de `<Engate>` (components/Engate.tsx), com a guia tracejada e a vaga da próxima peça. */
 function Previa({ cavalo, itens }: { cavalo: VeiculoConjunto | null; itens: VeiculoConjunto[] }) {
   if (!cavalo) {
-    const g = (cls: string, rot: string, eixos: number, nota: string) => (
-      <div className={`peca ${cls}`}>
-        <div className="peca-corpo">{rot}</div>
-        <Eixos n={eixos} />
-        <span className="peca-nota">{nota}</span>
-      </div>
+    const g = (categoria: PecaEngate["categoria"], rotulo: string, eixos: number, nota: string) => (
+      <Peca v={{ placa: "", categoria, eixos }} fantasma rotulo={rotulo} nota={nota} />
     );
     return (
       <div className="engate fantasma" role="img" aria-label="Ordem de engate: cavalo, carreta da posição 1, dolly opcional, carreta da posição 2">
-        {g("cavalo", "1. Cavalo", 3, "escolha acima")}
+        {g("cavalo", "1. Cavalo", 3, "escolha abaixo")}
         <Acoplamento />
         {g("carreta", "2. Carreta", 3, "engata no cavalo")}
         <Acoplamento />
@@ -117,30 +83,20 @@ function Previa({ cavalo, itens }: { cavalo: VeiculoConjunto | null; itens: Veic
   const n = itens.length;
   return (
     <div className="engate" role="img" aria-label={`Conjunto ${[cavalo, ...itens].map((v) => v.placa).join(", ")}`}>
-      <PecaDesenho v={cavalo} />
+      <Peca v={comoPeca(cavalo)} />
       {itens.map((v, i) => (
-        <PecaComAcoplamento key={`${v.id}-${i}`} v={v} />
+        <Fragment key={`${v.id}-${i}`}>
+          <Acoplamento />
+          <Peca v={comoPeca(v)} />
+        </Fragment>
       ))}
       {n < MAX_PECAS && (
         <>
           <Acoplamento />
-          <div className="peca vaga">
-            <div className="peca-corpo">{n ? "próxima peça" : "carreta da posição 1"}</div>
-            <span className="peca-eixos" />
-            <span className="peca-placa">&nbsp;</span>
-          </div>
+          <Peca v={{ placa: "", categoria: "carreta", eixos: 3 }} fantasma rotulo={n ? "próxima peça" : "carreta da posição 1"} nota="adicione abaixo" />
         </>
       )}
     </div>
-  );
-}
-
-function PecaComAcoplamento({ v }: { v: VeiculoConjunto }) {
-  return (
-    <>
-      <Acoplamento />
-      <PecaDesenho v={v} />
-    </>
   );
 }
 

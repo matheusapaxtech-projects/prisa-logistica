@@ -715,21 +715,46 @@ table.tabela { width: 100%; border-collapse: collapse; }
 .marco .dias.vencido b { color: var(--vermelho-tinta); }
 
 /* ---------- conjunto engatado ---------- */
-.engate { display: flex; align-items: flex-end; gap: 0; min-width: 0; overflow-x: auto; padding-bottom: 2px; }
-.peca { display: grid; gap: 6px; justify-items: start; flex: none; }
-.peca-corpo {
-  height: 34px; border-radius: 4px; border: 1.5px solid #161818;
-  display: flex; align-items: center; padding: 0 8px; gap: 8px;
-  background: #fff; font-size: 12px; font-weight: 600; white-space: nowrap;
+/* Cada peça é um modelinho em miniatura (vista lateral, frente para a esquerda): a silhueta em SVG,
+   as rodas (uma por eixo, os <i> de .peca-eixos) por baixo, o nome e a placa. */
+.engate { display: flex; align-items: flex-start; gap: 0; min-width: 0; overflow-x: auto; padding: 2px 2px 4px; }
+.peca {
+  display: grid; grid-template-areas: "modelo" "eixos" "rot" "placa"; justify-items: start; flex: none;
+  --pm-w: 104px;
 }
-.peca.cavalo .peca-corpo { background: var(--ink); color: #fff; border-radius: 4px 10px 4px 4px; }
-.peca.carreta .peca-corpo { min-width: 132px; background: #fff; }
-.peca.dolly .peca-corpo { min-width: 54px; justify-content: center; background: var(--raised); border-style: dashed; }
-.peca.vaga .peca-corpo { min-width: 120px; border: 1.5px dashed var(--control); color: var(--muted); font-weight: 500; background: transparent; justify-content: center; }
-.peca-eixos { display: flex; gap: 6px; padding-left: 8px; }
-.peca-eixos i { width: 10px; height: 10px; border-radius: 50%; background: #161818; box-shadow: 0 0 0 2px #fff, 0 0 0 3px #161818; }
-.peca-placa { font: 500 12px/14px var(--mono); color: var(--muted); padding-left: 2px; }
-.acoplamento { width: 18px; height: 2px; background: #161818; margin-bottom: 40px; flex: none; }
+.peca.cavalo, .peca.caminhao { --pm-w: 64px; }
+.peca.dolly { --pm-w: 40px; }
+.peca-corpo { display: contents; }
+.peca-modelo { grid-area: modelo; display: block; width: var(--pm-w); height: auto; overflow: visible; }
+.peca .peca-eixos {
+  grid-area: eixos; position: relative; display: flex; gap: 2px; justify-content: flex-end;
+  width: var(--pm-w); margin-top: -7px; padding: 0 5px;
+}
+.peca.cavalo .peca-eixos, .peca.caminhao .peca-eixos { padding-right: 4px; }
+.peca.cavalo .peca-eixos i:first-child, .peca.caminhao .peca-eixos i:first-child { margin-right: auto; margin-left: 5px; }
+.peca.dolly .peca-eixos { justify-content: center; padding-left: 12px; }
+.peca .peca-eixos i {
+  flex: none; width: 12px; height: 12px; border-radius: 50%;
+  background: radial-gradient(circle, var(--ink) 0 1.4px, #d9d6cc 1.8px 3.2px, var(--ink) 3.6px);
+}
+.peca-rot { grid-area: rot; margin-top: 5px; font-size: 11.5px; line-height: 14px; font-weight: 500; white-space: nowrap; color: var(--ink); }
+.peca-rot .muted { font-weight: 400; }
+.peca-placa { grid-area: placa; font: 500 11px/14px var(--mono); color: var(--muted); }
+.peca-nota { grid-area: placa; font-size: 11px; line-height: 14px; color: var(--muted); white-space: nowrap; }
+.acoplamento { flex: none; width: 10px; height: 2px; margin-top: 24px; background: var(--ink); border-radius: 1px; }
+.pm-cabine { fill: var(--noite); }
+.pm-vidro { fill: #cfe0db; }
+.pm-farol { fill: var(--amarelo); }
+.pm-chassi { fill: var(--ink); }
+.pm-cambao { stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
+.pm-carroceria { fill: #fbf7ef; stroke: var(--ink); stroke-width: 1.2; }
+.pm-vinco { stroke: rgba(22, 24, 24, 0.25); stroke-width: 1; }
+/* guia e vaga: tracejado, sem preenchimento */
+.peca.fantasma :is(.pm-cabine, .pm-carroceria, .pm-chassi) { fill: none; stroke: rgba(22, 24, 24, 0.35); stroke-width: 1; stroke-dasharray: 3 2.5; }
+.peca.fantasma :is(.pm-vidro, .pm-farol, .pm-vinco) { display: none; }
+.peca.fantasma .pm-cambao { stroke: rgba(22, 24, 24, 0.35); stroke-dasharray: 3 2.5; }
+.peca.fantasma .peca-eixos i { background: transparent; box-shadow: inset 0 0 0 1px rgba(22, 24, 24, 0.35); }
+.peca.fantasma .peca-rot { color: var(--muted); }
 .capacidade { display: grid; gap: 6px; min-width: 200px; }
 .capacidade .trilho { height: 10px; overflow: visible; }
 .capacidade .trilho i { background: var(--verde); }

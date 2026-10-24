@@ -166,7 +166,8 @@ fieldset.resto .secao:first-of-type { padding-top: 24px; border-top: 1px solid v
 .conj-desenho { min-width: 0; padding-top: 8px; }
 .conj-dados { display: grid; gap: 14px; justify-items: start; }
 .conj-dados .capacidade { width: 100%; }
-.peca.atual .peca-corpo { box-shadow: 0 0 0 2px var(--sheet), 0 0 0 4px var(--azul); }
+.peca.atual .peca-modelo { outline: 2px solid var(--azul); outline-offset: 3px; border-radius: 6px; }
+.peca.atual .peca-rot { color: var(--azul-tinta); }
 
 
 .nao-achou svg { width: 18px; height: 18px; flex: none; }

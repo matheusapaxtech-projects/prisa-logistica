@@ -24,23 +24,10 @@
 .tabela td.num .linha2 { text-align: right; }
 .tabela .linha2 { font-size: 13px; line-height: 18px; }
 
-/* ---------- engate grande (ficha e montador) ---------- */
+/* ---------- engate grande (ficha e montador): o mesmo modelinho, um pouco maior ---------- */
 @media (min-width: 641px) {
-.engate-grande .engate { gap: 0; padding-bottom: 4px; }
-.engate-grande .peca { gap: 8px; }
-.engate-grande .peca-corpo { height: 52px; padding: 0 14px; font-size: 14px; border-width: 2px; }
-.engate-grande .peca.cavalo .peca-corpo { border-radius: 6px 16px 6px 6px; min-width: 132px; }
-.engate-grande .peca.carreta .peca-corpo { min-width: 210px; }
-.engate-grande .peca.dolly .peca-corpo { min-width: 84px; }
-.engate-grande .peca.vaga .peca-corpo { min-width: 170px; border-width: 2px; }
-.engate-grande .peca-eixos { gap: 9px; padding-left: 12px; }
-.engate-grande .peca-eixos i { width: 14px; height: 14px; }
-.engate-grande .peca-placa { font-size: 13px; line-height: 16px; padding-left: 4px; }
-.engate-grande .acoplamento { width: 26px; height: 3px; margin-bottom: 64px; }
-.engate-grande .peca.vaga .peca-eixos { height: 14px; }
+.engate-grande .engate { zoom: 1.35; }
 }
-.peca.vaga .peca-eixos { height: 10px; }
-.peca.caminhao .peca-corpo, .peca.cavalo-item .peca-corpo { min-width: 120px; }
 .previa { background: var(--raised); border-radius: var(--radius-card); padding: 20px 20px 16px; overflow-x: auto; }
 
 /* ---------- conta da capacidade ---------- */
@@ -255,11 +242,7 @@
 
 /* caminhão-fantasma do montador vazio: as peças reais, tracejadas, numa linha só */
 .engate.fantasma { flex-wrap: nowrap !important; overflow-x: auto; }
-.engate.fantasma .peca-corpo { background: transparent !important; color: var(--muted) !important; border: 1.5px dashed var(--control) !important; font-weight: 600; }
-.engate.fantasma .peca.cavalo .peca-corpo { min-width: 96px; border-radius: 4px 10px 4px 4px; }
-.engate.fantasma .peca.carreta .peca-corpo { min-width: 132px; }
-.engate.fantasma .peca-eixos i { background: var(--control); box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--control); }
-.engate.fantasma .acoplamento { background: var(--control); }
+.engate.fantasma .acoplamento { background: rgba(22, 24, 24, 0.3); }
 .engate.fantasma .peca-nota { font: 500 12px/14px var(--font); color: var(--muted); padding-left: 2px; white-space: nowrap; }
 
 /* ficha: o <Historico> (components/Historico.tsx) dentro do bloco "Histórico de alterações" usa o
