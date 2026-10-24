@@ -213,6 +213,34 @@ describe("Quadro da operação: tela", () => {
     await waitFor(() => expect(screen.queryByRole("article", { name: /Viagem #81/ })).toBeNull());
   });
 
+  it("depois de mover, o cartão não volta para a coluna antiga quando outra recarga passa na frente da do mover", async () => {
+    // Achado no E2E: o tempo real dispara uma recarga enquanto a do mover ainda está no ar; a do mover
+    // é descartada (não é a mais recente) e, se o mover não esperasse a mais nova, o cartão voltaria por
+    // um instante para a coluna de antes (e um "Mover" nesse instante abria os destinos errados).
+    moverViagem.mockResolvedValue({ ok: true, dados: undefined });
+    const antes = cartao({ numero: 84, status_campo: "transito" });
+    const depois: DadosQuadro = { cartoes: [{ ...antes, status_campo: "aguardando_carregamento" }], limites: LIMITES, origensDaPausa: {} };
+    const respostas: ((d: DadosQuadro) => void)[] = [];
+    const { fonte, ouvinte } = fonteFalsa();
+    fonte.carregar.mockImplementation(() => new Promise<DadosQuadro>((r) => respostas.push(r)));
+    montar([antes], { fonte });
+    const naColuna = (rotulo: string) => within(screen.getByRole("region", { name: rotulo })).queryByRole("article", { name: /Viagem #84/ });
+
+    fireEvent.click(screen.getByRole("button", { name: "Mover a viagem #84" }));
+    fireEvent.click(screen.getByRole("button", { name: "Aguardando carregamento" }));
+    await waitFor(() => expect(fonte.carregar).toHaveBeenCalledTimes(1)); // a recarga do mover, no ar
+    act(() => ouvinte()!.estado("inscrito")); // outra recarga (tempo real) passa na frente
+    expect(fonte.carregar).toHaveBeenCalledTimes(2);
+
+    await act(async () => respostas[0](depois)); // a do mover chega, mas já não é a mais recente
+    expect(naColuna("Trânsito")).toBeNull();
+    expect(naColuna("Aguardando carregamento")).toBeInTheDocument();
+
+    await act(async () => respostas[1](depois));
+    expect(naColuna("Aguardando carregamento")).toBeInTheDocument();
+    expect(screen.getByRole("article", { name: /Viagem #84/ })).not.toHaveAttribute("aria-busy");
+  });
+
   it("recusa comum não recarrega: o cartão volta para a coluna e a mensagem aparece", async () => {
     moverViagem.mockResolvedValue({ ok: false, erro: "falta o canhoto" });
     const { fonte } = fonteFalsa();

@@ -168,6 +168,7 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
   const estreitas = useSyncExternalStore(assinarEstreitas, lerEstreitas, () => SEM_ESTREITAS);
 
   const seq = useRef(0);
+  const ultimaRecarga = useRef<Promise<void>>(Promise.resolve());
   const ultimaCarga = useRef(new Date(carregadoEm));
   const reconectar = useRef<() => void>(() => {});
 
@@ -175,21 +176,30 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
   const podePagar = pode(perfil, "editarFinanceiro");
   const ehAdmin = pode(perfil, "admin");
 
-  /** Lê o quadro de novo. Só a recarga mais recente vale (uma resposta atrasada não apaga outra mais nova). */
-  const recarregar = useCallback(async (): Promise<void> => {
+  /** Lê o quadro de novo. Só a recarga mais recente vale (uma resposta atrasada não apaga outra mais nova).
+     A promessa só se cumpre quando a mais recente terminar: quem espera (o mover, que depois tira o cartão
+     de "pendente") nunca vê o quadro de antes por ter sido passado para trás por uma recarga do tempo real. */
+  const recarregar = useCallback((): Promise<void> => {
     const minha = ++seq.current;
-    try {
-      const d = await fonte.carregar();
-      if (minha !== seq.current) return;
-      const em = new Date();
-      ultimaCarga.current = em;
-      setDados(d);
-      setAgora(em.getTime());
-      despachar({ tipo: "recarregou", em });
-    } catch (e) {
-      // Sem rede ou banco fora do ar: o quadro continua com o que tinha; o canal diz se está desatualizado.
-      console.error("Falha ao recarregar o Quadro:", e);
-    }
+    const lida = (async (): Promise<boolean> => {
+      try {
+        const d = await fonte.carregar();
+        if (minha !== seq.current) return false;
+        const em = new Date();
+        ultimaCarga.current = em;
+        setDados(d);
+        setAgora(em.getTime());
+        despachar({ tipo: "recarregou", em });
+      } catch (e) {
+        // Sem rede ou banco fora do ar: o quadro continua com o que tinha; o canal diz se está desatualizado.
+        console.error("Falha ao recarregar o Quadro:", e);
+      }
+      return minha === seq.current;
+    })();
+    // Passada para trás: espera a mais nova (que foi chamada depois desta, então nunca é esta mesma).
+    const pronta = lida.then((valeu) => (valeu ? undefined : ultimaRecarga.current));
+    ultimaRecarga.current = pronta;
+    return pronta;
   }, [fonte]);
 
   // Tempo na coluna: "há 2 h 15 min", atualizado a cada minuto.
