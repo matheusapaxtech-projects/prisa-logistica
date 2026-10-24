@@ -9,12 +9,32 @@ import { rotuloDe, type StatusCampo } from "@/lib/quadro";
 import { RE_ID } from "../_pessoa/formulario";
 
 type TipoTarifa = Database["public"]["Enums"]["tipo_tarifa"];
+type TipoCargaAntt = Database["public"]["Enums"]["tipo_carga_antt"];
 
 /** Tipo do frete (enum `tipo_tarifa`), na ordem da tela. */
 export const TIPOS_TARIFA = {
   por_tonelada: "Por tonelada",
   total: "Total",
 } as const satisfies Record<TipoTarifa, string>;
+
+/** Tipo de carga da Tabela A da ANTT (enum `tipo_carga_antt`), na ordem da tabela. Mesmos rótulos de
+   `rotulo_tipo_carga_antt` no banco. */
+export const TIPOS_CARGA_ANTT = {
+  granel_solido: "Granel sólido",
+  carga_geral: "Carga geral",
+  granel_liquido: "Granel líquido",
+  frigorificada: "Frigorificada ou aquecida",
+  conteinerizada: "Conteinerizada",
+  neogranel: "Neogranel",
+  perigosa_granel_solido: "Perigosa (granel sólido)",
+  perigosa_granel_liquido: "Perigosa (granel líquido)",
+  perigosa_frigorificada: "Perigosa (frigorificada ou aquecida)",
+  perigosa_conteinerizada: "Perigosa (conteinerizada)",
+  perigosa_carga_geral: "Perigosa (carga geral)",
+  granel_pressurizada: "Granel pressurizada",
+} as const satisfies Record<TipoCargaAntt, string>;
+
+const TIPOS_CARGA_CHAVES = Object.keys(TIPOS_CARGA_ANTT) as [TipoCargaAntt, ...TipoCargaAntt[]];
 
 /** "R$ 150,00 por tonelada" / "R$ 4.500,00 no total". */
 export const SUFIXO_TARIFA: Record<TipoTarifa, string> = { por_tonelada: "por tonelada", total: "no total" };
@@ -26,9 +46,16 @@ const casasDe = (v: string) => {
   return t.includes(",") ? t.length - t.indexOf(",") - 1 : 0;
 };
 
-/** Número digitado em pt-BR (peso ou dinheiro) → número. `vazio` = mensagem quando obrigatório
-   (sem ela, vazio vira `null`); `casas` = casas decimais da coluna; `positivo` = maior que zero. */
-function numero(o: { vazio?: string; casas: 1 | 2; positivo: boolean }) {
+const FORMATO: Record<0 | 1 | 2, string> = {
+  0: "Use números inteiros, como 755 ou 1.240.",
+  1: "Use números como 30.000 ou 37.000,5.",
+  2: "Use números como 150 ou 1.234,56.",
+};
+
+/** Número digitado em pt-BR (peso, km ou dinheiro) → número. `vazio` = mensagem quando obrigatório
+   (sem ela, vazio vira `null`); `casas` = casas decimais da coluna; `positivo` = mensagem quando
+   precisa ser maior que zero (sem ela, zero vale). */
+function numero(o: { vazio?: string; casas: 0 | 1 | 2; positivo?: string }) {
   return z
     .string()
     .default("")
@@ -36,15 +63,18 @@ function numero(o: { vazio?: string; casas: 1 | 2; positivo: boolean }) {
       const n = lerNumeroBr(v);
       const erro = (message: string) => ctx.addIssue({ code: "custom", message });
       if (n === null) return void (o.vazio && erro(o.vazio));
-      if (Number.isNaN(n)) return erro(o.casas === 1 ? "Use números como 30.000 ou 37.000,5." : "Use números como 150 ou 1.234,56.");
+      if (Number.isNaN(n)) return erro(FORMATO[o.casas]);
       if (casasDe(v) > o.casas)
-        return erro(o.casas === 1 ? "Use no máximo uma casa depois da vírgula." : "Use no máximo duas casas depois da vírgula.");
-      if (o.positivo && n <= 0) return erro("O peso precisa ser maior que zero.");
+        return erro(
+          o.casas === 0 ? FORMATO[0] : o.casas === 1 ? "Use no máximo uma casa depois da vírgula." : "Use no máximo duas casas depois da vírgula.",
+        );
+      if (o.positivo && n <= 0) return erro(o.positivo);
       if (n >= 1e10) erro("Valor grande demais: confira os dígitos.");
     })
     .transform((v) => lerNumeroBr(v));
 }
 
+const PESO_POSITIVO = "O peso precisa ser maior que zero.";
 const id = (msg: string) => z.string().default("").refine((v) => RE_ID.test(v), msg);
 const data = z.union([z.literal(""), z.iso.date("Data inválida.")]).default("");
 const tarifa = (msg: string) => z.enum(["por_tonelada", "total"], msg);
@@ -64,11 +94,12 @@ export const esquemaPedido = z
       .default("")
       .transform((v) => v.trim())
       .pipe(z.string().min(1, "Informe o produto.").max(200, "Até 200 caracteres.")),
-    peso_total_kg: numero({ vazio: "Informe o peso total em kg.", casas: 1, positivo: true }),
+    peso_total_kg: numero({ vazio: "Informe o peso total em kg.", casas: 1, positivo: PESO_POSITIVO }),
     coleta_prevista: data,
     entrega_prevista: data,
-    frete_empresa_valor: numero({ vazio: "Informe o frete da empresa.", casas: 2, positivo: false }),
+    frete_empresa_valor: numero({ vazio: "Informe o frete da empresa.", casas: 2 }),
     frete_empresa_tipo: tarifa("Escolha se o frete é por tonelada ou total."),
+    tipo_carga_antt: z.enum(TIPOS_CARGA_CHAVES, "Escolha o tipo de carga da ANTT.").default("granel_solido"),
     observacao: z
       .string()
       .default("")
@@ -93,6 +124,7 @@ export const esquemaPedido = z
     frete_empresa_tipo: v.frete_empresa_tipo,
     // Enquanto a tabela de frete não está integrada, o valor é sempre digitado (spec 6.1).
     frete_empresa_origem: "manual" as const,
+    tipo_carga_antt: v.tipo_carga_antt,
     observacao: nulo(v.observacao), // só espaços → nulo
   }));
 
@@ -103,9 +135,11 @@ export const esquemaViagem = z
   .object({
     pedido_id: id(NAO_ACHADO),
     conjunto_id: id("Escolha o conjunto"),
-    peso_previsto_kg: numero({ vazio: "Informe o peso previsto em kg.", casas: 1, positivo: true }),
-    frete_motorista_valor: numero({ casas: 2, positivo: false }),
+    peso_previsto_kg: numero({ vazio: "Informe o peso previsto em kg.", casas: 1, positivo: PESO_POSITIVO }),
+    frete_motorista_valor: numero({ casas: 2 }),
     frete_motorista_tipo: tarifa("Escolha se o frete do motorista é por tonelada ou total.").default("por_tonelada"),
+    km_viagem: numero({ casas: 0, positivo: "Os km precisam ser maiores que zero." }),
+    pedagio_valor: numero({ casas: 2 }),
   })
   .transform((v) => ({
     pedido_id: v.pedido_id,
@@ -114,9 +148,29 @@ export const esquemaViagem = z
     // Sem valor, o tipo não significa nada: os dois ficam nulos.
     frete_motorista_valor: v.frete_motorista_valor,
     frete_motorista_tipo: v.frete_motorista_valor === null ? null : v.frete_motorista_tipo,
+    km_viagem: v.km_viagem,
+    pedagio_valor: v.pedagio_valor,
   }));
 
 export type DadosViagem = z.output<typeof esquemaViagem>;
+
+/** Diálogo "Editar frete" da ficha da viagem planejada: frete do motorista, km e pedágio (os campos que
+   a aptidão confere com o piso da ANTT). */
+export const esquemaFreteViagem = z
+  .object({
+    viagem_id: id("Viagem não encontrada. Atualize a página."),
+    frete_motorista_valor: numero({ casas: 2 }),
+    frete_motorista_tipo: tarifa("Escolha se o frete do motorista é por tonelada ou total.").default("por_tonelada"),
+    km_viagem: numero({ casas: 0, positivo: "Os km precisam ser maiores que zero." }),
+    pedagio_valor: numero({ casas: 2 }),
+  })
+  .transform((v) => ({
+    viagem_id: v.viagem_id,
+    frete_motorista_valor: v.frete_motorista_valor,
+    frete_motorista_tipo: v.frete_motorista_valor === null ? null : v.frete_motorista_tipo,
+    km_viagem: v.km_viagem,
+    pedagio_valor: v.pedagio_valor,
+  }));
 
 /** Peso que o diálogo de nova viagem sugere: o saldo do pedido, limitado à capacidade do conjunto
    (toneladas → kg). Capacidade nula ou zero (sem carreta com capacidade informada) não limita. */

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { bloqueioDoCancelamento, esquemaPedido, esquemaViagem, pesoSugerido, situacaoDaViagem } from "@/app/(app)/pedidos/regras";
+import {
+  bloqueioDoCancelamento,
+  esquemaFreteViagem,
+  esquemaPedido,
+  esquemaViagem,
+  pesoSugerido,
+  situacaoDaViagem,
+} from "@/app/(app)/pedidos/regras";
 
 /** Primeira mensagem do zod para o campo (o que a tela mostra ao lado dele). */
 function erroDe(r: { success: boolean; error?: { issues: { path: PropertyKey[]; message: string }[] } }, campo: string) {
@@ -40,8 +47,14 @@ describe("esquemaPedido (salvarPedido)", () => {
       frete_empresa_valor: 1234.56,
       frete_empresa_tipo: "por_tonelada",
       frete_empresa_origem: "manual",
+      tipo_carga_antt: "granel_solido",
       observacao: null,
     });
+  });
+
+  it("tipo de carga da ANTT: granel sólido por padrão; aceita só os da tabela", () => {
+    expect(esquemaPedido.safeParse({ ...base, tipo_carga_antt: "carga_geral" }).data?.tipo_carga_antt).toBe("carga_geral");
+    expect(erroDe(esquemaPedido.safeParse({ ...base, tipo_carga_antt: "areia" }), "tipo_carga_antt")).toBe("Escolha o tipo de carga da ANTT.");
   });
 
   it('peso "37.000,5" vira 37000.5', () => {
@@ -138,7 +151,19 @@ describe("esquemaViagem (criarViagem)", () => {
       peso_previsto_kg: 25000,
       frete_motorista_valor: null,
       frete_motorista_tipo: null,
+      km_viagem: null,
+      pedagio_valor: null,
     });
+  });
+
+  it('km "1.240" vira 1240 e pedágio "180,40" vira 180.4', () => {
+    const r = esquemaViagem.safeParse({ ...base, km_viagem: "1.240", pedagio_valor: "180,40" });
+    expect(r.data).toMatchObject({ km_viagem: 1240, pedagio_valor: 180.4 });
+  });
+
+  it("km só inteiro e maior que zero", () => {
+    expect(erroDe(esquemaViagem.safeParse({ ...base, km_viagem: "755,5" }), "km_viagem")).toBe("Use números inteiros, como 755 ou 1.240.");
+    expect(erroDe(esquemaViagem.safeParse({ ...base, km_viagem: "0" }), "km_viagem")).toBe("Os km precisam ser maiores que zero.");
   });
 
   it("com frete do motorista, grava valor e tipo", () => {
@@ -184,5 +209,24 @@ describe("bloqueioDoCancelamento (cancelarPedido, Ruling R4)", () => {
     expect(bloqueioDoCancelamento([v(9, null), v(8, null), v(2, null, "2026-10-23T10:00:00Z")])).toBe(
       "O pedido tem 2 viagens planejadas (#8, #9). Cancele as viagens nas fichas delas e depois cancele o pedido.",
     );
+  });
+});
+
+describe("esquemaFreteViagem (salvarFreteViagem)", () => {
+  const base = { viagem_id: ID(1), frete_motorista_valor: "8.200", frete_motorista_tipo: "total", km_viagem: "990", pedagio_valor: "" };
+
+  it("frete, km e pedágio no formato da tabela viagem", () => {
+    expect(esquemaFreteViagem.parse(base)).toEqual({
+      viagem_id: ID(1),
+      frete_motorista_valor: 8200,
+      frete_motorista_tipo: "total",
+      km_viagem: 990,
+      pedagio_valor: null,
+    });
+  });
+
+  it("sem frete, o tipo fica nulo; viagem inválida é recusada", () => {
+    expect(esquemaFreteViagem.parse({ ...base, frete_motorista_valor: "" }).frete_motorista_tipo).toBeNull();
+    expect(erroDe(esquemaFreteViagem.safeParse({ ...base, viagem_id: "x" }), "viagem_id")).toBe("Viagem não encontrada. Atualize a página.");
   });
 });

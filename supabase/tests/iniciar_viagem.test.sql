@@ -29,8 +29,10 @@ create function tests.nova_viagem(p_pedido uuid, p_conjunto uuid) returns uuid l
 declare
   v_id uuid;
 begin
-  insert into public.viagem (pedido_id, conjunto_id, cavalo_id, motorista_id, peso_previsto_kg)
-  select p_pedido, c.id, c.cavalo_id, c.motorista_id, 37000 from public.conjunto c where c.id = p_conjunto
+  -- Frete do motorista (R$ 5.000) e km (400) acima do piso ANTT de 6 eixos (migration 20261027000100).
+  insert into public.viagem (pedido_id, conjunto_id, cavalo_id, motorista_id, peso_previsto_kg,
+                             frete_motorista_valor, frete_motorista_tipo, km_viagem)
+  select p_pedido, c.id, c.cavalo_id, c.motorista_id, 37000, 5000, 'total', 400 from public.conjunto c where c.id = p_conjunto
   returning id into v_id;
   return v_id;
 end $$;

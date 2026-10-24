@@ -708,6 +708,7 @@ export type Database = {
           produto: string
           remetente_id: string
           situacao: Database["public"]["Enums"]["situacao_pedido"]
+          tipo_carga_antt: Database["public"]["Enums"]["tipo_carga_antt"]
           tomador_id: string
           updated_at: string
           updated_by: string | null
@@ -730,6 +731,7 @@ export type Database = {
           produto: string
           remetente_id: string
           situacao?: Database["public"]["Enums"]["situacao_pedido"]
+          tipo_carga_antt?: Database["public"]["Enums"]["tipo_carga_antt"]
           tomador_id: string
           updated_at?: string
           updated_by?: string | null
@@ -752,6 +754,7 @@ export type Database = {
           produto?: string
           remetente_id?: string
           situacao?: Database["public"]["Enums"]["situacao_pedido"]
+          tipo_carga_antt?: Database["public"]["Enums"]["tipo_carga_antt"]
           tomador_id?: string
           updated_at?: string
           updated_by?: string | null
@@ -1751,6 +1754,7 @@ export type Database = {
           id: string
           iniciada_em: string | null
           iniciada_por: string | null
+          km_viagem: number | null
           liberacao_aptidao: Json | null
           liberacao_justificativa: string | null
           motorista_id: string
@@ -1759,6 +1763,7 @@ export type Database = {
           pagamento_saida_em: string | null
           pagamento_saida_por: string | null
           pedido_id: string
+          pedagio_valor: number | null
           peso_chegada_kg: number | null
           peso_previsto_kg: number
           peso_saida_kg: number | null
@@ -1788,6 +1793,7 @@ export type Database = {
           id?: string
           iniciada_em?: string | null
           iniciada_por?: string | null
+          km_viagem?: number | null
           liberacao_aptidao?: Json | null
           liberacao_justificativa?: string | null
           motorista_id: string
@@ -1796,6 +1802,7 @@ export type Database = {
           pagamento_saida_em?: string | null
           pagamento_saida_por?: string | null
           pedido_id: string
+          pedagio_valor?: number | null
           peso_chegada_kg?: number | null
           peso_previsto_kg: number
           peso_saida_kg?: number | null
@@ -1825,6 +1832,7 @@ export type Database = {
           id?: string
           iniciada_em?: string | null
           iniciada_por?: string | null
+          km_viagem?: number | null
           liberacao_aptidao?: Json | null
           liberacao_justificativa?: string | null
           motorista_id?: string
@@ -1833,6 +1841,7 @@ export type Database = {
           pagamento_saida_em?: string | null
           pagamento_saida_por?: string | null
           pedido_id?: string
+          pedagio_valor?: number | null
           peso_chegada_kg?: number | null
           peso_previsto_kg?: number
           peso_saida_kg?: number | null
@@ -2226,6 +2235,7 @@ export type Database = {
       }
       arquivo_restrito: { Args: { p_path: string }; Returns: boolean }
       auditar: { Args: { p_tabela: unknown }; Returns: undefined }
+      calcular_cte: { Args: { p: Json; p_dia?: string }; Returns: Json }
       cancelar_viagem: {
         Args: { p_motivo: string; p_viagem: string }
         Returns: undefined
@@ -2301,6 +2311,7 @@ export type Database = {
           saldo_em: string
         }[]
       }
+      frete_da_viagem: { Args: { p_viagem: string }; Returns: Json }
       iniciar_viagem: {
         Args: { p_justificativa?: string; p_viagem: string }
         Returns: undefined
@@ -2337,6 +2348,16 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["app_papel"]
       }
+      piso_antt: {
+        Args: {
+          p_dia?: string
+          p_eixos: number
+          p_km: number
+          p_retorno_vazio?: boolean
+          p_tipo: Database["public"]["Enums"]["tipo_carga_antt"]
+        }
+        Returns: number
+      }
       placa_valida: { Args: { p: string }; Returns: boolean }
       pode_editar: { Args: never; Returns: boolean }
       pode_financeiro: { Args: never; Returns: boolean }
@@ -2345,6 +2366,7 @@ export type Database = {
         Args: { p_arquivo: string }
         Returns: undefined
       }
+      resultado_cte_da_viagem: { Args: { p_viagem: string }; Returns: Json }
       rotulo_status_campo: {
         Args: { p: Database["public"]["Enums"]["status_campo"] }
         Returns: string
@@ -2473,6 +2495,19 @@ export type Database = {
         | "manutencao"
         | "problema"
         | "outro"
+      tipo_carga_antt:
+        | "granel_solido"
+        | "carga_geral"
+        | "granel_liquido"
+        | "frigorificada"
+        | "conteinerizada"
+        | "neogranel"
+        | "perigosa_granel_solido"
+        | "perigosa_granel_liquido"
+        | "perigosa_frigorificada"
+        | "perigosa_conteinerizada"
+        | "perigosa_carga_geral"
+        | "granel_pressurizada"
       tipo_pessoa: "pf" | "pj"
       tipo_rastreamento: "telemonitorado" | "rastreador" | "localizador"
       tipo_referencia: "pessoal" | "comercial"
@@ -2750,6 +2785,20 @@ export const Constants = {
         "manutencao",
         "problema",
         "outro",
+      ],
+      tipo_carga_antt: [
+        "granel_solido",
+        "carga_geral",
+        "granel_liquido",
+        "frigorificada",
+        "conteinerizada",
+        "neogranel",
+        "perigosa_granel_solido",
+        "perigosa_granel_liquido",
+        "perigosa_frigorificada",
+        "perigosa_conteinerizada",
+        "perigosa_carga_geral",
+        "granel_pressurizada",
       ],
       tipo_pessoa: ["pf", "pj"],
       tipo_rastreamento: ["telemonitorado", "rastreador", "localizador"],

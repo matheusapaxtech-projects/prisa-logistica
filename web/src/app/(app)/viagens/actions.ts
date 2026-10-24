@@ -5,6 +5,7 @@ import { comSessao, type ResultadoAcao } from "@/lib/acao";
 import { tipado } from "@/lib/banco";
 import { prepararEnvio, type DadosEnvio } from "@/components/documentos-acoes";
 import { errosDoZod, lerForm, RE_ID, type ResultadoForm } from "../_pessoa/formulario";
+import { esquemaFreteViagem } from "../pedidos/regras";
 import { esquemaOcorrencia, NAO_ACHADA, textoLimpo } from "./regras";
 
 /* Gravações das telas de Viagens (reusadas pelo Quadro, Task 10). Iniciar, cancelar e confirmar o
@@ -60,6 +61,27 @@ export async function confirmarPagamentoSaida(viagemId: string): Promise<Resulta
     const { error } = await tipado(supabase).rpc("confirmar_pagamento_saida", { p_viagem: viagemId });
     if (error) throw error;
     revalidarViagem(viagemId);
+  });
+}
+
+/** Frete do motorista, km e pedágio da viagem planejada (o banco também recusa depois do início:
+   gatilho `frete_so_planejada`). */
+export async function salvarFreteViagem(_antes: ResultadoForm<null> | null, form: FormData): Promise<ResultadoForm<null>> {
+  const v = esquemaFreteViagem.safeParse(lerForm(form));
+  if (!v.success) return errosDoZod(v.error);
+  const { viagem_id, ...dados } = v.data;
+  return comSessao(async ({ supabase }) => {
+    const r = await tipado(supabase)
+      .from("viagem")
+      .update(dados)
+      .eq("id", viagem_id)
+      .is("status_campo", null)
+      .is("cancelada_em", null)
+      .select("id");
+    if (r.error) throw r.error;
+    if (!r.data.length) throw recusa("O frete só muda enquanto a viagem está Planejada. Atualize a página.");
+    revalidarViagem(viagem_id);
+    return null;
   });
 }
 

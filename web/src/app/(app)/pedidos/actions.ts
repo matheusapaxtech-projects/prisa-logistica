@@ -106,6 +106,8 @@ export async function criarViagem(_antes: ResultadoForm<string> | null, form: Fo
         peso_previsto_kg: d.peso_previsto_kg,
         frete_motorista_valor: d.frete_motorista_valor,
         frete_motorista_tipo: d.frete_motorista_tipo,
+        km_viagem: d.km_viagem,
+        pedagio_valor: d.pedagio_valor,
       })
       .select("id")
       .single();

@@ -2,6 +2,7 @@
    A aptidão das planejadas vem de `v_viagem_planejada` (lista) e de `aptidao_da_viagem` (ficha): as
    mensagens são as do banco. Nomes de quem fez cada coisa vêm de `nomes_usuarios`. */
 import type { Banco, Database } from "@/lib/banco";
+import { lerFrete, lerResultado, type FreteViagem, type ResultadoCte } from "@/lib/frete";
 import type { StatusCampo } from "@/lib/quadro";
 import { nomesDeMotorista } from "../pedidos/consultas";
 import { lerAptidao, type ItemAptidao, type TipoOcorrencia, type TipoPausa } from "./regras";
@@ -189,6 +190,8 @@ export type FichaViagem = {
   pesoChegadaKg: number | null;
   freteMotoristaValor: number | null;
   freteMotoristaTipo: Enums["tipo_tarifa"] | null;
+  kmViagem: number | null;
+  pedagioValor: number | null;
   chaveCte: string | null;
   chaveMdfe: string | null;
   pagamentoSaidaEm: string | null;
@@ -213,7 +216,7 @@ export type FichaViagem = {
 
 const COLUNAS_FICHA =
   "id, numero, status_campo, status_desde, created_at, iniciada_em, iniciada_por, liberacao_justificativa, liberacao_aptidao, " +
-  "conjunto_id, motorista_id, peso_previsto_kg, peso_saida_kg, peso_chegada_kg, frete_motorista_valor, frete_motorista_tipo, " +
+  "conjunto_id, motorista_id, peso_previsto_kg, peso_saida_kg, peso_chegada_kg, frete_motorista_valor, frete_motorista_tipo, km_viagem, pedagio_valor, " +
   "chave_cte, chave_mdfe, pagamento_saida_em, pagamento_saida_por, divergencia, divergencia_descricao, resolucao, finalizada_em, " +
   "cancelada_em, cancelada_por, cancelamento_motivo, observacao, " +
   "cavalo:veiculo!viagem_cavalo_id_fkey(placa), " +
@@ -237,6 +240,8 @@ type LinhaBancoFicha = {
   peso_chegada_kg: number | null;
   frete_motorista_valor: number | null;
   frete_motorista_tipo: Enums["tipo_tarifa"] | null;
+  km_viagem: number | null;
+  pedagio_valor: number | string | null;
   chave_cte: string | null;
   chave_mdfe: string | null;
   pagamento_saida_em: string | null;
@@ -317,6 +322,8 @@ export async function carregarViagem(db: Banco, id: string): Promise<FichaViagem
     pesoChegadaKg: num(v.peso_chegada_kg),
     freteMotoristaValor: num(v.frete_motorista_valor),
     freteMotoristaTipo: v.frete_motorista_tipo,
+    kmViagem: num(v.km_viagem),
+    pedagioValor: num(v.pedagio_valor),
     chaveCte: v.chave_cte,
     chaveMdfe: v.chave_mdfe,
     pagamentoSaidaEm: v.pagamento_saida_em,
@@ -352,4 +359,19 @@ export async function carregarViagem(db: Banco, id: string): Promise<FichaViagem
       envioFalhou: noStorage ? !noStorage.has(a.storage_path.split("/").pop() ?? "") : false,
     })),
   };
+}
+
+export type FreteDaFicha = { frete: FreteViagem | null; resultado: ResultadoCte | null };
+
+/** Piso ANTT da viagem (todos que leem) e, para admin e financeiro, o resultado do CT-e. Quem não é do
+   financeiro nem chama `resultado_cte_da_viagem`: o banco recusaria (margem é dado da operação). */
+export async function carregarFrete(db: Banco, id: string, comResultado: boolean): Promise<FreteDaFicha> {
+  if (comResultado) {
+    const r = await db.rpc("resultado_cte_da_viagem", { p_viagem: id });
+    erroDe(r);
+    return { frete: lerFrete(r.data), resultado: lerResultado(r.data) };
+  }
+  const r = await db.rpc("frete_da_viagem", { p_viagem: id });
+  erroDe(r);
+  return { frete: lerFrete(r.data), resultado: null };
 }

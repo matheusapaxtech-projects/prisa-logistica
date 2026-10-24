@@ -35,6 +35,7 @@ Feito em volta da operação real da Prisa, não de um TMS genérico: uma mesma 
 
 - Fase 1 só cadastros; nada de CT-e ou frota nas telas ainda.
 - Financeiro (primeira parte): importação do extrato bancário em OFX, lançamentos classificados em receita e pagamento de frete (Roadcard), despesa, empréstimo e devolução, aporte e devolução de capital e transferência entre contas, com regras aprendidas pela descrição, e o resultado de cada mês. Só administrador e financeiro veem.
+- Piso ANTT e resultado do CT-e (regras do motor de despacho, `docs/motor-despacho-regras.md`): o pedido tem o tipo de carga da Tabela A; a viagem tem km e pedágio. O frete do motorista abaixo do piso é trava legal no início da viagem; sem frete ou sem km é trava que o administrador libera com justificativa; frota própria não confere. Todos veem o piso; o resultado do CT-e (ICMS, PIS/COFINS, INSS, Pan Card, IRPJ/CSLL, margem e faixa) só administrador e financeiro. Tabela da ANTT e parâmetros fiscais ficam no banco com data de vigência.
 - Todos os campos de cadastro do ATUA existem no NILT (decisão do usuário).
 - Regras no banco: RLS por papel, auditoria de toda alteração e de toda visualização de documento, bucket de documentos privado, arquivo restrito visível só ao admin.
 - LGPD: documentos pessoais de terceiros; acesso restrito e registrado.

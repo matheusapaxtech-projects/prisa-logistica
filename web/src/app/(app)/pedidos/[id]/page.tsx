@@ -13,7 +13,7 @@ import { RE_ID } from "../../_pessoa/formulario";
 import { CabPainel, Dash } from "../../_pessoa/partes";
 import { enderecoDoLocal } from "../../clientes/consultas";
 import { carregarPedido, listarConjuntosAbertos, type LocalFicha, type ParteFicha, type ViagemDoPedido } from "../consultas";
-import { bloqueioDoCancelamento, situacaoDaViagem, SUFIXO_TARIFA } from "../regras";
+import { bloqueioDoCancelamento, situacaoDaViagem, SUFIXO_TARIFA, TIPOS_CARGA_ANTT } from "../regras";
 import { CancelarPedido } from "./cancelar-pedido";
 import { NovaViagem } from "./nova-viagem";
 import "@/styles/paginas/proprietarios.css";
@@ -145,7 +145,10 @@ export default async function FichaPedidoPage({ params, searchParams }: Params) 
               <LocalPrevisto l={f.descarga} data={f.entregaPrevista} />
             </dd>
             <dt>Produto</dt>
-            <dd>{f.produto}</dd>
+            <dd>
+              {f.produto}
+              <span className="linha2">{TIPOS_CARGA_ANTT[f.tipoCarga]} na tabela da ANTT</span>
+            </dd>
             <dt>Peso total</dt>
             <dd>{formato.kg(f.pesoTotalKg)}</dd>
             <dt>Frete da empresa</dt>

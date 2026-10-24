@@ -10,7 +10,7 @@ import { Opcoes } from "../_pessoa/partes";
 import { enderecoDoLocal, type Local } from "../clientes/consultas";
 import { locaisDoCliente, salvarPedido } from "./actions";
 import type { OpcaoCliente } from "./consultas";
-import { TIPOS_TARIFA } from "./regras";
+import { TIPOS_CARGA_ANTT, TIPOS_TARIFA } from "./regras";
 import { SeletorCliente } from "./seletor-cliente";
 
 type Papel = "tomador_id" | "remetente_id" | "destinatario_id";
@@ -242,6 +242,23 @@ export function FormularioPedido({ clientes }: { clientes: OpcaoCliente[] }) {
             controle={
               <select id="frete_empresa_tipo" name="frete_empresa_tipo" defaultValue="por_tonelada">
                 <Opcoes mapa={TIPOS_TARIFA} />
+              </select>
+            }
+          />
+          <Campo
+            classe="f4"
+            id="tipo_carga_antt"
+            label="Tipo de carga (ANTT)"
+            ajuda="Coluna da tabela da ANTT usada no piso do frete do motorista."
+            erro={campos.tipo_carga_antt}
+            controle={
+              <select
+                id="tipo_carga_antt"
+                name="tipo_carga_antt"
+                defaultValue="granel_solido"
+                aria-describedby={["tipo_carga_antt-ajuda", campos.tipo_carga_antt ? "tipo_carga_antt-erro" : ""].filter(Boolean).join(" ")}
+              >
+                <Opcoes mapa={TIPOS_CARGA_ANTT} />
               </select>
             }
           />

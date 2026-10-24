@@ -24,7 +24,7 @@ type Props = {
 };
 
 /* Botão "Nova viagem" da ficha do pedido (só pedido aberto, Ruling R4) e o diálogo: conjunto aberto
-   (placa do cavalo, carretas e motorista), peso previsto e frete do motorista. O peso começa no saldo
+   (placa do cavalo, carretas e motorista), peso previsto, frete do motorista, km e pedágio. O peso começa no saldo
    e, ao escolher o conjunto, vira min(saldo, capacidade do conjunto). Cavalo e motorista saem do
    conjunto, no servidor. Criada a viagem, abre a ficha dela. */
 export function NovaViagem(props: Props) {
@@ -205,6 +205,52 @@ function DialogoViagem({ pedidoId, numero, saldoKg, conjuntos, aberto, aoFechar 
             <select id="frete_motorista_tipo" name="frete_motorista_tipo" defaultValue="por_tonelada">
               <Opcoes mapa={TIPOS_TARIFA} />
             </select>
+          }
+        />
+        <Campo
+          classe="f6"
+          id="km_viagem"
+          label="Km da viagem"
+          opcional
+          ajuda="Conferidos no Qualp. Com eles, o frete é conferido com o piso da ANTT."
+          erro={campos.km_viagem}
+          controle={
+            <span className="sufixo">
+              <input
+                id="km_viagem"
+                name="km_viagem"
+                className="num"
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="755"
+                aria-describedby={descr("km_viagem")}
+                aria-invalid={campos.km_viagem ? true : undefined}
+              />
+              <span aria-hidden="true">km</span>
+            </span>
+          }
+        />
+        <Campo
+          classe="f6"
+          id="pedagio_valor"
+          label="Pedágio da viagem"
+          opcional
+          ajuda="Total do vale-pedágio, para o resultado do CT-e."
+          erro={campos.pedagio_valor}
+          controle={
+            <span className="prefixo">
+              <span aria-hidden="true">R$</span>
+              <input
+                id="pedagio_valor"
+                name="pedagio_valor"
+                className="num"
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="0,00"
+                aria-describedby={descr("pedagio_valor")}
+                aria-invalid={campos.pedagio_valor ? true : undefined}
+              />
+            </span>
           }
         />
       </div>

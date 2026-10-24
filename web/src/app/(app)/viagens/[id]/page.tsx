@@ -15,11 +15,12 @@ import { createClient } from "@/lib/supabase/server";
 import { RE_ID } from "../../_pessoa/formulario";
 import { CabPainel, Dash } from "../../_pessoa/partes";
 import { SUFIXO_TARIFA } from "../../pedidos/regras";
-import { carregarViagem, type FichaViagem, type PausaDaViagem } from "../consultas";
+import { carregarFrete, carregarViagem, type FichaViagem, type PausaDaViagem } from "../consultas";
 import { duracao, modoDeInicio, podeCancelar, proximoPasso, temCanhotoEnviado, TIPOS_PAUSA, type ModoInicio } from "../regras";
 import { CancelarViagem, ConfirmarPagamento, IniciarViagem } from "./acoes-viagem";
 import { BlocoAptidao } from "./aptidao";
 import { Canhoto } from "./canhoto";
+import { BlocoFrete } from "./frete";
 import { LinhaDoTempo } from "./linha-do-tempo";
 import { Ocorrencias } from "./ocorrencias";
 import "@/styles/paginas/proprietarios.css";
@@ -74,8 +75,8 @@ function LinhaPausa({ p }: { p: PausaDaViagem }) {
   );
 }
 
-/* Ficha da viagem: resumo, próximo passo em destaque, aptidão (travas e avisos do banco), linha do
-   tempo, pausas, canhoto, ocorrências e arquivos. Página do servidor normal (sem tempo real): as
+/* Ficha da viagem: resumo, próximo passo em destaque, aptidão (travas e avisos do banco), frete e piso
+   ANTT (resultado do CT-e só para admin e financeiro), linha do tempo, pausas, canhoto, ocorrências e arquivos. Página do servidor normal (sem tempo real): as
    ações revalidam a rota. Leitura só vê; financeiro confirma o pagamento de saída; operação e admin
    fazem o resto. */
 export default async function FichaViagemPage({ params }: Params) {
@@ -84,8 +85,9 @@ export default async function FichaViagemPage({ params }: Params) {
   const perfil = await getPerfil();
   const podeEditar = pode(perfil, "editar");
   const podeFinanceiro = pode(perfil, "editarFinanceiro");
+  const verResultado = pode(perfil, "financeiro");
   const db = tipado(await createClient());
-  const f = await carregarViagem(db, id);
+  const [f, frete] = await Promise.all([carregarViagem(db, id), carregarFrete(db, id, verResultado)]);
   if (!f) notFound();
 
   const cancelada = Boolean(f.canceladaEm);
@@ -329,6 +331,26 @@ export default async function FichaViagemPage({ params }: Params) {
           </section>
         )}
       </div>
+
+      {frete.frete && (
+        <BlocoFrete
+          frete={frete.frete}
+          resultado={frete.resultado}
+          verResultado={verResultado}
+          editavel={
+            planejada && podeEditar
+              ? {
+                  viagemId: f.id,
+                  numero: f.numero,
+                  freteMotoristaValor: f.freteMotoristaValor,
+                  freteMotoristaTipo: f.freteMotoristaTipo,
+                  kmViagem: f.kmViagem,
+                  pedagioValor: f.pedagioValor,
+                }
+              : null
+          }
+        />
+      )}
 
       <div className="blocos-viagem">
         <LinhaDoTempo eventos={f.eventos} criadaEm={f.criadaEm} />

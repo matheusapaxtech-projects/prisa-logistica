@@ -120,6 +120,7 @@ export type FichaPedido = {
   coleta: LocalFicha | null;
   descarga: LocalFicha | null;
   produto: string;
+  tipoCarga: Enums["tipo_carga_antt"];
   pesoTotalKg: number;
   coletaPrevista: string | null;
   entregaPrevista: string | null;
@@ -135,7 +136,7 @@ export type FichaPedido = {
 
 const COLUNAS_LOCAL = "id, cep, logradouro, numero, complemento, bairro, cidade, uf, ponto_referencia, janela_atendimento, contato_local";
 const COLUNAS_FICHA =
-  "id, numero, situacao, produto, peso_total_kg, coleta_prevista, entrega_prevista, frete_empresa_valor, frete_empresa_tipo, " +
+  "id, numero, situacao, produto, tipo_carga_antt, peso_total_kg, coleta_prevista, entrega_prevista, frete_empresa_valor, frete_empresa_tipo, " +
   "frete_empresa_origem, observacao, created_at, tomador_id, remetente_id, destinatario_id, " +
   "tomador:cliente!pedido_tomador_id_fkey(pessoa(nome, nome_fantasia)), " +
   "remetente:cliente!pedido_remetente_id_fkey(pessoa(nome, nome_fantasia)), " +
@@ -149,6 +150,7 @@ type LinhaBancoFicha = {
   numero: number;
   situacao: Enums["situacao_pedido"];
   produto: string;
+  tipo_carga_antt: Enums["tipo_carga_antt"];
   peso_total_kg: number;
   coleta_prevista: string | null;
   entrega_prevista: string | null;
@@ -229,6 +231,7 @@ export async function carregarPedido(db: Banco, id: string): Promise<FichaPedido
     coleta: um(p.coleta),
     descarga: um(p.descarga),
     produto: p.produto,
+    tipoCarga: p.tipo_carga_antt,
     pesoTotalKg: total,
     coletaPrevista: p.coleta_prevista,
     entregaPrevista: p.entrega_prevista,
