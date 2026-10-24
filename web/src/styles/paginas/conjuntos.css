@@ -116,7 +116,7 @@
 .motivo { font-size: 14px; line-height: 18px; }
 .motivo b { font-weight: 600; }
 /* a barra é sólida e escura: dispensa a sombra larga de nilt.css */
-.montador .barra-salvar { box-shadow: 0 4px 12px rgba(30, 35, 39, 0.07); }
+.montador .barra-salvar { box-shadow: 0 4px 12px rgba(22, 24, 24, 0.07); }
 .barra-salvar .acoes-barra { margin-left: auto; display: flex; gap: 8px; align-items: center; flex: none; }
 .barra-salvar .btn-primario[disabled] { background: #3a4146; border-color: #3a4146; color: #c9cfcb; }
 

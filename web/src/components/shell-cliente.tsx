@@ -19,6 +19,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { LayoutGroup, MotionConfig, motion } from "motion/react";
 import { Toaster } from "@/components/Toast";
 
 type Item = { href: string; rotulo: string; Icone: LucideIcon };
@@ -52,6 +53,15 @@ export function NavPrincipal({ pendencias, admin }: { pendencias: number; admin:
   const caminho = usePathname();
   const item = ({ href, rotulo, Icone }: Item) => (
     <Link key={href} href={href} aria-current={ativo(href, caminho) ? "page" : undefined}>
+      {/* A pílula clara é um só elemento que desliza de um item para o outro ao trocar de página. */}
+      {ativo(href, caminho) && (
+        <motion.span
+          layoutId="nav-pilula"
+          className="nav-pilula"
+          aria-hidden="true"
+          transition={{ type: "spring", stiffness: 420, damping: 36 }}
+        />
+      )}
       <Icone size={16} strokeWidth={1.6} aria-hidden="true" />
       <span>{rotulo}</span>
       {href === "/pendencias" && pendencias > 0 && (
@@ -62,15 +72,17 @@ export function NavPrincipal({ pendencias, admin }: { pendencias: number; admin:
     </Link>
   );
   return (
-    <nav className="nav">
-      {NAV.map(item)}
-      {admin && (
-        <>
-          <div className="nav-grupo">Administração</div>
-          {ADMIN.map(item)}
-        </>
-      )}
-    </nav>
+    <LayoutGroup id="nav-principal">
+      <nav className="nav">
+        {NAV.map(item)}
+        {admin && (
+          <>
+            <div className="nav-grupo">Administração</div>
+            {ADMIN.map(item)}
+          </>
+        )}
+      </nav>
+    </LayoutGroup>
   );
 }
 
@@ -91,6 +103,8 @@ export function MolduraShell({ sidebar, busca, children }: { sidebar: ReactNode;
   }
 
   return (
+    // reducedMotion="user": com "reduzir movimento" ligado no sistema, o Motion tira deslocamento e layout.
+    <MotionConfig reducedMotion="user">
     <div className={`shell${aberto ? " menu-aberto" : ""}`} onClick={aoClicar}>
       <aside className="sidebar" aria-label="Menu principal">
         {sidebar}
@@ -112,5 +126,6 @@ export function MolduraShell({ sidebar, busca, children }: { sidebar: ReactNode;
       </section>
       <Toaster />
     </div>
+    </MotionConfig>
   );
 }

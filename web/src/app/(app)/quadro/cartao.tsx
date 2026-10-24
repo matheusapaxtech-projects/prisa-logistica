@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { motion } from "motion/react";
 import { ArrowRightLeft, Wallet } from "lucide-react";
 import { Placa } from "@/components/Placa";
 import { Ponto } from "@/components/Ponto";
@@ -66,10 +68,21 @@ export function CartaoQuadro({ cartao: c, nivel, agora, podeMover, podePagar, mo
   const desde = c.status_desde ? `Na coluna desde ${formato.dataHora(c.status_desde)}` : undefined;
   const sinais = sinaisDoCartao(c);
   const n = c.numero ?? "—";
+  /** Sendo arrastado: o lugar de origem fica apagado enquanto a imagem do arraste segue o ponteiro. */
+  const [levantado, setLevantado] = useState(false);
 
   return (
+    // O invólucro do Motion só anima a posição: ao trocar de coluna o cartão voa até a nova (mesmo
+    // layoutId) e os vizinhos se reacomodam. O arraste nativo fica no <article> de dentro, porque o Motion
+    // toma para si os onDragStart/onDragEnd do elemento animado.
+    <motion.div
+      className="quadro-cartao-mov"
+      layoutId={c.viagem_id ? `viagem-${c.viagem_id}` : undefined}
+      layout="position"
+      transition={{ layout: { type: "spring", stiffness: 380, damping: 34 } }}
+    >
     <article
-      className={`quadro-cartao nivel-${nivel}${movendo ? " movendo" : ""}`}
+      className={`quadro-cartao nivel-${nivel}${movendo ? " movendo" : ""}${levantado ? " levantado" : ""}`}
       data-nivel={nivel}
       aria-label={`Viagem #${n}, ${c.cavalo_placa ?? "sem placa"}, ${c.motorista_nome ?? "sem motorista"}`}
       aria-busy={movendo || undefined}
@@ -77,9 +90,13 @@ export function CartaoQuadro({ cartao: c, nivel, agora, podeMover, podePagar, mo
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", c.viagem_id ?? "");
         e.dataTransfer.effectAllowed = "move";
+        setLevantado(true);
         aoArrastar(true);
       }}
-      onDragEnd={() => aoArrastar(false)}
+      onDragEnd={() => {
+        setLevantado(false);
+        aoArrastar(false);
+      }}
     >
       <div className="quadro-cartao-cab">
         {c.cavalo_placa ? <Placa placa={c.cavalo_placa} /> : <span className="sem-placa">—</span>}
@@ -134,5 +151,6 @@ export function CartaoQuadro({ cartao: c, nivel, agora, podeMover, podePagar, mo
         </div>
       )}
     </article>
+    </motion.div>
   );
 }

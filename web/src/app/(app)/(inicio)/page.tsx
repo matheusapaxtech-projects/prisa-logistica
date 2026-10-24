@@ -1,11 +1,13 @@
 import { Fragment } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Link2 } from "lucide-react";
+import { FileCheck2, Link2, Truck, Users } from "lucide-react";
+import { Anel } from "@/components/Anel";
 import { Capacidade } from "@/components/Capacidade";
 import { Engate } from "@/components/Engate";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import { MarcoKm } from "@/components/MarcoKm";
+import { Numero } from "@/components/Numero";
 import { Ponto } from "@/components/Ponto";
 import { formato } from "@/lib/formato";
 import { getPerfil, pode } from "@/lib/permissoes";
@@ -92,22 +94,36 @@ function advertencias(p: Placas): Advertencia[] {
   ];
 }
 
+/** Cartão sólido na cor da situação (vermelho = círculo, laranja/amarelo = losango); zero fica apagado,
+   em vidro, com a forma tracejada. O número grande conta até o valor. */
 function PlacaAdvertencia({ a }: { a: Advertencia }) {
   const vazio = a.n === 0;
   return (
-    <Link className="advertencia" href={a.href} aria-label={`${a.n} ${a.rotulo}`}>
-      {a.forma === "circulo" ? (
-        <span className={`circulo-proibido${vazio ? " vazio" : ""}`} aria-hidden="true">
-          <b>{a.n}</b>
-        </span>
-      ) : (
-        <span className={`losango ${vazio ? "vazio" : a.forma}`} aria-hidden="true">
-          <b>{a.n}</b>
-        </span>
-      )}
+    <Link className={`advertencia tom-${vazio ? "vazio" : a.forma}`} href={a.href} aria-label={`${a.n} ${a.rotulo}`}>
+      <b className="adv-n">
+        <Numero valor={a.n} />
+      </b>
+      <span className={`adv-forma forma-${a.forma === "circulo" ? "circulo" : "losango"}${vazio ? " vazio" : ""}`} aria-hidden="true" />
       <span className="txt">
         <b>{a.rotulo}</b>
         <span>{vazio ? (a.zero ?? "nada pendente") : a.sub}</span>
+      </span>
+    </Link>
+  );
+}
+
+/** Indicador ao lado do título: círculo com ícone, número que conta e legenda. */
+function Kpi({ Icone, n, rotulo, href }: { Icone: typeof Truck; n: number; rotulo: string; href: string }) {
+  return (
+    <Link className="kpi" href={href}>
+      <span className="kpi-icone" aria-hidden="true">
+        <Icone size={18} strokeWidth={1.7} />
+      </span>
+      <span>
+        <b className="kpi-valor">
+          <Numero valor={n} />
+        </b>
+        <span className="kpi-rot">{rotulo}</span>
       </span>
     </Link>
   );
@@ -161,6 +177,16 @@ function LinhaCadastro({ rotulo, total, detalhe, href }: { rotulo: string; total
 function ResumoCadastros({ c }: { c: Cadastros }) {
   const { motoristas: m, proprietarios: p, veiculos: v, conjuntos: j, documentos: d } = c;
   return (
+    <>
+    <Link className="cad-anel" href="/pendencias?aba=documentos">
+      <Anel fracao={d.total ? d.conferidos / d.total : 0} rotulo={`${d.conferidos} de ${d.total} documentos conferidos`} />
+      <span>
+        <b>Documentos conferidos</b>
+        <span>
+          {d.conferidos} de {d.total} anexados
+        </span>
+      </span>
+    </Link>
     <div className="marcos">
       <LinhaCadastro
         rotulo="Motoristas"
@@ -194,6 +220,7 @@ function ResumoCadastros({ c }: { c: Cadastros }) {
       />
       <LinhaCadastro rotulo="Arrendados" total={v.arrendados} detalhe={["posse no CRLV diferente da ANTT"]} href="/veiculos?filtro=arrendados" />
     </div>
+    </>
   );
 }
 
@@ -205,12 +232,17 @@ export default async function Inicio() {
 
   return (
     <main>
-      <div className="titulo">
+      <div className="titulo titulo-inicio">
         <div>
           <h1>Início</h1>
           <p className="sub" id="achado">
             <Partes itens={achadoDoDia(placas)} />
           </p>
+        </div>
+        <div className="kpis">
+          <Kpi Icone={Truck} n={conjuntos.length} rotulo="Conjuntos rodando" href="/conjuntos" />
+          <Kpi Icone={Users} n={cadastros.motoristas.total} rotulo="Motoristas" href="/motoristas" />
+          <Kpi Icone={FileCheck2} n={cadastros.documentos.total} rotulo="Documentos anexados" href="/pendencias?aba=documentos" />
         </div>
         {podeEditar && (
           <div className="acoes">
@@ -268,7 +300,7 @@ export default async function Inicio() {
               )}
             </div>
             <div style={{ paddingTop: 12 }}>
-              <Link className="btn" href="/pendencias?aba=vencimentos" style={{ height: 30 }}>
+              <Link className="btn" href="/pendencias?aba=vencimentos">
                 Ver todos os vencimentos
               </Link>
             </div>

@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
-import { RotateCw } from "lucide-react";
+import { RotateCw, Route } from "lucide-react";
 import { Abas } from "@/components/Abas";
 import { EstadoVazio } from "@/components/EstadoVazio";
+import { Numero } from "@/components/Numero";
 import { Sinal, type TipoSinal } from "@/components/Sinal";
 import { toast } from "@/components/Toast";
 import { tipado, type Banco } from "@/lib/banco";
@@ -274,6 +275,11 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
   const nivelDe = useCallback((c: Cartao) => nivelDoCartao(c, limites, agora), [limites, agora]);
   const visiveis = useMemo(() => filtrarCartoes(cartoes, paraFiltros(filtros, perfil.userId), nivelDe), [cartoes, filtros, perfil.userId, nivelDe]);
   const grupos = useMemo(() => agruparPorColuna(visiveis), [visiveis]);
+  const porNivel = useMemo(() => {
+    const n = { normal: 0, ambar: 0, vermelho: 0 };
+    for (const c of visiveis) n[nivelDe(c)]++;
+    return n;
+  }, [visiveis, nivelDe]);
   const clientes = useMemo(() => opcoesDe(dados.cartoes.map((c) => c.cliente_nome)), [dados.cartoes]);
   const motoristas = useMemo(() => opcoesDe(dados.cartoes.map((c) => c.motorista_nome)), [dados.cartoes]);
   const abaAtiva: StatusCampo = aba ?? COLUNAS.find((c) => grupos[c.status].length > 0)?.status ?? "transito";
@@ -362,6 +368,41 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
         <div>
           <h1>Quadro da operação</h1>
           <p className="sub">Onde está cada carga, qual está parada e há quanto tempo.</p>
+          <div className="quadro-kpis">
+            <span className="kpi">
+              <span className="kpi-icone" aria-hidden="true">
+                <Route size={18} strokeWidth={1.7} />
+              </span>
+              <span>
+                <b className="kpi-valor">
+                  <Numero valor={visiveis.length} />
+                </b>
+                <span className="kpi-rot">Viagens na tela</span>
+              </span>
+            </span>
+            <span className="kpi">
+              <span className="kpi-icone" aria-hidden="true">
+                <span className="adv-forma forma-losango" style={{ color: "var(--amarelo)", margin: 0 }} />
+              </span>
+              <span>
+                <b className="kpi-valor">
+                  <Numero valor={porNivel.ambar} />
+                </b>
+                <span className="kpi-rot">Perto do tempo-limite</span>
+              </span>
+            </span>
+            <span className="kpi">
+              <span className="kpi-icone" aria-hidden="true">
+                <span className="adv-forma forma-circulo" style={{ color: "var(--vermelho)", margin: 0 }} />
+              </span>
+              <span>
+                <b className="kpi-valor">
+                  <Numero valor={porNivel.vermelho} />
+                </b>
+                <span className="kpi-rot">Passaram do tempo-limite</span>
+              </span>
+            </span>
+          </div>
         </div>
         <div className="acoes quadro-conexao">
           {ehAdmin && <TemposLimite limites={dados.limites} aoSalvar={recarregar} />}

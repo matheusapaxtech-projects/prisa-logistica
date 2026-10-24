@@ -20,7 +20,7 @@ function Placas() {
   return (
     <div className="advertencias" aria-hidden="true">
       {[0, 1, 2, 3, 4].map((n) => (
-        <div className="advertencia carregando" key={n}>
+        <div className="advertencia tom-vazio carregando" key={n}>
           <Barra w={44} h={44} r="50%" />
           <span className="txt">
             <Barra w="80%" h={14} />

@@ -1,93 +1,99 @@
 ---
 name: NILT
-description: Núcleo Integrado de Logística e Transporte — o sistema da Prisa sinalizado como uma rodovia brasileira.
+description: Núcleo Integrado de Logística e Transporte — o sistema da Prisa, com o visual "rapport" (fundo quente, vidro, pílulas, cartões sólidos) e a cor com significado fixo das placas da rodovia.
 colors:
-  frame: "#eef1ef"
-  sheet: "#ffffff"
-  raised: "#f5f7f6"
-  active: "#e2e7e4"
-  border: "#e1e5e2"
-  rule: "#edf0ee"
-  control: "#c5ccc7"
-  ink: "#1e2327"
-  muted: "#535b57"
-  faint: "#656c68"
-  verde: "#0b6b3a"
-  verde-forte: "#08552e"
-  verde-claro: "#e3f1e8"
-  verde-tinta: "#0a4426"
-  laranja: "#d9580d"
-  laranja-claro: "#fdebdd"
-  laranja-tinta: "#873505"
-  amarelo: "#f2b705"
-  amarelo-claro: "#fdf3cb"
-  amarelo-tinta: "#5c4500"
-  amarelo-borda: "#c99700"
-  vermelho: "#c8102e"
-  vermelho-claro: "#fbe3e6"
-  vermelho-tinta: "#8a0b1f"
-  perigo-borda: "#e7b3bb"
-  azul: "#1f5fa8"
-  azul-claro: "#e3edf8"
-  azul-tinta: "#163f73"
+  frame: "#e8e6de"
+  sheet: "#fbf8f2"
+  raised: "#f3eee4"
+  active: "#e7e0d3"
+  border: "#e4ddd0"
+  rule: "#ebe5da"
+  control: "#cdc5b6"
+  ink: "#161818"
+  muted: "#55574f"
+  faint: "#66675f"
+  verde: "#2c5a4d"
+  verde-forte: "#234a3f"
+  verde-claro: "#e1ebe4"
+  verde-tinta: "#1f4237"
+  laranja: "#e38b3d"
+  laranja-claro: "#f8e7d4"
+  laranja-tinta: "#7a3c0b"
+  amarelo: "#e7c14b"
+  amarelo-claro: "#f7edc8"
+  amarelo-tinta: "#574300"
+  amarelo-borda: "#b8901a"
+  vermelho: "#b9381a"
+  vermelho-claro: "#f6e1d9"
+  vermelho-tinta: "#8a2a12"
+  perigo-borda: "#e2b0a2"
+  azul: "#2f5f8a"
+  azul-claro: "#e2eaf1"
+  azul-tinta: "#1d3f5e"
   placa-azul: "#1a4fa0"
-  neutro-marca: "#8a928d"
-  neutro-tinta: "#383f3b"
+  noite: "#161818"
+  circulo: "#f5f3eb"
+  fundo-pessego: "#eddbce"
+  fundo-creme: "#ece4cd"
+  fundo-salvia: "#e3e8de"
+  painel: "rgba(250, 246, 238, 0.68)"
+  neutro-marca: "#8a8a82"
+  neutro-tinta: "#3d3e39"
 typography:
   display:
-    fontFamily: "Overpass, Segoe UI, system-ui, sans-serif"
+    fontFamily: "Outfit, Segoe UI, system-ui, sans-serif"
     fontSize: "64px"
     fontWeight: 700
     lineHeight: "64px"
     letterSpacing: "0.02em"
   headline:
-    fontFamily: "Overpass, Segoe UI, system-ui, sans-serif"
+    fontFamily: "Outfit, Segoe UI, system-ui, sans-serif"
     fontSize: "22px"
     fontWeight: 600
     lineHeight: "28px"
   headline-ficha:
-    fontFamily: "Overpass, Segoe UI, system-ui, sans-serif"
+    fontFamily: "Outfit, Segoe UI, system-ui, sans-serif"
     fontSize: "20px"
     fontWeight: 600
     lineHeight: "28px"
   title-dialogo:
-    fontFamily: "Overpass, Segoe UI, system-ui, sans-serif"
+    fontFamily: "Outfit, Segoe UI, system-ui, sans-serif"
     fontSize: "18px"
     fontWeight: 600
     lineHeight: "24px"
   title:
-    fontFamily: "Overpass, Segoe UI, system-ui, sans-serif"
+    fontFamily: "Outfit, Segoe UI, system-ui, sans-serif"
     fontSize: "16px"
     fontWeight: 600
     lineHeight: "24px"
   kpi:
-    fontFamily: "Overpass, Segoe UI, system-ui, sans-serif"
+    fontFamily: "Outfit, Segoe UI, system-ui, sans-serif"
     fontSize: "28px"
     fontWeight: 700
     lineHeight: "32px"
     fontFeature: "\"tnum\""
   body:
-    fontFamily: "Overpass, Segoe UI, system-ui, sans-serif"
+    fontFamily: "Outfit, Segoe UI, system-ui, sans-serif"
     fontSize: "14px"
     fontWeight: 400
     lineHeight: "20px"
   label:
-    fontFamily: "Overpass, Segoe UI, system-ui, sans-serif"
+    fontFamily: "Outfit, Segoe UI, system-ui, sans-serif"
     fontSize: "14px"
     fontWeight: 500
     lineHeight: "18px"
   meta:
-    fontFamily: "Overpass, Segoe UI, system-ui, sans-serif"
+    fontFamily: "Outfit, Segoe UI, system-ui, sans-serif"
     fontSize: "13px"
     fontWeight: 400
     lineHeight: "18px"
   small:
-    fontFamily: "Overpass, Segoe UI, system-ui, sans-serif"
+    fontFamily: "Outfit, Segoe UI, system-ui, sans-serif"
     fontSize: "12px"
     fontWeight: 400
     lineHeight: "16px"
   sinal:
-    fontFamily: "Overpass, Segoe UI, system-ui, sans-serif"
+    fontFamily: "Outfit, Segoe UI, system-ui, sans-serif"
     fontSize: "12px"
     fontWeight: 600
     lineHeight: 1
@@ -110,37 +116,39 @@ typography:
     lineHeight: "32px"
     letterSpacing: "0.08em"
 rounded:
-  chip: "4px"
-  control: "6px"
-  card: "8px"
-  toast: "10px"
-  dialogo: "14px"
-  sheet: "16px"
-  pill: "9px"
+  chip: "999px"
+  control: "999px"
+  campo: "12px"
+  card: "18px"
+  painel: "24px"
+  toast: "999px"
+  dialogo: "26px"
+  sheet: "28px"
+  pill: "999px"
   round: "50%"
 spacing:
-  sheet-inset: "8px"
+  sheet-inset: "12px"
   campo-gap: "16px"
-  gap: "24px"
-  pad: "24px"
+  gap: "20px"
+  pad: "28px"
   pad-celular: "16px"
-  bloco-x: "20px"
-  sidebar: "228px"
-  topbar: "48px"
-  control-h: "32px"
-  field-h: "38px"
-  row-h: "48px"
+  bloco-x: "22px"
+  sidebar: "236px"
+  topbar: "64px"
+  control-h: "36px"
+  field-h: "42px"
+  row-h: "52px"
   toque: "44px"
 components:
   button-primary:
-    backgroundColor: "{colors.verde}"
+    backgroundColor: "{colors.noite}"
     textColor: "{colors.sheet}"
     typography: "{typography.label}"
     rounded: "{rounded.control}"
     padding: "0 14px"
     height: "{spacing.control-h}"
   button-primary-hover:
-    backgroundColor: "{colors.verde-forte}"
+    backgroundColor: "#2a2c2b"
     textColor: "{colors.sheet}"
   button-secondary:
     backgroundColor: "{colors.sheet}"
@@ -257,20 +265,23 @@ components:
 
 ## Overview
 
-**Creative North Star: "A rodovia sinalizada"**
+**Creative North Star: "A rodovia sinalizada, no vidro quente"**
 
-O NILT é sinalizado como uma rodovia brasileira. Cada situação de cadastro tem a cor e a forma da placa que a equipe da Prisa já obedece na estrada: retângulo verde de orientação para o que está normal, losango laranja de obras para o que está pendente, losango amarelo de advertência para o que vence, círculo vermelho de regulamentação para o que está bloqueado ou vencido, quadrado azul de serviços para informação. A navegação é placa de orientação (o item atual é uma placa verde com filete branco por dentro), a placa do veículo aparece desenhada como a placa física, o vencimento é um marco de quilômetro com barra no comprimento exato dos dias restantes, e o conjunto é desenhado engatado na ordem física (cavalo, carreta, dolly, carreta).
+O NILT continua sinalizado como uma rodovia brasileira: cada situação tem a cor e a forma da placa que a equipe da Prisa já obedece na estrada. Desde outubro de 2026 essa sinalização mora num visual inspirado no template "rapport" (referência em `docs/design/rapport/`): fundo em gradiente quente (pêssego, creme, sálvia) com grão leve, painéis de vidro creme translúcido, um menu escuro flutuante de cantos muito redondos, controles em pílula e cartões sólidos coloridos.
 
-A estrutura é uma moldura em L tingida de asfalto claro (menu à esquerda e barra superior) com o trabalho numa folha branca recuada 8px, de raio 16, borda de 1px e sem sombra. A densidade é de sistema de operação: corpo de 14px, linhas de tabela de 48px, formulários em grade estrita de 12 colunas, fichas com abas como a equipe já conhece do ATUA. Tudo é plano e quieto; a cor só aparece quando carrega significado, e por isso uma tela calma tem pouca cor e uma tela com problema mostra o problema de longe.
+A cor ainda carrega significado e nunca decora: o cartão sólido verde está no prazo, o mostarda está perto do limite (âmbar), o laranja está pendente, o ferrugem passou do limite, está bloqueado ou vencido. Uma tela calma é quase toda vidro creme; uma tela com problema acende cartões de longe. A ação principal deixou de ser verde: é a pílula preta (noite), uma por tela.
 
-O sistema recusa o painel de TMS de categoria: menu azul-marinho, cartões de KPI com ícone de caminhão, mapa decorativo, gradientes, sombra em coisa parada.
+O movimento faz parte da linguagem: a página entra desfocada e fica nítida em cascata, números contam até o valor, a pílula do menu desliza até o item atual, o cartão do Quadro voa até a coluna nova, diálogos crescem com mola sobre o fundo desfocado e o aviso sobe de baixo como uma pílula escura.
+
+O sistema continua recusando o painel de TMS de categoria: menu azul-marinho, ícone de caminhão em quadrado colorido, mapa decorativo, cor sem significado.
 
 **Key Characteristics:**
-- Cor com significado fixo, sempre acompanhada de forma (nunca só cor).
-- Moldura em L de asfalto claro + folha branca recuada, plana, sem sombra.
-- Uma família tipográfica (Overpass); Overpass Mono só para códigos.
-- Objetos do transporte desenhados como são: placa, conjunto engatado, marco de km, placas de advertência.
-- Movimento só como resposta: nada entra animado.
+- Cor com significado fixo, sempre acompanhada de forma (nunca só cor), agora em cartões sólidos.
+- Fundo quente em gradiente + painéis de vidro + menu escuro flutuante.
+- Pílulas para tudo que se clica; cartões de 18px, painéis de 24px, diálogos de 26px.
+- Uma família de texto (Outfit); Overpass Mono só para códigos e placas.
+- Objetos do transporte desenhados como são: placa, conjunto engatado, marco de km, losango e círculo de advertência.
+- Movimento de resposta e de entrada, curto, com mola, e sempre desligável por "reduzir movimento".
 - Português do transporte em toda a interface.
 
 ## Colors
@@ -278,45 +289,45 @@ O sistema recusa o painel de TMS de categoria: menu azul-marinho, cartões de KP
 Uma rampa única de neutros puxada para o verde do asfalto, e cinco cores de sinal que valem exatamente o que valem na estrada.
 
 ### Primary
-- **Verde placa de orientação** (#0b6b3a): normal, habilitado, ativo; e a ação principal (`btn-primario`, uma por tela), o item atual do menu, o foco, a aba selecionada, o cursor de texto, a capacidade dentro do CMT. Hover da ação principal em **Verde fundo de placa** (#08552e). Fundo de sinal e de opção marcada em **Verde claro** (#e3f1e8) com texto em **Verde tinta** (#0a4426).
+- **Noite** (#161818): a ação principal (`btn-primario`, pílula preta com texto branco, uma por tela; hover #2a2c2b), o menu lateral, a barra de salvar, o aviso rápido, a opção marcada e o foco (contorno de 2px).
+- **Verde floresta** (#2c5a4d): normal, no prazo, habilitado. Cartão sólido do Quadro dentro do tempo, painel do anel de documentos conferidos, sinal "normal". Fundo claro #e1ebe4, tinta #1f4237.
 
 ### Secondary
-- **Laranja de obras** (#d9580d): pendente, em cadastro, aguardando motorista. Aparece como losango (sinal, placa de advertência da tela Início). Fundo claro #fdebdd, tinta #873505.
-- **Amarelo de advertência** (#f2b705): vence em até 30 dias. Só como preenchimento (losango, barra do marco, placa de km) com tinta escura em cima; nunca como cor de texto. Fundo claro #fdf3cb, tinta #5c4500, filete do losango pequeno #c99700.
-- **Vermelho de regulamentação** (#c8102e): cancelado, vencido, bloqueado, erro, excesso de CMT, contagem de pendências no menu. Aparece como círculo vazado. Fundo claro #fbe3e6, tinta #8a0b1f, borda do botão de perigo #e7b3bb.
+- **Laranja** (#e38b3d): pendente, em cadastro, aguardando. Cartão sólido com texto tinta (#161818); losango no sinal e nas placas. Fundo claro #f8e7d4, tinta #7a3c0b.
+- **Mostarda** (#e7c14b): vence em até 30 dias, perto do tempo-limite (âmbar). Sempre preenchimento com tinta escura (#2a2208 ou #574300) em cima; nunca cor de texto. Também é o destaque do aviso ("Desfazer"), do "Salvar" da barra e do anel de progresso. Fundo claro #f7edc8, filete #b8901a.
+- **Ferrugem** (#b9381a): cancelado, vencido, bloqueado, erro, passou do tempo-limite, excesso de CMT, contagem de pendências no menu. Cartão sólido com texto branco; círculo vazado no sinal. Fundo claro #f6e1d9, tinta #8a2a12.
 
 ### Tertiary
-- **Azul de serviços** (#1f5fa8): informação, arrendado, links e botões de texto. Fundo claro #e3edf8, tinta #163f73.
-- **Azul da placa Mercosul** (#1a4fa0): exclusivo da faixa "BRASIL" da placa desenhada. Não é cor de interface.
+- **Azul** (#2f5f8a): informação, arrendado, links. Fundo claro #e2eaf1, tinta #1d3f5e.
+- **Azul da placa Mercosul** (#1a4fa0): exclusivo da faixa "BRASIL" da placa desenhada.
 
 ### Neutral
-- **Asfalto claro** (#eef1ef): a moldura em L (fundo do body, menu, barra superior).
-- **Folha** (#ffffff): a folha de trabalho, blocos, campos, diálogos.
-- **Acostamento** (#f5f7f6): hover de linha e de botão, campo somente leitura, botão desativado, prévia do conjunto.
-- **Asfalto pisado** (#e2e7e4): estado pressionado/selecionado (segmento ativo, linha marcada no montador), fundo do sinal neutro.
-- **Borda** (#e1e5e2): borda da folha, dos blocos e dos campos.
-- **Filete** (#edf0ee): divisórias internas (linhas de tabela, seções de formulário, trilho vazio do marco).
-- **Meio-fio** (#c5ccc7): borda de controle (botão secundário, select da barra de ferramentas, segmento), borda tracejada de estado vazio, barra de rolagem.
-- **Tinta** (#1e2327): texto, contorno da placa e das peças do conjunto, barra de salvar, toast.
-- **Tinta apagada** (#535b57) para texto secundário e **Tinta fraca** (#656c68) para placeholder, travessão de ausente e desativado; ambas passam AA sobre a folha.
-- **Sinal neutro** (#8a928d marca, #383f3b texto): sem consulta, parado, vendido, devolvido.
+- **Fundo** (#e8e6de) com três gradientes radiais: pêssego #eddbce no canto superior esquerdo, creme #ece4cd no alto, sálvia #e3e8de no canto inferior direito; grão de ruído a 28% por cima (tira as faixas). Fixo na rolagem.
+- **Vidro** (rgba(250,246,238,0.68), borda branca a 78%): blocos, colunas do Quadro, tabelas. Sem `backdrop-filter` nos painéis parados (o fundo atrás é liso; desfocar não muda nada e custa GPU).
+- **Folha clara** (#fbf8f2): diálogos, menus suspensos, campos (#fff).
+- **Círculo** (#f5f3eb): ícone dos indicadores, pílula do item atual do menu.
+- **Creme elevado** (#f3eee4), **creme pisado** (#e7e0d3), **borda** (#e4ddd0), **filete** (#ebe5da), **meio-fio** (#cdc5b6).
+- **Tinta** (#161818) para texto; **tinta apagada** (#55574f) e **tinta fraca** (#66675f) passam AA sobre o vidro.
+- **Sinal neutro** (#8a8a82 marca, #3d3e39 texto).
 
 ### Named Rules
-**A Regra do Significado Fixo.** Verde é normal e ação principal; laranja é pendente; amarelo é vencendo; vermelho é bloqueado, vencido e erro; azul é informação. Nenhuma dessas cores é usada para decorar, agrupar ou diferenciar categorias.
+**A Regra do Significado Fixo.** Verde é normal; laranja é pendente; mostarda é vencendo ou perto do limite; ferrugem é bloqueado, vencido, passou do limite e erro; azul é informação; noite é a ação principal. Nenhuma dessas cores é usada para decorar, agrupar ou diferenciar categorias (no Quadro, a cor do cartão é o tempo-limite, nunca a coluna).
 
 **A Regra Forma + Cor.** Toda situação tem forma própria além da cor: retângulo (normal), losango (pendente, vencendo), círculo vazado (bloqueado), quadrado (informação), ponto redondo cinza (neutro). Quem não distingue cor ainda lê a placa.
 
-**A Regra do Amarelo com Tinta Escura.** O amarelo de advertência é sempre fundo ou preenchimento, com tinta #1e2327 ou #5c4500 por cima. Texto amarelo sobre branco não existe.
+**A Regra do Amarelo com Tinta Escura.** O mostarda é sempre fundo ou preenchimento, com tinta escura por cima (branco sobre mostarda dá 1,7:1 e é proibido). Texto amarelo sobre claro não existe. O laranja também leva tinta escura; ferrugem e verde levam branco.
 
 **A Regra da Exceção do Avatar.** O avatar de iniciais é a única cor fora dos sinais: tom pálido derivado do nome (fundo hsl(h 45% 90%), letra hsl(h 40% 28%)), só identidade, nunca situação.
 
 ## Typography
 
-**Display Font:** Overpass (com Segoe UI, system-ui, sans-serif)
-**Body Font:** Overpass
-**Label/Mono Font:** Overpass Mono (com ui-monospace, Cascadia Mono, Consolas) — só para códigos
+**Display Font:** Outfit (com Segoe UI, system-ui, sans-serif)
+**Body Font:** Outfit
+**Label/Mono Font:** Overpass Mono (com ui-monospace, Cascadia Mono, Consolas) — só para códigos e placas
 
-**Character:** Overpass descende da Highway Gothic das placas norte-americanas: é a letra de sinalização em tom de sistema, legível de longe e calma de perto. A versão mono dá às placas e aos documentos a cara de coisa carimbada.
+**Character:** Outfit é uma sans geométrica de traço limpo, a mesma família de voz do template: títulos grandes em peso 500 com espaçamento apertado (−0,02em), números grandes em 600 tabulares. A Overpass Mono segue nas placas e documentos, que continuam com cara de coisa carimbada.
+
+Escala atual (o resto da hierarquia abaixo vale com estes ajustes): título de tela 36px 500 (30px no celular), título de ficha 28px, título de diálogo 20px 600, cabeçalho de bloco 17px 500, número de cartão 40px 600 (32px no celular), indicador 24px 600, corpo 14px.
 
 ### Hierarchy
 - **Display** (700, 64px, 64px, 0.02em): só o nome "NILT" na placa de entrada do login (44px a 900px, 34px no celular).
@@ -334,7 +345,7 @@ Uma rampa única de neutros puxada para o verde do asfalto, e cinco cores de sin
 - **Placa** (Overpass Mono 600, 15px, 0.06em; grande 24px, 0.08em): só dentro da placa desenhada.
 
 ### Named Rules
-**A Regra de Uma Família.** Overpass em tudo, pesos 400, 500, 600 e 700. Nenhuma segunda família de texto.
+**A Regra de Uma Família.** Outfit em tudo, pesos 400, 500, 600 e 700. Nenhuma segunda família de texto.
 
 **A Regra do Mono para Código.** Overpass Mono aparece só em identificadores (placa, CPF, CNPJ, RNTRC, Renavam, atalho de teclado). Nunca para números de quantidade, datas ou títulos.
 
@@ -344,7 +355,7 @@ Uma rampa única de neutros puxada para o verde do asfalto, e cinco cores de sin
 
 ## Layout
 
-**Shell.** Grade de duas colunas: menu de 228px + folha fluida; duas linhas: barra superior de 48px + conteúdo. O menu é fixo na altura da janela (sticky). A barra superior leva a busca global centralizada (até 548px, atalho "/") e o selo "Dados fictícios" à direita. A folha encosta no menu e na barra, recuada 8px da direita e de baixo; por dentro, padding de 24px e largura máxima de 1440px.
+**Shell.** Grade de duas colunas: menu escuro flutuante de 236px (recuado 12px das bordas, canto 28px, fixo na altura da janela) + página fluida; duas linhas: barra superior de 64px + conteúdo. A barra leva a busca global em pílula de vidro (até 520px, atalho "/"). Não há mais folha branca: a página fica direto sobre o fundo quente, com padding de 28px e largura máxima de 1480px, e cada bloco é um painel de vidro.
 
 **Grade interna.** 12 colunas com gap de 24px para blocos (`c3`…`c12`). Formulários em `.secao`: rótulo e explicação numa coluna de 260px à esquerda, campos numa grade de 12 colunas à direita (gap 16px vertical × 24px horizontal), larguras `f2`…`f12` conforme o tamanho real do dado. Seções separadas por filete, 24px acima e abaixo.
 
@@ -359,46 +370,46 @@ Uma rampa única de neutros puxada para o verde do asfalto, e cinco cores de sin
 
 ## Elevation & Depth
 
-O sistema é plano. A profundidade vem da tonalidade (moldura de asfalto atrás, folha branca na frente) e de bordas de 1px; nada que está parado tem sombra. Sombra só existe em superfícies temporárias que flutuam sobre o trabalho e somem.
+A profundidade vem de três camadas: o fundo quente atrás, os painéis de vidro no meio e os cartões sólidos na frente. Sombras são longas e suaves, puxadas para o marrom do fundo, nunca cinza-azuladas.
 
 ### Shadow Vocabulary
-- **Menu suspenso** (`box-shadow: 0 0 0 1px rgba(30,35,39,0.09), 0 12px 32px rgba(30,35,39,0.12)`): resultados da busca global, menu "Novo cadastro".
-- **Barra de salvar** (`box-shadow: 0 6px 18px rgba(30,35,39,0.16)`): só enquanto há alteração não salva; no montador de conjunto, a versão leve `0 4px 12px rgba(30,35,39,0.07)`.
-- **Toast** (`box-shadow: 0 10px 30px rgba(30,35,39,0.25)`).
-- **Diálogo** (`box-shadow: 0 0 0 1px rgba(30,35,39,0.08), 0 24px 60px rgba(30,35,39,0.22)`), com véu `rgba(30,35,39,0.32)`.
-- **Gaveta do menu** (véu `0 0 0 100vmax rgba(30,35,39,0.32)`), só abaixo de 1100px.
-
-Filetes internos feitos com `box-shadow: inset` (borda branca dentro da placa verde da marca, da placa de km normal; anel branco em volta dos eixos) são desenho de placa, não elevação.
+- **Painel** (`inset 0 1px 0 rgba(255,255,255,.6), 0 18px 40px -26px rgba(60,40,20,.28)`): blocos, colunas, tabelas, busca.
+- **Cartão** (`0 10px 24px -14px rgba(22,24,24,.45)`): cartões sólidos, menu lateral, ícones de indicador. No hover sobe 2 a 3px e a sombra cresce.
+- **Flutuante** (`0 28px 60px -18px rgba(22,24,24,.45)`): diálogo, aviso, barra de salvar, menus suspensos, gaveta do menu.
+- **Véu do diálogo**: `rgba(40,32,24,.22)` com `backdrop-filter: blur(10px)` (a única superfície desfocada por trás).
 
 ### Named Rules
-**A Regra do Plano em Repouso.** Folha, blocos, tabelas, campos e sinais não têm sombra. Se a superfície não vai sumir sozinha, ela não flutua.
+**A Regra do Desfoque Único.** Só o véu do diálogo desfoca o que está atrás. Painéis parados são translúcidos sem desfoque; nada de vidro sobre vidro. Com "reduzir transparência" (Chrome/Edge), os painéis ficam sólidos e o véu escurece sem desfocar.
 
 ## Shapes
 
-Cantos suavemente arredondados e escalonados pelo tamanho: sinal e placa 4px, botão e controle 6px, bloco e campo 8px, barra de salvar, toast e menu suspenso 10px, diálogo 14px, folha 16px. Contagem do menu é pílula (9px), avatar é círculo. Bordas de 1px na interface; 1.5px a 2px nos desenhos do mundo (placa, peças do conjunto, placa de km), em tinta, como contorno de placa real.
+Tudo que se clica é pílula (botão, aba, filtro, opção, sinal, busca, aviso, barra de salvar) ou círculo (botão só de ícone, avatar, ícone de indicador). Superfícies escalonam pelo tamanho: campo 12px, cartão 18px, painel 24px, diálogo 26px, menu lateral 28px. Bordas de 1px na interface (brancas a 78% nos painéis); 1.5px a 2px nos desenhos do mundo (placa, peças do conjunto), em tinta.
 
-As formas de sinal são normativas: retângulo de canto 2px, losango (quadrado girado 45°, canto 1px no sinal, 5px na placa de advertência), círculo vazado de traço 2px (sinal) ou 5px (placa de advertência). O tracejado significa "ainda não existe": vaga de peça no conjunto, estado vazio, dolly, caminhão-fantasma do montador vazio.
+As formas de sinal continuam normativas: retângulo (normal), losango (pendente, vencendo), círculo vazado (bloqueado), quadrado (informação), ponto (neutro). Nos cartões sólidos a forma vai no canto, desenhada na cor do texto do cartão. O tracejado significa "ainda não existe" ou "zero": vaga de peça, estado vazio, cartão de pendência zerado.
 
 ## Components
 
 ### Buttons
-Firmes e baixos, sem ícone em caixa colorida.
-- **Shape:** canto de controle (6px), altura 32px (38px no `btn-grande`, 44px no celular e no login), padding 0 14px, texto 600 14px, ícone Lucide 16px traço 1.8.
-- **Primário:** verde placa com texto branco; um por tela; hover em verde fundo de placa.
-- **Secundário:** folha com borda meio-fio e texto tinta; hover acostamento.
-- **Texto:** sem borda nem fundo, texto azul de serviços, padding 0 8px; hover em azul claro.
-- **Perigo:** folha, texto vermelho tinta, borda #e7b3bb; hover vermelho claro.
-- **Desativado:** acostamento, texto tinta fraca, borda padrão, cursor proibido; opacidade 1 (o botão não fica translúcido).
-- **Retorno:** ao pressionar, `scale(0.97)` em 160ms ease-out. Hover só em dispositivos com ponteiro fino.
+Pílulas, sem ícone em caixa colorida.
+- **Shape:** 999px, altura 36px (44px no `btn-grande` e no celular), padding 0 16px, texto 500 14px, ícone Lucide 16px traço 1.8.
+- **Primário:** noite (#161818) com texto branco; um por tela; hover #2a2c2b.
+- **Secundário:** vidro branco a 62% com borda de tinta a 14%; hover branco.
+- **Texto:** sem fundo, texto tinta sublinhado leve (25%); hover fundo de tinta a 6%.
+- **Perigo:** texto ferrugem tinta, borda ferrugem a 35%; hover ferrugem claro.
+- **Desativado:** fundo tinta a 5%, texto tinta fraca, sem borda.
+- **Retorno:** ao pressionar, `scale(0.96)` em 160ms ease-out. Hover só com ponteiro fino.
+- **Dentro de cartão sólido:** secundário vira pílula branca a 90%; texto herda a cor do cartão.
 
 ### Sinais de situação
-Chip de 22px, canto 4px, texto 600 12px, com a forma da placa à esquerda (9px). Seis variantes: normal (retângulo verde), pendente (losango laranja), vencendo (losango amarelo com filete #c99700), bloqueado (círculo vermelho vazado), info (quadrado azul), neutro (ponto cinza). Gerado por `N.desenhar.sinal(situacao)`, que mapeia cada situação do banco (habilitado, cancelado, ag_motorista, arrendado, sinistro, vendido…) para uma das seis. Uma marca de situação por linha de tabela. A data de validade em linha usa a mesma lógica (`.val-vencendo`, `.val-vencido`, `.val-pendente`): a data só ganha forma e cor quando vence em até 30 dias ou já venceu.
+Pílula de 24px, texto 500 12px, com a forma da placa à esquerda (9px). Seis variantes: normal (retângulo verde), pendente (losango laranja), vencendo (losango amarelo com filete #c99700), bloqueado (círculo vermelho vazado), info (quadrado azul), neutro (ponto cinza). Gerado por `N.desenhar.sinal(situacao)`, que mapeia cada situação do banco (habilitado, cancelado, ag_motorista, arrendado, sinistro, vendido…) para uma das seis. Uma marca de situação por linha de tabela. A data de validade em linha usa a mesma lógica (`.val-vencendo`, `.val-vencido`, `.val-pendente`): a data só ganha forma e cor quando vence em até 30 dias ou já venceu.
 
 ### Placa do veículo
 Desenho da placa física: 92×30px, contorno de tinta 1.5px, canto 4px, faixa "BRASIL" de 7px no azul Mercosul, letras em Overpass Mono 600 15px. Placa antiga (padrão cinza) detectada pelo formato: fundo #e8eaea, sem faixa, contorno #6b7270. Versão grande 150×46px para o cabeçalho da ficha do veículo. Gerada por `N.desenhar.placa(placa, grande)`; a placa é o título do objeto veículo.
 
-### Placas de advertência (Início)
-Faixa de cinco placas, uma por tipo de pendência, cada uma levando à lista filtrada. **Losango** 40px girado 45°, preenchido de laranja (pendente) ou amarelo (vencendo), com contorno duplo tinta + cor e a contagem em 700 17px tinta. **Círculo proibido** 44px, aro vermelho de 5px sobre branco, para documentos vencidos e conjunto acima do CMT. Contagem zero vira forma vazia em cinza com "nada pendente". Divisórias de filete entre placas; hover acostamento.
+### Cartões de situação (Início)
+Duas faixas de cinco cartões sólidos (Operação e Pendências), cada um levando à lista filtrada. O cartão tem a cor da situação (ferrugem + círculo para bloqueado/vencido, laranja + losango para pendente, mostarda + losango para atenção), o nome e a explicação no alto e o número grande (40px 600) embaixo, que conta até o valor ao aparecer. Zero vira cartão de vidro apagado com a forma tracejada e a frase de "nada pendente". Hover sobe 3px. Os losangos e círculos desenhados de placa (40–44px) continuam no cabeçalho dos grupos em Pendências.
+
+Ao lado do título do Início, uma linha de indicadores: círculo creme com ícone, número que conta e legenda (conjuntos rodando, motoristas, documentos anexados). No bloco Cadastros, um painel verde com o anel mostarda de documentos conferidos.
 
 ### Marco de quilômetro (vencimentos)
 Linha de 52px: quem e o quê à esquerda, trilho de 8px no meio, dias à direita (600 16px + legenda). O trilho tem o comprimento exato dos dias restantes dentro da janela (90 dias por padrão): verde acima de 30 dias, amarelo até 30, e vencido vira um toco vermelho de 4px com "Vencido / venceu há N dias" em vermelho tinta. Gerado por `N.desenhar.marco(vencimento, janela)`. Na ficha do motorista, a **placa de km** destaca a validade da CNH e da gerenciadora: quadro de contorno 2px com o número em 700 28px; verde com filete branco quando normal, amarelo com contorno tinta quando vencendo, contorno vermelho quando vencido.
@@ -410,34 +421,37 @@ O conjunto é desenhado como o caminhão: peças lado a lado ligadas por um acop
 Trilho de 10px: preenchimento verde até o limite do CMT do cavalo; o que passa do CMT continua em vermelho além do fim. Legenda em 13px: "36,6 t de carga" e "limite 56,2 t", ou "passa X t do CMT" em vermelho tinta. Sem CMT informado, uma frase cinza no lugar do trilho. Gerado por `N.desenhar.capacidade(conjunto)`.
 
 ### Tabelas
-Sem caixa em volta. Cabeçalho 12px cinza, caixa normal, peso 400, 36px. Linhas de 48px separadas por filete, sem zebra; primeira e última coluna sem padding lateral. Identidade na coluna mais larga, em 600, com `.linha2` de 13px cinza abaixo. Números `num` à direita, tabulares. A linha inteira abre a ficha (`tr[data-href]`, focável, Enter abre); hover acostamento em 120ms.
+Sobre um painel de vidro (24px) quando estão soltas na página; dentro de bloco, sem caixa própria. Cabeçalho 12px cinza, caixa normal, peso 400. Linhas de 52px separadas por filete, sem zebra. Identidade em 500 com `.linha2` cinza abaixo. Números à direita, tabulares. A linha inteira abre a ficha; hover branco a 60%.
 
 ### Abas e fichas
-Abas como texto 14px 500 cinza com 24px de espaço, a selecionada em tinta 600 com sublinhado verde de 2px que passa 4px de cada lado; contagem em cinza após o nome ("Contatos 2"). Filete de 1px sob a fileira. A aba vive em `?aba=` (vira segmento de rota). Ficha: migalha + sinais no topo, bloco de resumo em `kv` (chave cinza → valor), depois abas com um formulário por aba.
+Abas como pílulas sobre um trilho de tinta a 6% (4px de folga): texto 500 14px cinza; a selecionada é pílula branca com sombra leve e texto tinta; contagem em cinza após o nome. A aba vive em `?aba=`. Ficha: migalha + sinais no topo, bloco de resumo em `kv`, depois abas com um formulário por aba.
 
 ### Inputs / Fields
-- **Style:** rótulo acima (500 14px), campo de 38px, folha, borda #e1e5e2, canto 8px, padding 0 12px; placeholder em tinta fraca; "(opcional)" em cinza 400 dentro do rótulo.
+- **Style:** rótulo acima (500 14px), campo de 42px, branco, borda de tinta a 12%, canto 12px, padding 0 12px; placeholder em tinta fraca; "(opcional)" em cinza 400 dentro do rótulo.
 - **Hover:** borda meio-fio.
-- **Focus:** borda verde + halo `0 0 0 3px rgba(11,107,58,0.16)`, sem outline.
+- **Focus:** borda tinta + halo `0 0 0 3px rgba(22,24,24,0.1)`, sem outline.
 - **Erro:** borda vermelha e mensagem 12px vermelho tinta abaixo que diz o problema e a correção ("CPF inválido: os dois últimos dígitos não conferem. Copie de novo do documento."). Validação no blur; depois de inválido, revalida a cada tecla.
 - **Válido:** borda verde (CPF, CNPJ, placa conferidos).
 - **Somente leitura:** fundo acostamento, texto cinza, ajuda explicando quem pode mudar.
 - **Máscaras:** CPF, CNPJ, telefone, CEP e placa formatam ao digitar.
 - **Campo com ação:** botão colado à direita (consultar CNPJ, mostrar senha), cantos internos retos.
-- **Opções:** escolhas curtas como botões de 38px; marcada em verde claro com borda verde e texto verde tinta 600. Escolha com explicação (papel do usuário) vira cartão de opção com rádio verde. Liga/desliga é chave de 36×20px, verde quando ligada.
+- **Opções:** escolhas curtas como pílulas brancas; a marcada é pílula noite com texto branco. Escolha com explicação (papel do usuário) vira cartão de opção com rádio verde. Liga/desliga é chave de 36×20px, verde quando ligada.
 - **Busca e filtros da lista:** campo de 32px com lupa, select de 32px, total à direita ("8 motoristas"); segmento para janelas (30/60/90 dias) com o ativo em asfalto pisado.
 
 ### Navigation
-Menu em placa de orientação sobre a moldura: marca (placa verde 34×26px com filete branco e seta para cima + "NILT / Prisa Logística"), itens de 32px com ícone Lucide 16px cinza, texto 14px tinta, canto 8px, hover tinta a 5%. Item atual é placa verde: fundo verde, texto branco 600, canto 6px e filete branco de 1px por dentro (outline −3px). Grupo "Administração" como rótulo 12px cinza. Contagem de pendências como pílula vermelha; no item atual ela inverte para branco com número vermelho. Usuário e "Sair" no pé. Abaixo de 1100px, gaveta.
+Menu escuro flutuante (noite, canto 28px, recuado 12px, sombra de cartão): marca (placa verde 36px com filete branco e seta para cima + "NILT / Prisa Logística" em branco), itens em pílula de 38px com ícone Lucide 17px e texto claro (#d9d8d0), hover branco a 7%. O item atual é uma **pílula creme (#f5f3eb) com texto tinta que desliza** de um item para o outro ao trocar de página (Motion, `layoutId`, mola 420/36). Grupo "Administração" em 12px branco a 45%. Contagem de pendências como pílula ferrugem. Usuário, "Trocar senha" e "Sair" no pé, separados por filete. Abaixo de 1100px, gaveta que desliza da esquerda.
 
 ### Barra de salvar
-Um modelo de salvar por tela. A barra escura (tinta, texto branco, canto 10px) gruda 8px acima do fim da janela e só aparece quando algo foi alterado. "Descartar" como botão de texto verde-pálido (#cfe8d9); "Salvar" como botão branco com texto verde tinta. Se há campo inválido, não salva: avisa por toast e põe o foco no primeiro campo marcado.
+Pílula noite (999px, sombra flutuante) que gruda 8px acima do fim da janela e só aparece quando algo foi alterado. "Descartar" como texto branco a 80%; "Salvar" como pílula mostarda com tinta escura. Se há campo inválido, não salva: avisa e põe o foco no primeiro campo marcado.
 
 ### Diálogos
-`<dialog>` nativo, até 520px (100vw − 32px no celular), canto 14px, véu de tinta 32%. Cabeçalho 18px 600, corpo com 16px entre itens, pé com ações à direita. Abre com fade + `scale(0.97 → 1)` em 200ms ease-out.
+`<dialog>` nativo, até 520px, canto 26px, fundo #fbf8f2, sombra flutuante. O véu escurece pouco (marrom a 22%) e desfoca a página (10px). Abre crescendo de 0.94 com mola (340ms, `cubic-bezier(0.34, 1.36, 0.64, 1)`); o véu entra em 220ms. Cabeçalho 20px 600, pé com ações à direita.
 
 ### Toasts
-Canto inferior direito (24px), tinta com texto branco, canto 10px, ícone 16px verde-pálido (#8fd3ab). Entram de 12px abaixo em 300ms ease-out, ficam 3,2s e saem descendo 8px. Usados para confirmação ("Alterações salvas") e para o motivo de uma ação recusada.
+Pílula noite embaixo, no centro, com uma bolinha verde (ou ferrugem no erro) e o ícone branco à esquerda. Sobe de 28px com mola (Motion), no máximo dois empilhados, fica 3,2s (6s quando tem botão). Pode levar uma ação em pílula mostarda ("Desfazer"): só ofereça quando desfazer é uma operação simples que o banco aceita sem pedir dados (no Quadro, voltar de coluna exige motivo, então não há Desfazer).
+
+### Quadro da operação
+Colunas de vidro (286px, canto 24px; as de espera estreitam para 60px com o rótulo em pé) com o contador em pílula. O cartão da viagem é sólido na cor do tempo-limite: verde no prazo, mostarda no âmbar, ferrugem no vermelho; a cor muda com transição de 450ms. Ao trocar de coluna (arrastando, pelo "Mover" ou pelo tempo real), o cartão voa até a nova posição e os vizinhos se reacomodam (Motion, `layoutId` por viagem, mola 380/34). Arrastando, o lugar de origem fica apagado e menor, as colunas permitidas ganham contorno tracejado, a coluna sob o ponteiro ganha contorno tinta e sobe 2px, e as proibidas apagam. Acima do quadro, indicadores que contam: viagens na tela, perto do tempo-limite (losango mostarda) e passaram do tempo-limite (círculo ferrugem).
 
 ### Avisos e estados
 - **Aviso em bloco:** faixa com canto 8px no fundo claro da cor do sinal e texto na tinta correspondente, ícone 18px, frase que explica a regra (arrendado sem contrato, CPF de proprietário diferente na ANTT).
@@ -453,51 +467,50 @@ Círculo de 28px (24px a 40px conforme o contexto) com até duas iniciais em 600
 A tela de login, sem shell, mostra uma placa de orientação verde (canto 16px, filete branco de 3px a 14px da borda) com o sinal do NILT, o nome em display e três destinos com setas de direção ("Motoristas e proprietários", "Veículos e conjuntos", "Documentos e vencimentos") em 600 22px, como numa placa de saída; o formulário fica numa folha branca ao lado.
 
 ### Movimento
-Curto e de resposta; nada entra animado ao carregar.
-- Clique em botão: `scale(0.97)`, 160ms, ease-out forte `cubic-bezier(0.23, 1, 0.32, 1)`.
-- Hover de cor (botão, menu, linha, aba, opção): 120–150ms ease.
-- Menu suspenso: opacidade + transform, 150ms ease-out.
-- Diálogo: 200ms ease-out. Barra de salvar: 200ms ease-out. Chave liga/desliga: 160ms ease-out.
-- Toast: 300ms ease-out na entrada e na saída.
-- Gaveta do menu: 260ms ease-out.
-- `prefers-reduced-motion: reduce` zera transições e animações (o giro do login para).
+Curto, com mola, e com significado. Biblioteca: Motion (`motion/react`), com `<MotionConfig reducedMotion="user">` no shell.
+- Entrada da página: cada bloco do `<main>` vem de `translateY(10px)` + `blur(6px)` para nítido em 420ms ease-out, em cascata de 50ms (blocos da grade, 50ms a mais). Só no que monta: recargas do tempo real não repetem.
+- Números: contam até o valor com mola (`<Numero>`), ao aparecer e a cada mudança.
+- Pílula do menu: desliza entre itens (mola 420/36).
+- Cartão do Quadro: voa até a coluna nova (mola 380/34); cor em 450ms.
+- Anel de progresso: cresce em 1,1s ease-out.
+- Clique em botão: `scale(0.96)`, 160ms. Hover de cor: 150ms. Hover de cartão: sobe 2–3px em 220ms.
+- Diálogo: mola 340ms; véu 220ms. Aviso: mola 420/30. Gaveta do menu: 300ms ease-out.
+- `prefers-reduced-motion: reduce` zera transições e animações do CSS e o Motion tira deslocamento e layout; os números aparecem sem contar.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** use cada cor de sinal só para o seu significado: verde normal e ação principal, laranja pendente, amarelo vencendo (até 30 dias), vermelho bloqueado/vencido/erro, azul informação.
-- **Do** dê sempre forma junto com a cor: retângulo, losango, círculo vazado, quadrado, ponto.
-- **Do** use o amarelo só como preenchimento, com tinta escura por cima.
-- **Do** mantenha uma ação principal verde por tela; o resto é secundário ou texto.
-- **Do** desenhe os objetos do transporte com os helpers (`N.desenhar.placa`, `sinal`, `engate`, `capacidade`, `marco`, `avatar`) em vez de recriá-los.
-- **Do** escreva placa, CPF, CNPJ, RNTRC e Renavam em Overpass Mono; todo número em algarismos tabulares, alinhado à direita em tabela.
-- **Do** ponha o rótulo acima do campo, marque o opcional e escreva erros que dizem o problema e a correção.
-- **Do** mostre a pendência onde se trabalha: sinal na linha, aviso no bloco, placa de advertência no Início.
-- **Do** mantenha o quadro no estado vazio, com uma frase; zero é "0", ausente é "—".
-- **Do** use 44px de alvo de toque abaixo de 640px.
-- **Do** respeite `prefers-reduced-motion`.
+- **Do** use cada cor só para o seu significado: verde normal, laranja pendente, mostarda vencendo/perto do limite, ferrugem bloqueado/vencido/erro, azul informação, noite ação principal.
+- **Do** dê sempre forma junto com a cor, inclusive nos cartões sólidos (forma no canto).
+- **Do** ponha tinta escura sobre mostarda e laranja; branco sobre verde e ferrugem.
+- **Do** mantenha uma ação principal (pílula noite) por tela.
+- **Do** use painéis de vidro para agrupar e cartões sólidos só para o que tem situação.
+- **Do** use `<Numero>` para contagens que o olho acompanha (indicadores, cartões de situação).
+- **Do** desenhe os objetos do transporte com os componentes (`<Placa>`, `<Sinal>`, `<Engate>`, `<Capacidade>`, `<MarcoKm>`, `<Avatar>`).
+- **Do** escreva placa, CPF, CNPJ, RNTRC e Renavam em Overpass Mono; todo número em algarismos tabulares.
+- **Do** ponha o rótulo acima do campo e escreva erros que dizem o problema e a correção.
+- **Do** respeite `prefers-reduced-motion` e `prefers-reduced-transparency`.
 
 ### Don't:
-- **Don't** use cor fora do significado fixo (exceção única: o tom pálido do avatar, só identidade).
-- **Don't** use gradientes.
-- **Don't** ponha sombra em coisa parada; sombra só em menu suspenso, barra de salvar, toast, diálogo e gaveta.
-- **Don't** ponha ícone dentro de quadrado colorido.
-- **Don't** ponha rótulo pequeno acima de título (eyebrow) nem numere seções (01/02).
-- **Don't** use borda lateral colorida para marcar situação.
+- **Don't** use cor sem significado (exceção: o tom pálido do avatar e o fundo quente).
+- **Don't** colora cartão ou coluna por etapa ou categoria.
+- **Don't** empilhe vidro sobre vidro nem ponha `backdrop-filter` em painel parado.
+- **Don't** ponha branco sobre mostarda ou texto amarelo sobre claro.
+- **Don't** ponha ícone dentro de quadrado colorido (o ícone vai em círculo creme).
+- **Don't** anime algo que se repete a cada recarga do tempo real (só o que monta ou muda de valor).
+- **Don't** ofereça "Desfazer" quando a volta pede dados ou motivo ao banco.
 - **Don't** escreva cabeçalho de tabela em caixa alta nem use listras zebradas.
-- **Don't** use emoji; ícones são Lucide, 16px, traço 1.6, um conjunto só.
-- **Don't** anime a entrada de conteúdo.
-- **Don't** escreva texto amarelo sobre branco.
-- **Don't** use Overpass Mono fora de códigos nem uma segunda família de texto.
-- **Don't** faça o painel de TMS de categoria: menu azul-marinho, cartão de KPI com ícone de caminhão, mapa decorativo.
+- **Don't** use emoji; ícones são Lucide, um conjunto só.
+- **Don't** use uma segunda família de texto nem Overpass Mono fora de códigos.
+- **Don't** faça o painel de TMS de categoria: menu azul-marinho, ícone de caminhão em caixa colorida, mapa decorativo.
 
 ## Conversão para Next.js e Tailwind
 
 O protótipo foi escrito para virar Next.js (App Router) + Tailwind; os nomes acima são os nomes de destino.
 
-- **Tokens → `@theme` (Tailwind v4) em `app/globals.css`.** Cores como `--color-<nome>` (`--color-verde: #0b6b3a`, `--color-laranja-claro: #fdebdd`, `--color-ink: #1e2327`…), gerando `bg-verde`, `text-verde-tinta`, `border-border`. Raios como `--radius-chip/control/card/toast/dialogo/sheet`. Fontes via `next/font/google` (Overpass 400–700, Overpass Mono 400–600) expostas como `--font-sans` e `--font-mono`. Tamanhos como `--text-headline: 22px` com `--text-headline--line-height: 28px`, idem `title`, `body`, `meta`, `small`. Medidas do shell (`sidebar`, `topbar`, `sheet-inset`, `control-h`, `field-h`, `row-h`) como `--spacing-*`. Easings como `--ease-out: cubic-bezier(0.23, 1, 0.32, 1)` e `--ease-in-out: cubic-bezier(0.77, 0, 0.175, 1)`. Breakpoints: `--breakpoint-celular: 640px`, `--breakpoint-tablet: 1100px` (usar `max-*` para replicar o build, que é desktop primeiro).
+- **Tokens → `@theme` (Tailwind v4) em `app/globals.css`.** Cores como `--color-<nome>` (`--color-verde: #2c5a4d`, `--color-laranja-claro: #f8e7d4`, `--color-ink: #161818`…), gerando `bg-verde`, `text-verde-tinta`, `border-border`. Raios como `--radius-chip/control/card/toast/dialogo/sheet`. Fontes via `next/font/google` (Outfit 400–700, Overpass Mono 400–600) expostas como `--font-sans` e `--font-mono`. Tamanhos como `--text-headline: 22px` com `--text-headline--line-height: 28px`, idem `title`, `body`, `meta`, `small`. Medidas do shell (`sidebar`, `topbar`, `sheet-inset`, `control-h`, `field-h`, `row-h`) como `--spacing-*`. Easings como `--ease-out: cubic-bezier(0.23, 1, 0.32, 1)` e `--ease-in-out: cubic-bezier(0.77, 0, 0.175, 1)`. Breakpoints: `--breakpoint-celular: 640px`, `--breakpoint-tablet: 1100px` (usar `max-*` para replicar o build, que é desktop primeiro).
 - **Valores literais que viram token.** `#c99700` → `amarelo-borda`, `#e7b3bb` → `perigo-borda`, `#8a928d` → `neutro-marca`, `#383f3b` → `neutro-tinta`; as sombras temporárias → `--shadow-menu`, `--shadow-barra`, `--shadow-toast`, `--shadow-dialogo`.
 - **Shell.** `montarShell()` → `app/(app)/layout.tsx` (Sidebar, Topbar com BuscaGlobal, Folha); o login → `app/(auth)/login/page.tsx`, sem shell.
 - **Desenhos → componentes React.** `desenhar.placa` → `<Placa placa grande?>`; `sinal` → `<Sinal situacao>` com o mapa de situações do banco; `engate` → `<ConjuntoEngatado cavalo itens>`; `capacidade` → `<Capacidade conjunto>`; `marco` → `<MarcoKm vencimento janela>`; `avatar` → `<Avatar nome>`. Placas de advertência → `<PlacaAdvertencia forma n>`.
 - **Comportamento.** `?aba=` → segmento de rota da ficha; `form[data-salvar]` + barra → um hook de formulário sujo com `<BarraSalvar>`; `data-mascara` / `data-valida` → máscaras e validadores em `lib/` (espelhando as funções do banco); `N.fmt.*` → `lib/formato.ts`; `dados.js` → consultas ao Supabase com os mesmos nomes de campo.
-- **Ao converter, mantenha** as regras de significado fixo, forma + cor, plano em repouso e uma família. Utilitários Tailwind não substituem os componentes do mundo: uma placa é sempre `<Placa>`, nunca um `div` com classes soltas.
+- **Ao converter, mantenha** as regras de significado fixo, forma + cor, desfoque único e uma família. Utilitários Tailwind não substituem os componentes do mundo: uma placa é sempre `<Placa>`, nunca um `div` com classes soltas.
