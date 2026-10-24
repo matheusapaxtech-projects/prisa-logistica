@@ -334,6 +334,191 @@ export type Database = {
           },
         ]
       }
+      fin_conta: {
+        Row: {
+          agencia: string
+          apelido: string | null
+          banco: string
+          created_at: string
+          created_by: string | null
+          id: string
+          numero: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agencia?: string
+          apelido?: string | null
+          banco: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          numero: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agencia?: string
+          apelido?: string | null
+          banco?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          numero?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      fin_importacao: {
+        Row: {
+          conta_id: string
+          created_at: string
+          created_by: string | null
+          fim: string | null
+          id: string
+          inicio: string | null
+          nome_arquivo: string
+          novos: number
+          saldo: number | null
+          saldo_em: string | null
+          total: number
+        }
+        Insert: {
+          conta_id: string
+          created_at?: string
+          created_by?: string | null
+          fim?: string | null
+          id?: string
+          inicio?: string | null
+          nome_arquivo: string
+          novos?: number
+          saldo?: number | null
+          saldo_em?: string | null
+          total?: number
+        }
+        Update: {
+          conta_id?: string
+          created_at?: string
+          created_by?: string | null
+          fim?: string | null
+          id?: string
+          inicio?: string | null
+          nome_arquivo?: string
+          novos?: number
+          saldo?: number | null
+          saldo_em?: string | null
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_importacao_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "fin_conta"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_lancamento: {
+        Row: {
+          categoria: Database["public"]["Enums"]["fin_categoria"] | null
+          chave: string
+          classificado_em: string | null
+          classificado_por: string | null
+          conta_id: string
+          created_at: string
+          data: string
+          descricao: string
+          fitid: string
+          id: string
+          importacao_id: string
+          observacao: string | null
+          updated_at: string
+          updated_by: string | null
+          valor: number
+        }
+        Insert: {
+          categoria?: Database["public"]["Enums"]["fin_categoria"] | null
+          chave: string
+          classificado_em?: string | null
+          classificado_por?: string | null
+          conta_id: string
+          created_at?: string
+          data: string
+          descricao: string
+          fitid: string
+          id?: string
+          importacao_id: string
+          observacao?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          valor: number
+        }
+        Update: {
+          categoria?: Database["public"]["Enums"]["fin_categoria"] | null
+          chave?: string
+          classificado_em?: string | null
+          classificado_por?: string | null
+          conta_id?: string
+          created_at?: string
+          data?: string
+          descricao?: string
+          fitid?: string
+          id?: string
+          importacao_id?: string
+          observacao?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_lancamento_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "fin_conta"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_lancamento_importacao_id_fkey"
+            columns: ["importacao_id"]
+            isOneToOne: false
+            referencedRelation: "fin_importacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_regra: {
+        Row: {
+          categoria: Database["public"]["Enums"]["fin_categoria"]
+          chave: string
+          created_at: string
+          created_by: string | null
+          id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          categoria: Database["public"]["Enums"]["fin_categoria"]
+          chave: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          categoria?: Database["public"]["Enums"]["fin_categoria"]
+          chave?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       marca_veiculo: {
         Row: {
           id: number
@@ -1876,6 +2061,15 @@ export type Database = {
       }
     }
     Views: {
+      fin_resumo_mensal: {
+        Row: {
+          categoria: Database["public"]["Enums"]["fin_categoria"] | null
+          mes: string | null
+          quantidade: number | null
+          valor: number | null
+        }
+        Relationships: []
+      }
       v_conjunto_capacidade: {
         Row: {
           capacidade_total_t: number | null
@@ -2066,6 +2260,47 @@ export type Database = {
         Args: { p_pessoa_id: string; p_tipo: string; p_veiculo_id: string }
         Returns: boolean
       }
+      fin_categoria_por_regra: {
+        Args: { p_chave: string }
+        Returns: Database["public"]["Enums"]["fin_categoria"]
+      }
+      fin_chave_contem: {
+        Args: { p_chave: string; p_regra: string }
+        Returns: boolean
+      }
+      fin_chave_serve_para_regra: {
+        Args: { p_chave: string }
+        Returns: boolean
+      }
+      fin_classificar: {
+        Args: {
+          p_categoria: Database["public"]["Enums"]["fin_categoria"]
+          p_id: string
+          p_lembrar?: boolean
+        }
+        Returns: number
+      }
+      fin_classificar_lancamento: {
+        Args: {
+          p_categoria: Database["public"]["Enums"]["fin_categoria"]
+          p_id: string
+          p_lembrar?: boolean
+        }
+        Returns: Json
+      }
+      fin_importar_extrato: { Args: { p: Json }; Returns: Json }
+      fin_saldos_ate: {
+        Args: { p_fim: string }
+        Returns: {
+          agencia: string
+          apelido: string
+          banco: string
+          conta_id: string
+          numero: string
+          saldo: number
+          saldo_em: string
+        }[]
+      }
       iniciar_viagem: {
         Args: { p_justificativa?: string; p_viagem: string }
         Returns: undefined
@@ -2104,6 +2339,7 @@ export type Database = {
       }
       placa_valida: { Args: { p: string }; Returns: boolean }
       pode_editar: { Args: never; Returns: boolean }
+      pode_financeiro: { Args: never; Returns: boolean }
       pode_ler: { Args: never; Returns: boolean }
       registrar_visualizacao: {
         Args: { p_arquivo: string }
@@ -2148,6 +2384,15 @@ export type Database = {
       desconto_inss: "nao" | "inss_sest_senat" | "sest_senat"
       enquadramento_antt: "etc" | "tac" | "ctc" | "etc_equiparado"
       estado_civil: "solteiro" | "casado" | "separado" | "viuvo" | "outro"
+      fin_categoria:
+        | "receita_frete"
+        | "pagamento_frete"
+        | "despesa"
+        | "emprestimo"
+        | "devolucao_emprestimo"
+        | "aporte_capital"
+        | "devolucao_capital"
+        | "transferencia"
       grau_instrucao:
         | "fundamental_incompleto"
         | "fundamental_completo"
@@ -2407,6 +2652,16 @@ export const Constants = {
       desconto_inss: ["nao", "inss_sest_senat", "sest_senat"],
       enquadramento_antt: ["etc", "tac", "ctc", "etc_equiparado"],
       estado_civil: ["solteiro", "casado", "separado", "viuvo", "outro"],
+      fin_categoria: [
+        "receita_frete",
+        "pagamento_frete",
+        "despesa",
+        "emprestimo",
+        "devolucao_emprestimo",
+        "aporte_capital",
+        "devolucao_capital",
+        "transferencia",
+      ],
       grau_instrucao: [
         "fundamental_incompleto",
         "fundamental_completo",
