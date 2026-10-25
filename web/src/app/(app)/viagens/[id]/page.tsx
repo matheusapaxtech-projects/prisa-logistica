@@ -21,6 +21,7 @@ import { CancelarViagem, ConfirmarPagamento, IniciarViagem } from "./acoes-viage
 import { BlocoAptidao } from "./aptidao";
 import { Canhoto } from "./canhoto";
 import { BlocoFrete } from "./frete";
+import { BlocoQuebraEstadia, lerQuebraEstadia } from "./quebra-estadia";
 import { LinhaDoTempo } from "./linha-do-tempo";
 import { Ocorrencias } from "./ocorrencias";
 import "@/styles/paginas/proprietarios.css";
@@ -87,7 +88,10 @@ export default async function FichaViagemPage({ params }: Params) {
   const podeFinanceiro = pode(perfil, "editarFinanceiro");
   const verResultado = pode(perfil, "financeiro");
   const db = tipado(await createClient());
-  const [f, frete] = await Promise.all([carregarViagem(db, id), carregarFrete(db, id, verResultado)]);
+  const [f, frete, qe] = await Promise.all([carregarViagem(db, id), carregarFrete(db, id, verResultado), db.rpc("quebra_e_estadia", { p_viagem: id })]);
+  if (qe.error) throw qe.error;
+  // Quebra e estadia só depois do início (antes não há pesos nem horas na linha do tempo).
+  const quebraEstadia = f && f.status_campo !== null && !f.canceladaEm ? lerQuebraEstadia(qe.data) : null;
   if (!f) notFound();
 
   const cancelada = Boolean(f.canceladaEm);
@@ -403,6 +407,8 @@ export default async function FichaViagemPage({ params }: Params) {
           }
         />
       )}
+
+      {quebraEstadia && <BlocoQuebraEstadia q={quebraEstadia} />}
 
       <div className="blocos-viagem">
         <LinhaDoTempo eventos={f.eventos} criadaEm={f.criadaEm} />

@@ -33,3 +33,18 @@ Em 2026-10-24 o usuário pediu para eu seguir sozinho com três itens: rotas sal
 Banco: migrations `20261029000200` e `20261029000300`, aplicadas no supabase-nilt. O teste do caminho completo (28 verificações) rodou e passou no banco; os arquivos `mover_viagem.test.sql`, `quadro.test.sql`, `iniciar_viagem.test.sql` e `pedido_viagem.test.sql` foram atualizados para o fluxo novo.
 
 **Atenção:** viagens que estavam em "Aguardando descarga" agora passam por "Descarregando" antes da contagem; as que já estavam em contagem ou resolução vão para "Aguardando saldo" em vez de "Frete finalizado".
+
+## 2b. Quebra de peso e estadia (branch `feat/quebra-estadia`)
+
+| Decisão | O que escolhi | Por quê |
+|---|---|---|
+| Onde fica a tolerância de quebra | No cliente (tomador), aba "Faturamento e exigências"; partida 0,30% | O motor diz que vem do contrato de cada cliente; em grãos é comum 0,25% a 0,5%. |
+| Pesos da quebra | Peso de saída × peso de chegada que o Quadro já pede | São os tickets de balança da origem e do destino. |
+| Quebra acima da tolerância | O diálogo da contagem avisa, marca "Falta" (ou "Sobra") e preenche a descrição; a pessoa confirma | Não bloqueia sozinho: a contagem continua sendo decisão da operação. |
+| Horas de estadia | Pela linha do tempo do Quadro: carga = Aguardando carregamento + Em carregamento; descarga = Aguardando descarga + Descarregando | Sem o app do motorista não há cerca de GPS; as colunas do Quadro são o que temos. |
+| Valores da estadia | 5 h grátis, R$ 1,38 por t/h, repasse de 100% ao motorista, numa tabela com vigência (`parametro_operacional`) que só o admin muda | Valores de partida do motor; o valor legal corrigido e o percentual de repasse precisam ser confirmados. |
+| Quem vê | Todos que leem a viagem veem a quebra, as horas, o valor a cobrar e o repasse | São dados operacionais; a margem não aparece. |
+
+Banco: migration `20261029000400`, aplicada no supabase-nilt. `quebra_estadia.test.sql` (14 verificações) rodou e passou no banco, com o caso de quebra do motor (32 t → 31,74 t, 0,3%: 0,26 t, excedente 0,164 t).
+
+**Pendente de confirmar:** o valor da estadia por t/h vigente e o percentual de repasse ao motorista.

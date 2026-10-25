@@ -6,6 +6,7 @@ import { Dialogo } from "@/components/Dialogo";
 import { Sinal } from "@/components/Sinal";
 import { TIPOS_ACEITOS } from "@/lib/arquivos";
 import { lerNumeroBr } from "@/lib/formato";
+import { textoQuebra, verificarQuebra } from "@/lib/motor/quebra";
 import { chaveDfeValida, rotuloDe, type Cartao, type Formulario, type StatusCampo } from "@/lib/quadro";
 import { TIPOS_PAUSA } from "../viagens/regras";
 
@@ -160,6 +161,13 @@ export function DialogoPassagem({ passagem, executar, enviarCanhoto, aoFechar }:
   const [gravando, iniciar] = useTransition();
   const n = numeroDe(cartao);
   const voltar = formulario === "motivo";
+  // Quebra de peso (motor de despacho): saída × chegada com a tolerância do contrato do cliente.
+  const tolerancia = cartao.tolerancia_quebra_pct ?? 0.3;
+  const quebra =
+    formulario === "contagem" && cartao.peso_saida_kg && cartao.peso_chegada_kg
+      ? verificarQuebra(cartao.peso_saida_kg / 1000, cartao.peso_chegada_kg / 1000, tolerancia)
+      : null;
+  const sugerido = quebra?.divergente ? (quebra.difT > 0 ? "falta" : "sobra") : para === "aguardando_saldo" ? "sem_divergencia" : null;
   const semPagamento = (formulario === "documentos" && !cartao.pagamento_saida) || (formulario === "encerramento" && !cartao.saldo_pago);
 
   function gravar(paraFinal: StatusCampo, dados: Record<string, unknown>, arquivo?: File | null) {
@@ -498,6 +506,15 @@ export function DialogoPassagem({ passagem, executar, enviarCanhoto, aoFechar }:
 
       {formulario === "contagem" && (
         <>
+          {quebra && (
+            <div className={`aviso ${quebra.divergente ? "aviso-bloqueado" : "aviso-normal"}`} role="status">
+              <CircleAlert size={16} strokeWidth={1.6} aria-hidden="true" />
+              <span>
+                {textoQuebra(quebra, tolerancia)}
+                {quebra.divergente && " Registre como divergência."}
+              </span>
+            </div>
+          )}
           <p>
             Sem divergência, a viagem vai para “Aguardando saldo (30%)”. Com falta, sobra ou avaria, vai para “Resolução de divergência na
             carga”.
@@ -511,7 +528,7 @@ export function DialogoPassagem({ passagem, executar, enviarCanhoto, aoFechar }:
                     type="radio"
                     name="divergencia"
                     value={r.valor}
-                    defaultChecked={para === "aguardando_saldo" ? r.valor === "sem_divergencia" : false}
+                    defaultChecked={r.valor === sugerido}
                   />
                   <span>{r.rotulo}</span>
                 </label>
@@ -533,6 +550,7 @@ export function DialogoPassagem({ passagem, executar, enviarCanhoto, aoFechar }:
               name="divergencia_descricao"
               maxLength={2000}
               placeholder="Ex.: faltaram 320 kg na balança do destino"
+              defaultValue={quebra?.divergente ? textoQuebra(quebra, tolerancia) : undefined}
               aria-invalid={campos.divergencia_descricao ? true : undefined}
               aria-describedby={desc("divergencia_descricao")}
             />

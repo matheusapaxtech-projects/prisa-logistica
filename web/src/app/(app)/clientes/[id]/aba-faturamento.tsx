@@ -141,6 +141,17 @@ export function AbaFaturamento({ cliente: c, podeEditar }: Props) {
           </Marcar>
         </div>
         <Campo
+          classe="f4"
+          id="tolerancia_quebra_pct"
+          name="tolerancia_quebra_pct"
+          label="Tolerância de quebra de peso (%)"
+          inputMode="decimal"
+          autoComplete="off"
+          defaultValue={(c.tolerancia_quebra_pct ?? 0.3).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 3 })}
+          ajuda="Diferença entre o peso de saída e o de chegada aceita pelo contrato. Acima dela, a contagem registra divergência."
+          erro={campos.tolerancia_quebra_pct}
+        />
+        <Campo
           classe="f12"
           id="exigencias"
           label="Outras exigências"
