@@ -57,13 +57,13 @@ begin
 
   insert into public.pessoa (tipo, nome, cpf, situacao_cadastro)
   values ('pf', 'Motorista Teste', '11144477735', 'normal') returning id into motorista;
-  insert into public.motorista (pessoa_id, cnh_categoria, cnh_validade, situacao_cadastro)
-  values (motorista, 'e', tests.hoje() + 365, 'normal');
+  insert into public.motorista (pessoa_id, cnh_categoria, cnh_validade, situacao_cadastro, situacao_gr, gr_validade)
+  values (motorista, 'e', tests.hoje() + 365, 'normal', 'habilitado', tests.hoje() + 180);
 
   cavalo := tests.novo_veiculo(7, cliente);
   carreta := tests.novo_veiculo(11, cliente);
-  insert into public.conjunto (cavalo_id, motorista_id, inicio)
-  values (cavalo, motorista, now() - interval '1 day') returning id into conjunto;
+  insert into public.conjunto (cavalo_id, motorista_id, inicio, aprovado_em)
+  values (cavalo, motorista, now() - interval '1 day', now()) returning id into conjunto;
   insert into public.conjunto_item (conjunto_id, posicao, veiculo_id) values (conjunto, 1, carreta);
 
   insert into public.pedido (tomador_id, remetente_id, destinatario_id, local_coleta_id, local_descarga_id,
@@ -209,7 +209,7 @@ begin
   return next ok('cnh_categoria:trava' = any (tests.aptidao(r.conjunto, r.cliente)), 'categoria não informada: trava');
   -- conjunto sem itens (só o cavalo): C, D, E, AC, AD, AE servem
   v_cav2 := tests.novo_veiculo(7, r.cliente);
-  insert into public.conjunto (cavalo_id, motorista_id, inicio) values (v_cav2, r.motorista, now() - interval '1 day')
+  insert into public.conjunto (cavalo_id, motorista_id, inicio, aprovado_em) values (v_cav2, r.motorista, now() - interval '1 day', now())
   returning id into v_conj2;
   update public.motorista set cnh_categoria = 'c' where pessoa_id = r.motorista;
   return next ok(not ('cnh_categoria:trava' = any (tests.aptidao(v_conj2, r.cliente))), 'categoria C sem carreta: ok');
@@ -417,8 +417,8 @@ begin
   select * into r from tests.cenario();
   insert into public.pessoa (tipo, nome, cpf, situacao_cadastro) values ('pf', 'Motorista Dois', '52998224725', 'normal')
   returning id into v_mot2;
-  insert into public.motorista (pessoa_id, cnh_categoria, cnh_validade, situacao_cadastro)
-  values (v_mot2, 'e', tests.hoje() + 365, 'normal');
+  insert into public.motorista (pessoa_id, cnh_categoria, cnh_validade, situacao_cadastro, situacao_gr, gr_validade)
+  values (v_mot2, 'e', tests.hoje() + 365, 'normal', 'habilitado', tests.hoje() + 180);
   update public.conjunto set motorista_id = v_mot2 where id = r.conjunto;
   return next lives_ok(tests.sql_iniciar(v_op, r.viagem), 'inicia com o conjunto atual');
   return next is((select motorista_id from public.viagem where id = r.viagem), v_mot2,

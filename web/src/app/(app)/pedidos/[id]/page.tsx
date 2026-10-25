@@ -12,15 +12,15 @@ import { createClient } from "@/lib/supabase/server";
 import { RE_ID } from "../../_pessoa/formulario";
 import { CabPainel, Dash } from "../../_pessoa/partes";
 import { enderecoDoLocal } from "../../clientes/consultas";
-import { carregarPedido, listarConjuntosAbertos, rotaSalvaDoPedido, type LocalFicha, type ParteFicha, type ViagemDoPedido } from "../consultas";
+import { carregarPedido, type LocalFicha, type ParteFicha, type ViagemDoPedido } from "../consultas";
 import { bloqueioDoCancelamento, situacaoDaViagem, SUFIXO_TARIFA, TIPOS_CARGA_ANTT } from "../regras";
 import { CancelarPedido } from "./cancelar-pedido";
-import { parametros, rotasSalvas, tabelaAntt } from "../../calculadora/consultas";
-import { despachoDoPedido } from "../despacho";
-import { DespachoPainel } from "./despacho-painel";
+import { prepararDespacho } from "../despacho";
+import { PainelDespacho } from "../../despacho/painel-despacho";
 import { NovaViagem } from "./nova-viagem";
 import "@/styles/paginas/proprietarios.css";
 import "@/styles/paginas/pedidos.css";
+import "@/styles/paginas/despacho.css";
 
 type Params = { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
@@ -77,33 +77,10 @@ export default async function FichaPedidoPage({ params, searchParams }: Params) 
   if (!f) notFound();
 
   const aberto = f.situacao === "aberto";
-  const [conjuntos, rotaSalva, tabela, param, rotas] = aberto
-    ? await Promise.all([
-        listarConjuntosAbertos(db),
-        f.coleta && f.descarga ? rotaSalvaDoPedido(db, `${f.coleta.cidade}/${f.coleta.uf}`, `${f.descarga.cidade}/${f.descarga.uf}`) : Promise.resolve(null),
-        tabelaAntt(db),
-        parametros(db),
-        rotasSalvas(db),
-      ])
-    : [[], null, [], null, []];
   // Despacho (motor): ranking dos motoristas livres e composição do lote para o saldo.
-  const despacho =
-    aberto && param
-      ? await despachoDoPedido(db, {
-          coleta: f.coleta,
-          descarga: f.descarga,
-          saldoKg: f.saldoKg,
-          tipo: f.tipoCarga,
-          coletaPrevista: f.coletaPrevista,
-          freteValor: f.freteValor,
-          freteTipo: f.freteTipo,
-          pesoTotalKg: f.pesoTotalKg,
-          conjuntos,
-          tabela,
-          fiscal: param.fiscal,
-          rotas,
-        })
-      : null;
+  const desp = aberto ? await prepararDespacho(db, f) : null;
+  const conjuntos = desp?.conjuntos ?? [];
+  const rotaSalva = desp?.rotaSalva ?? null;
   const vivas = f.viagens.filter((v) => !v.cancelada_em);
   const pct = f.pesoTotalKg > 0 ? Math.min(100, Math.max(0, (f.alocadoKg / f.pesoTotalKg) * 100)) : 0;
 
@@ -215,9 +192,14 @@ export default async function FichaPedidoPage({ params, searchParams }: Params) 
         </aside>
       </div>
 
-      {despacho && (
-        <DespachoPainel
-          dados={despacho}
+      {desp && (
+        <section className="subsecao despacho" aria-label="Despacho">
+          <CabPainel titulo="Despacho" />
+          <PainelDespacho
+          dados={desp.dados}
+          tabela={desp.tabela}
+          fiscal={desp.fiscal}
+          tiposCarga={TIPOS_CARGA_ANTT}
           podeEditar={podeEditar}
           verResultado={pode(perfil, "financeiro")}
           pedidoId={f.id}
@@ -225,7 +207,8 @@ export default async function FichaPedidoPage({ params, searchParams }: Params) 
           saldoKg={f.saldoKg}
           conjuntos={conjuntos}
           rotaSalva={rotaSalva}
-        />
+          />
+        </section>
       )}
 
       <section className="subsecao" style={{ marginTop: 32 }}>

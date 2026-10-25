@@ -95,6 +95,13 @@ describe("comporLote (cenário do motor)", () => {
     expect(so6.faltaT).toBeGreaterThan(0);
   });
 
+  it("frete 5% acima do piso: R$ 8.432 por caminhão e R$ 172,58/t de motorista e pedágio", () => {
+    const c = comporLote({ ...carga, fretePorT: 287.6 }, candidatos, { acimaDoPiso: 0.05 });
+    expect(c.caminhoes.map((x) => x.freteMotorista)).toEqual([8432, 8432, 8432]);
+    expect(Math.round(c.custoPorT * 100) / 100).toBe(172.58);
+    expect(c.observacoes).toContain("Frete do motorista 5% acima do piso da ANTT.");
+  });
+
   it("lote que não fecha avisa o que falta", () => {
     const grande = { ...carga, pesoT: 1000 };
     const c = comporLote(grande, rankearMotoristas(grande, frota, disps, TABELA, agora).candidatos);

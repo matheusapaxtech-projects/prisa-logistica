@@ -7,6 +7,7 @@ import { ArrowLeftRight, CircleAlert, Unlink, UserRoundPen } from "lucide-react"
 import { Dialogo } from "@/components/Dialogo";
 import { toast } from "@/components/Toast";
 import { formato } from "@/lib/formato";
+import { aprovarConjunto } from "../../despacho/actions";
 import { trocarMotorista } from "../actions";
 import { avisosMotorista } from "../avisos";
 import { DialogoEncerrar, type ConjuntoEncerrar } from "../dialogo-encerrar";
@@ -26,6 +27,29 @@ export type DadosAcoes = {
   /** Outros conjuntos abertos: motorista → { id, nome } (aviso "já dirige o conjunto…"). */
   dirige: Record<string, { id: string; nome: string }>;
 };
+
+/** "Aprovar conjunto": documentos conferidos, o conjunto pode ser contratado (migration 20261030000200). */
+export function AprovarConjunto({ id }: { id: string }) {
+  const router = useRouter();
+  const [gravando, iniciar] = useTransition();
+  return (
+    <button
+      type="button"
+      className="btn"
+      disabled={gravando}
+      onClick={() =>
+        iniciar(async () => {
+          const r = await aprovarConjunto(id, true);
+          if (!r.ok) return toast(r.erro, "alert-circle");
+          toast("Conjunto aprovado. Ele já pode ser contratado no Despacho.");
+          router.refresh();
+        })
+      }
+    >
+      {gravando ? "Aprovando…" : "Aprovar conjunto"}
+    </button>
+  );
+}
 
 /* Botões do conjunto aberto (`renderVer` de prototipo/conjunto.html): Trocar motorista, Trocar peças
    (montador em `?editar=1`) e Encerrar conjunto, com os diálogos. */

@@ -48,7 +48,7 @@ export const ROT = {
     ad: "AD",
     ae: "AE",
   },
-  situacao_gr: { sem_consulta: "Sem consulta", habilitado: "Habilitado", vencido: "Vencido" },
+  situacao_gr: { sem_consulta: "Sem consulta", habilitado: "Habilitado", vencido: "Vencido", recusado: "Recusado" },
   tipo_endereco: {
     residencial: "Residencial",
     comercial: "Comercial",
