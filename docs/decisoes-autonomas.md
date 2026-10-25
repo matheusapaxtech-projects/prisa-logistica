@@ -66,3 +66,17 @@ Banco: migration `20261029000400`, aplicada no supabase-nilt. `quebra_estadia.te
 Banco: migration `20261029000500` (tabela `motorista_disponibilidade` e view `v_motorista_livre`), aplicada no supabase-nilt. Ranking e composição testados contra o cenário do motor (150 t em 3 caminhões de 9 eixos, R$ 24.681).
 
 **Observação técnica:** o servidor de desenvolvimento que estava aberto (de outra conversa) ficou com o código antigo em cache e dava erro na ficha do pedido. O código foi conferido num build de produção próprio, onde os testes de tela passaram.
+
+## 2d. Previsão de chegada e frete de retorno (branch `feat/retorno-previsao`)
+
+| Decisão | O que escolhi | Por quê |
+|---|---|---|
+| Monitoramento (rotina 6) | Só a previsão de chegada, sem GPS: saída = hora em que a viagem entrou em "Em rota"; 60 km/h, 30 min a cada 5h30 e 11 h de descanso a cada 13 h | Cercas, paradas e desvio de rota precisam das posições do app do motorista, que ainda não existe. |
+| Atraso | Contra o fim do dia da entrega prevista do pedido (18 h de Brasília) | O pedido só guarda a data da entrega. |
+| Frete de retorno (rotina 9) | Na ficha da viagem que já saiu e ainda não descarregou: até 5 pedidos abertos com saldo a até 150 km do destino, embarcando até 48 h depois de descarregar, com a nota do motor | É quando o motor manda rodar ("sempre que uma viagem entra em Em rota"). |
+| Pedido sem coleta prevista | Conta como pronto para embarcar assim que o caminhão descarrega | A carga espera o caminhão. |
+| Capacidade do caminhão | A do conjunto da viagem; sem ela, 37 t | Para a ocupação na nota. |
+
+**Correção feita no caminho (também no PR #4):** a ação que move a viagem no Quadro não repassava ao banco o checklist, a NF-e, o CIOT, a averbação e os encerramentos, e o banco recusava a passagem. O teste de fluxo completo do Quadro achou o defeito; a correção tem teste de unidade próprio.
+
+**Testes de tela:** a suíte inteira passou rodando um teste por vez (65 passaram, 3 pulados por falta de dados). Em paralelo, alguns testes que gravam no mesmo banco se atrapalham entre si; isso já acontecia antes.

@@ -38,3 +38,13 @@ test("ficha da viagem iniciada mostra quebra de peso e estadia", async ({ page }
   await prepararPrint(page);
   await page.screenshot({ path: path.join(PRINTS, "ficha-quebra-estadia.png"), fullPage: true });
 });
+
+test("viagem em rota mostra a previsão de chegada e as cargas de retorno", async ({ page }) => {
+  const r = await bancoAdmin().from("viagem").select("id").eq("status_campo", "em_rota").is("cancelada_em", null).limit(1).maybeSingle();
+  test.skip(!r.data, "não há viagem em rota no banco");
+  await page.goto(`/viagens/${r.data!.id}`);
+  await expect(page.getByRole("heading", { name: "Chegada e frete de retorno" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("Previsão de chegada", { exact: true })).toBeVisible();
+  await prepararPrint(page);
+  await page.screenshot({ path: path.join(PRINTS, "ficha-retorno.png"), fullPage: true });
+});

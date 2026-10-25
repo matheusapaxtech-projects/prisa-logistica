@@ -88,3 +88,6 @@
 }
 .via .quebra-estadia { margin-top: 32px; }
 .via .quebra-estadia .kv dd .sinal { margin-bottom: 2px; }
+.via .retorno-viagem { margin-top: 32px; }
+.via .retorno-viagem .kv dd .linha2 { display: block; font-size: 13px; color: var(--muted); line-height: 18px; }
+.via .retorno-lista { margin: 0; padding-left: 18px; display: grid; gap: 8px; }
