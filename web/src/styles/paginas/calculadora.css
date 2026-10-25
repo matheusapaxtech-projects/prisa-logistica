@@ -133,3 +133,28 @@
   .calc { padding-bottom: 72px; }
 }
 @media (prefers-reduced-motion: reduce) { .calc-barra { transition: none; } }
+
+/* troca de modo: carga única × lote */
+.calc-modo { margin-bottom: var(--gap); }
+.calc-modo button { font-size: 14px; padding: 8px 16px; }
+.calc-modo button[aria-pressed="true"] { background: #fff; box-shadow: 0 1px 3px rgba(22, 24, 24, 0.12); }
+
+/* lote: composição de caminhões */
+.calc-vazio { padding: 12px 16px; border: 1.5px dashed var(--control); border-radius: 12px; color: var(--muted); }
+.calc-caminhoes { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.calc-caminhao { display: grid; gap: 12px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 18px; background: rgba(255, 255, 255, 0.55); }
+.calc-caminhao-cab { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.calc-caminhao-cab strong { font-weight: 600; }
+.calc-caminhao-cab select { height: 32px; padding: 0 28px 0 12px; border-radius: 999px; border: 1px solid rgba(22, 24, 24, 0.14); background-color: #fff; font-weight: 500; font-size: 13px; }
+.calc-caminhao-acoes { margin-left: auto; display: flex; gap: 14px; }
+.calc-link-perigo { color: var(--vermelho-tinta); text-decoration-color: rgba(138, 42, 18, 0.35); }
+.calc-caminhao .campos { gap: 12px 16px; }
+.calc-caminhao-num { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px 16px; margin: 0; padding-top: 10px; border-top: 1px solid var(--rule); }
+.calc-caminhao-num dt { font-size: 12px; color: var(--muted); }
+.calc-caminhao-num dd { margin: 1px 0 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.calc-caminhao-aviso { font-size: 13px; color: var(--vermelho-tinta); }
+.calc-caminhoes-add { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+@media (max-width: 640px) {
+  .calc-caminhao .campos .f3 { grid-column: 1 / -1; }
+  .calc-caminhao-acoes { margin-left: 0; width: 100%; }
+}
