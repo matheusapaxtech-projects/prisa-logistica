@@ -18,7 +18,20 @@ const ehStatus = (s: unknown): s is StatusCampo => typeof s === "string" && STAT
 
 /* Só o que mover_viagem lê; o resto não vai ao banco (nem para a linha do tempo). */
 const NUMEROS = ["peso_saida_kg", "peso_chegada_kg"] as const;
-const TEXTOS = ["chave_cte", "chave_mdfe", "pausa_tipo", "divergencia", "divergencia_descricao", "resolucao", "motivo"] as const;
+const TEXTOS = [
+  "chave_cte",
+  "chave_mdfe",
+  "chave_nfe",
+  "ciot",
+  "averbacao",
+  "pausa_tipo",
+  "divergencia",
+  "divergencia_descricao",
+  "resolucao",
+  "motivo",
+] as const;
+/** Confirmações (motor de despacho): checklist do veículo, MDF-e e CIOT encerrados. */
+const MARCAS = ["pausa_programada", "checklist_veiculo", "mdfe_encerrado", "ciot_encerrado"] as const;
 
 /** Dados da passagem já no formato do banco (Ruling R7): pesos como número JSON, `pausa_programada`
    como booleano JSON; textos aparados e com até 2000 caracteres. Devolve o erro da tela se algo veio errado. */
@@ -41,9 +54,10 @@ function dadosDaPassagem(dados: unknown): { ok: true; json: Record<string, Json>
     if (t.length > 2000) return { ok: false, erro: "O texto tem até 2000 caracteres." };
     json[k] = t;
   }
-  if (d.pausa_programada !== undefined) {
-    if (typeof d.pausa_programada !== "boolean") return { ok: false, erro: "Informe se a pausa é programada." };
-    json.pausa_programada = d.pausa_programada;
+  for (const k of MARCAS) {
+    if (d[k] === undefined) continue;
+    if (typeof d[k] !== "boolean") return { ok: false, erro: k === "pausa_programada" ? "Informe se a pausa é programada." : "Dados da passagem inválidos. Atualize a página." };
+    json[k] = d[k] as boolean;
   }
   return { ok: true, json };
 }
