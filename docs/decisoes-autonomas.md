@@ -80,3 +80,11 @@ Banco: migration `20261029000500` (tabela `motorista_disponibilidade` e view `v_
 **Correção feita no caminho (também no PR #4):** a ação que move a viagem no Quadro não repassava ao banco o checklist, a NF-e, o CIOT, a averbação e os encerramentos, e o banco recusava a passagem. O teste de fluxo completo do Quadro achou o defeito; a correção tem teste de unidade próprio.
 
 **Testes de tela:** a suíte inteira passou rodando um teste por vez (65 passaram, 3 pulados por falta de dados). Em paralelo, alguns testes que gravam no mesmo banco se atrapalham entre si; isso já acontecia antes.
+
+## 3. Verificações automáticas e `.claude/` (branch `chore/ci`)
+
+| Decisão | O que escolhi | Por quê |
+|---|---|---|
+| O que o GitHub roda | Lint, tipos e testes de unidade do `web/`, a cada PR e a cada push na `main` | São os que não precisam do banco vivo. |
+| Testes do banco e de tela | Continuam fora do GitHub | Precisam do Supabase do NILT e dos usuários de teste; levar segredos para o GitHub é decisão sua. |
+| `.claude/` | Inteira no `.gitignore` | Só tem configurações desta máquina (permissões, launch apontando para um worktree local e os worktrees). |
