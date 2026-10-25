@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Pencil, Search } from "lucide-react";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import { Ponto } from "@/components/Ponto";
 import { Sinal } from "@/components/Sinal";
@@ -10,12 +10,15 @@ import { toast } from "@/components/Toast";
 import { formato } from "@/lib/formato";
 import { CATEGORIAS, LISTA_CATEGORIAS, chaveDaDescricao, nomeDoMes, partesDaConta, sinalConfere, type Categoria } from "@/lib/financeiro";
 import { classificarLancamento } from "./actions";
-import type { Lancamento } from "./consultas";
+import type { Conta, Lancamento } from "./consultas";
+import { DialogoLancamento, type AberturaManual } from "./dialogo-lancamento";
 import { dinheiro, SEM_CATEGORIA, type Classificado } from "./regras";
 
 type Props = {
   mes: string;
   lancamentos: Lancamento[];
+  /** Contas para o diálogo de editar o lançamento feito à mão. */
+  contas: Conta[];
   /** `?ver=`: "" (todos), "sem" ou uma categoria. */
   filtro: string;
   busca: string;
@@ -85,11 +88,13 @@ function CelulaCategoria({ l, lembrar }: { l: Lancamento; lembrar: boolean }) {
   );
 }
 
-/* Aba Lançamentos: os lançamentos do mês com a categoria escolhida na própria linha. Busca e filtro
+/* Aba Lançamentos: os lançamentos do mês com a categoria escolhida na própria linha. O feito à mão
+   ganha o selo "à mão" e o lápis, que abre o diálogo para mudar ou excluir. Busca e filtro
    pela URL (?q=, ?ver=); "Lembrar para os parecidos" grava a regra pela descrição (e fica guardado
    neste navegador). Depois de gravar, a página recarrega do servidor (revalidatePath). */
-export function LancamentosCliente({ mes, lancamentos, filtro, busca, semCategoriaOutrosMeses, primeiroMesSemCategoria }: Props) {
+export function LancamentosCliente({ mes, lancamentos, contas, filtro, busca, semCategoriaOutrosMeses, primeiroMesSemCategoria }: Props) {
   const [lembrar, setLembrar] = useState(true);
+  const [abertura, setAbertura] = useState<AberturaManual | null>(null);
   const form = useRef<HTMLFormElement>(null);
   const tabela = useRef<HTMLTableSectionElement>(null);
   // Linha do último campo usado: se ela sair da lista (filtro "Sem categoria"), o foco vai para a
@@ -198,7 +203,7 @@ export function LancamentosCliente({ mes, lancamentos, filtro, busca, semCategor
                         ? `Todos os lançamentos de ${nome} têm categoria.`
                         : filtro
                           ? `Nenhum lançamento de ${CATEGORIAS[filtro as Categoria].rotulo.toLowerCase()} em ${nome}.`
-                          : `Nenhum lançamento em ${nome}. Importe o extrato desse mês.`}
+                          : `Nenhum lançamento em ${nome}. Importe o extrato desse mês ou use Novo lançamento.`}
                     {filtro === SEM_CATEGORIA && !busca && semCategoriaOutrosMeses > 0 && primeiroMesSemCategoria && (
                       <Link className="btn btn-texto" href={`/financeiro?aba=lancamentos&mes=${primeiroMesSemCategoria}&ver=${SEM_CATEGORIA}`} style={{ marginLeft: "auto" }}>
                         Ainda há {semCategoriaOutrosMeses} em outros meses: ir para {nomeDoMes(primeiroMesSemCategoria)}
@@ -214,6 +219,21 @@ export function LancamentosCliente({ mes, lancamentos, filtro, busca, semCategor
                     <td className="data some-celular">{formato.data(l.data)}</td>
                     <td className="col-desc">
                       <span className="desc">{l.descricao}</span>
+                      {!l.importacaoId && (
+                        <>
+                          <span className="selo selo-manual" title="Lançado à mão, sem extrato">
+                            à mão
+                          </span>
+                          <button
+                            className="btn btn-icone editar-manual"
+                            type="button"
+                            aria-label={`Editar “${l.descricao}”`}
+                            onClick={() => setAbertura({ novo: false, lancamento: l })}
+                          >
+                            <Pencil size={14} strokeWidth={1.6} aria-hidden="true" />
+                          </button>
+                        </>
+                      )}
                       <span className="linha2">
                         <span className="data-cel">
                           {formato.data(l.data)}
@@ -239,6 +259,7 @@ export function LancamentosCliente({ mes, lancamentos, filtro, busca, semCategor
           </tbody>
         </table>
       </div>
+      <DialogoLancamento abertura={abertura} contas={contas} aoFechar={() => setAbertura(null)} />
     </>
   );
 }

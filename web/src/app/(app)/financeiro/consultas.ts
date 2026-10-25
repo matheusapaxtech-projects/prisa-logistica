@@ -51,6 +51,13 @@ export async function primeiroMesSemCategoria(db: Banco): Promise<string | null>
 
 export type Conta = { id: string; banco: string; agencia: string; numero: string; apelido: string | null };
 
+/** Contas que o lançamento à mão pode usar (as que vieram por OFX). */
+export async function listarContas(db: Banco): Promise<Conta[]> {
+  const r = await db.from("fin_conta").select("id, banco, agencia, numero, apelido").order("banco").order("numero");
+  if (r.error) throw r.error;
+  return r.data ?? [];
+}
+
 /** Saldo de cada conta no extrato mais recente até o fim do mês (o LEDGERBAL do OFX). */
 export type SaldoConta = { conta: Conta; saldo: number; em: string };
 
@@ -75,7 +82,9 @@ export type Lancamento = {
   descricao: string;
   categoria: Categoria | null;
   conta: Conta | null;
-  importacaoId: string;
+  /** null = lançamento feito à mão (sem extrato). */
+  importacaoId: string | null;
+  observacao: string | null;
 };
 
 /** Lançamentos do mês, do mais antigo ao mais novo (como no extrato). */
@@ -84,7 +93,7 @@ export async function lancamentosDoMes(db: Banco, mes: string): Promise<Lancamen
   const linhas = await todas((de, ate) =>
     db
       .from("fin_lancamento")
-      .select("id, data, valor, descricao, categoria, importacao_id, fin_conta(id, banco, agencia, numero, apelido)")
+      .select("id, data, valor, descricao, categoria, importacao_id, observacao, fin_conta(id, banco, agencia, numero, apelido)")
       .gte("data", ini)
       .lte("data", fim)
       .order("data")
@@ -100,6 +109,7 @@ export async function lancamentosDoMes(db: Banco, mes: string): Promise<Lancamen
     categoria: l.categoria,
     conta: l.fin_conta,
     importacaoId: l.importacao_id,
+    observacao: l.observacao,
   }));
 }
 

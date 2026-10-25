@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { lerLancamentoManual } from "@/app/(app)/financeiro/regras";
 import { resumoEvento } from "@/lib/auditoria";
 import {
   chaveDaDescricao,
@@ -150,5 +151,54 @@ describe("auditoria do financeiro", () => {
   it("nomes das tabelas do financeiro", () => {
     expect(resumoEvento({ tabela: "fin_importacao", acao: "delete", dados_antes: {}, dados_depois: null }, ctx)).toBe("Apagou o extrato importado");
     expect(resumoEvento({ tabela: "fin_regra", acao: "insert", dados_antes: null, dados_depois: {} }, ctx)).toBe("Criou a regra de categoria");
+  });
+});
+
+describe("lerLancamentoManual", () => {
+  const HOJE = "2026-10-25";
+  const f = (c: Record<string, string>) => {
+    const d = new FormData();
+    const base = { data: "2026-10-05", sentido: "entrada", valor: "500", descricao: "Aporte do sócio", categoria: "aporte_capital", conta: "" };
+    for (const [k, v] of Object.entries({ ...base, ...c })) d.set(k, v);
+    return d;
+  };
+
+  it("entrada fica positiva, saída negativa, com centavos exatos", () => {
+    expect(lerLancamentoManual(f({}), HOJE)).toMatchObject({ ok: true, dados: { valor: 500, contaId: null } });
+    const s = lerLancamentoManual(f({ sentido: "saida", categoria: "despesa", valor: "0,10" }), HOJE);
+    expect(s).toMatchObject({ ok: true, dados: { valor: -0.1, categoria: "despesa" } });
+  });
+
+  it("categoria contra o sentido é recusada; transferência aceita os dois", () => {
+    expect(lerLancamentoManual(f({ sentido: "saida" }), HOJE)).toEqual({ ok: false, erros: { categoria: "Aporte de capital é uma entrada." } });
+    expect(lerLancamentoManual(f({ sentido: "saida", categoria: "transferencia" }), HOJE).ok).toBe(true);
+  });
+
+  it("valor vazio, zero, formato errado e alto demais", () => {
+    const erro = (valor: string) => {
+      const r = lerLancamentoManual(f({ valor }), HOJE);
+      return r.ok ? null : r.erros.valor;
+    };
+    expect(erro("")).toBe("Informe o valor.");
+    expect(erro("0,00")).toBe("O valor não pode ser zero.");
+    expect(erro("1.5")).toMatch(/Valor inválido/);
+    expect(erro("200.000.000")).toMatch(/alto demais/);
+  });
+
+  it("data inexistente, muito antiga ou mais de um ano à frente", () => {
+    const erro = (data: string) => {
+      const r = lerLancamentoManual(f({ data }), HOJE);
+      return r.ok ? null : r.erros.data;
+    };
+    expect(erro("2026-02-30")).toBe("Data inválida.");
+    expect(erro("1999-12-31")).toBe("Confira o ano da data.");
+    expect(erro("2027-10-26")).toBe("Confira o ano da data.");
+    expect(erro("2027-10-25")).toBeNull();
+  });
+
+  it("sem descrição, sem sentido e conta que não é id", () => {
+    const r = lerLancamentoManual(f({ descricao: "   ", sentido: "", conta: "abc" }), HOJE);
+    expect(r.ok).toBe(false);
+    expect(!r.ok && Object.keys(r.erros).sort()).toEqual(["conta", "descricao", "sentido"]);
   });
 });

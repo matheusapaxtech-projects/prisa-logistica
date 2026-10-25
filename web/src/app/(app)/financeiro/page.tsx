@@ -10,9 +10,11 @@ import { tipado } from "@/lib/banco";
 import { ehCategoria, mesDeHoje, mesValido, nomeDoMes, percentualMargem, somarMes, somarResultado } from "@/lib/financeiro";
 import { getPerfil, pode } from "@/lib/permissoes";
 import { createClient } from "@/lib/supabase/server";
+import { BotaoNovoLancamento } from "./botao-lancamento";
 import {
   contarSemCategoria,
   lancamentosDoMes,
+  listarContas,
   listarRegras,
   primeiroMesSemCategoria,
   resumoDoAno,
@@ -71,8 +73,8 @@ function SemAcesso() {
   );
 }
 
-/* Financeiro: o resultado do mês (frete, despesas, empréstimos e capital) montado do extrato OFX, os
-   lançamentos do mês para classificar e as regras que o NILT aprendeu. Mês pela URL (`?mes=aaaa-mm`;
+/* Financeiro: o resultado do mês (frete, despesas, empréstimos e capital) montado do extrato OFX e dos
+   lançamentos feitos à mão, os lançamentos do mês para classificar e as regras que o NILT aprendeu. Mês pela URL (`?mes=aaaa-mm`;
    sem ele, o mês do lançamento mais recente) e aba por `?aba=`. */
 export default async function FinanceiroPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = await searchParams;
@@ -80,16 +82,17 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
   if (!pode(perfil, "financeiro")) return <SemAcesso />;
 
   const db = tipado(await createClient());
-  const ultimo = await ultimoMesComLancamento(db);
+  const [ultimo, contas] = await Promise.all([ultimoMesComLancamento(db), listarContas(db)]);
   if (!ultimo) {
     return (
       <main className="prop fin">
         <div className="titulo">
           <div>
             <h1>Financeiro</h1>
-            <p className="sub">Nenhum extrato importado ainda</p>
+            <p className="sub">Nenhum lançamento ainda</p>
           </div>
           <div className="acoes">
+            <BotaoNovoLancamento mes={mesDeHoje()} contas={contas} />
             <Link className="btn btn-primario" href="/financeiro/importar">
               <Upload size={16} strokeWidth={1.6} aria-hidden="true" />
               Importar extrato
@@ -97,8 +100,8 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
           </div>
         </div>
         <EstadoVazio>
-          Importe o extrato do banco em OFX. O NILT separa receita e pagamento de frete, despesas, empréstimos e capital e mostra o resultado de
-          cada mês.
+          Importe o extrato do banco em OFX, ou lance à mão o que não está no extrato. O NILT separa receita e pagamento de frete, despesas,
+          empréstimos e capital e mostra o resultado de cada mês.
           <Link className="btn btn-texto" href="/financeiro/importar" style={{ marginLeft: "auto" }}>
             Importar o primeiro extrato
           </Link>
@@ -155,6 +158,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
           </Kpi>
         </div>
         <div className="acoes">
+          <BotaoNovoLancamento mes={mes} contas={contas} />
           <Link className="btn btn-primario" href="/financeiro/importar">
             <Upload size={16} strokeWidth={1.6} aria-hidden="true" />
             Importar extrato
@@ -205,6 +209,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
         <LancamentosCliente
           mes={mes}
           lancamentos={await lancamentosDoMes(db, mes)}
+          contas={contas}
           filtro={filtro}
           busca={busca}
           semCategoriaOutrosMeses={Math.max(0, semCategoriaTotal - doMes.semCategoriaQtd)}

@@ -198,5 +198,87 @@ begin
     'P0001', 'O extrato não tem lançamentos. Confira o período escolhido no banco.', 'extrato sem lançamento é recusado');
 end $$;
 
+-- ---------------------------------------------------------------------------
+-- Lançamento feito à mão (migration 20261029000600)
+-- ---------------------------------------------------------------------------
+create function tests.test_financeiro_manual_inclui_altera_exclui() returns setof text language plpgsql as $$
+declare
+  v_fin uuid := tests.criar_usuario('fin@exemplo.test', 'financeiro');
+  v_id uuid;
+begin
+  perform tests.executar_como(v_fin, $q$with x as (insert into public.fin_lancamento (data, valor, descricao, chave, categoria)
+    values ('2001-03-15', -450.00, 'Frete pago em dinheiro', 'FRETE PAGO EM DINHEIRO', 'pagamento_frete') returning id)
+    select set_config('tests.id', id::text, true) from x$q$);
+  v_id := current_setting('tests.id')::uuid;
+  return next ok(v_id is not null, 'financeiro lança à mão, sem conta e sem importação');
+  return next is((select acao from public.auditoria where tabela = 'fin_lancamento' and registro_id = v_id::text order by id limit 1), 'insert',
+    'a inclusão do lançamento à mão vai para a auditoria');
+  return next is((select valor from public.fin_resumo_mensal where mes = '2001-03' and categoria = 'pagamento_frete'), -450.00::numeric(14,2),
+    'o lançamento à mão entra no resumo do mês');
+
+  perform tests.executar_como(v_fin, format($q$update public.fin_lancamento set valor = -500, descricao = 'Frete pago' where id = %L$q$, v_id));
+  return next is((select valor from public.fin_lancamento where id = v_id), -500.00::numeric(14,2), 'o lançamento à mão muda valor e descrição');
+
+  perform tests.executar_como(v_fin, format($q$delete from public.fin_lancamento where id = %L$q$, v_id));
+  return next is((select count(*)::int from public.fin_lancamento where id = v_id), 0, 'o lançamento à mão é excluído');
+  return next is((select count(*)::int from public.auditoria where tabela = 'fin_lancamento' and registro_id = v_id::text and acao = 'delete'), 1,
+    'a exclusão vai para a auditoria');
+end $$;
+
+create function tests.test_financeiro_extrato_nao_muda_nem_sai_sozinho() returns setof text language plpgsql as $$
+declare
+  v_fin uuid := tests.criar_usuario('fin@exemplo.test', 'financeiro');
+  v_r jsonb;
+  v_id uuid;
+begin
+  v_r := tests.importar_como(v_fin, tests.extrato_ficticio());
+  v_id := (select id from public.fin_lancamento where fitid = 'T2' and importacao_id = (v_r ->> 'importacao_id')::uuid);
+  return next throws_ok(
+    format($f$select tests.executar_como(%L, $q$update public.fin_lancamento set valor = -1 where id = %L$q$)$f$, v_fin, v_id),
+    'P0001', null, 'o valor do lançamento do extrato não muda');
+  return next throws_ok(
+    format($f$select tests.executar_como(%L, $q$update public.fin_lancamento set importacao_id = null, fitid = null where id = %L$q$)$f$, v_fin, v_id),
+    'P0001', null, 'o lançamento do extrato não vira lançamento à mão');
+  perform tests.executar_como(v_fin, format($q$update public.fin_lancamento set categoria = 'despesa', observacao = 'ok' where id = %L$q$, v_id));
+  return next is((select categoria::text from public.fin_lancamento where id = v_id), 'despesa', 'a categoria do extrato continua mudando');
+
+  perform tests.executar_como(v_fin, format($q$delete from public.fin_lancamento where id = %L$q$, v_id));
+  return next is((select count(*)::int from public.fin_lancamento where id = v_id), 1, 'o lançamento do extrato não sai sozinho (só desfazendo a importação)');
+
+  return next throws_ok(
+    format($f$select tests.executar_como(%L, $q$insert into public.fin_lancamento (fitid, data, valor, descricao, chave) values ('X1', '2026-09-01', 10, 'x', 'X')$q$)$f$, v_fin),
+    '23514', null, 'FITID sem importação é recusado');
+  return next throws_ok(
+    format($f$select tests.executar_como(%L, $q$insert into public.fin_lancamento (data, valor, descricao, chave) values ('2026-09-01', 0, 'zero', 'ZERO')$q$)$f$, v_fin),
+    '23514', null, 'lançamento à mão com valor zero é recusado');
+end $$;
+
+create function tests.test_financeiro_importacao_avisa_manual_parecido() returns setof text language plpgsql as $$
+declare
+  v_fin uuid := tests.criar_usuario('fin@exemplo.test', 'financeiro');
+  v_r jsonb;
+begin
+  -- À mão, sem conta: a TED de 5.000 do dia 2 (antes de o extrato chegar) e outro valor qualquer.
+  insert into public.fin_lancamento (data, valor, descricao, chave, categoria) values
+    ('2026-09-02', 5000.00, 'Frete cliente teste', 'FRETE CLIENTE TESTE', 'receita_frete'),
+    ('2026-09-02', 77.00, 'Outro', 'OUTRO', 'despesa');
+  v_r := tests.importar_como(v_fin, tests.extrato_ficticio());
+  return next is((v_r ->> 'manuais')::int, 1, 'a importação conta o lançamento do extrato que bate com um feito à mão');
+end $$;
+
+create function tests.test_financeiro_operacao_nao_lanca_a_mao() returns setof text language plpgsql as $$
+declare
+  v_op uuid := tests.criar_usuario('op@exemplo.test', 'operacao');
+begin
+  insert into public.fin_lancamento (data, valor, descricao, chave, categoria) values ('2001-04-01', 10, 'Manual teste', 'MANUAL TESTE', 'despesa');
+  perform tests.executar_como(v_op, $q$select set_config('tests.n', (select count(*) from public.fin_lancamento)::text, true)$q$);
+  return next is(current_setting('tests.n')::int, 0, 'operação não enxerga os lançamentos à mão');
+  return next throws_ok(
+    format($f$select tests.executar_como(%L, $q$insert into public.fin_lancamento (data, valor, descricao, chave) values ('2001-04-02', 10, 'x', 'X')$q$)$f$, v_op),
+    '42501', null, 'operação não lança à mão');
+  perform tests.executar_como(v_op, $q$delete from public.fin_lancamento where descricao = 'Manual teste'$q$);
+  return next is((select count(*)::int from public.fin_lancamento where descricao = 'Manual teste' and data = '2001-04-01'), 1, 'operação não exclui');
+end $$;
+
 select * from runtests('tests'::name, '^test_');
 rollback;
