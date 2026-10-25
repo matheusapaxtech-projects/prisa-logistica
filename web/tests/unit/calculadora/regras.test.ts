@@ -17,7 +17,7 @@ import {
   type EntradaCTe,
   type TipoCarga,
 } from "@/lib/calculadora/regras";
-import { acharMunicipio, estimarRota, lerMunicipios, pedagioEstimado } from "@/lib/calculadora/rota";
+import { acharMunicipio, chaveRota, estimarRota, indexarSalvas, lerMunicipios, pedagioEstimado, type RotaSalva } from "@/lib/calculadora/rota";
 import casos from "./casos.json";
 
 /* Casos da Calculadora de Frete PRISA (regras/casos.json), conferidos ao centavo com CT-e reais. */
@@ -212,6 +212,34 @@ describe("frete contratado × mínimo × sugerido", () => {
     expect(situacaoContratado(6000, piso, sug)).toEqual({ tipo: "vencendo", texto: "20% acima do mínimo, abaixo do sugerido" });
     expect(situacaoContratado(7500, piso, sug)).toEqual({ tipo: "normal", texto: "50% acima do mínimo" });
     expect(situacaoContratado(0, piso, sug)).toBeNull();
+  });
+});
+
+describe("rotas salvas", () => {
+  const M = lerMunicipios("#PR\nMandaguari;-23.55;-51.67\nSão João;-25.82;-52.72\n#MS\nMaracaju;-21.61;-55.17\nDourados;-22.22;-54.80");
+  const m = (n: string) => acharMunicipio(M, n).municipio!;
+  const salva: RotaSalva = { id: "1", origem: "Mandaguari/PR", destino: "Maracaju/MS", vias: [], km: 600, eixos: 6, pedagio: 180, atualizada: "2026-10-20T12:00:00Z" };
+
+  it("chave igual à do banco: sem acento, minúsculas e vias depois da barra", () => {
+    expect(chaveRota(" São João/PR ", "MARACAJU/MS", ["Dourados/MS", ""])).toBe("sao joao/pr>maracaju/ms|dourados/ms");
+  });
+
+  it("a rota salva vale antes da medida, com o pedágio por eixo/km dela", () => {
+    const e = estimarRota([m("Mandaguari/PR"), m("Maracaju/MS")], indexarSalvas([salva]))!;
+    expect(e).toMatchObject({ km: 600, origemKm: "salva" });
+    expect(e.pedagioEixoKm).toBeCloseTo(180 / (600 * 6), 6);
+    expect(pedagioEstimado(e.km, 6, e.pedagioEixoKm)).toBe(180);
+    expect(e.origemPedagio).toBe("da rota salva em 20/10/2026");
+  });
+
+  it("a volta serve para o km, mas o pedágio é da região", () => {
+    const e = estimarRota([m("Maracaju/MS"), m("Mandaguari/PR")], indexarSalvas([salva]))!;
+    expect(e).toMatchObject({ km: 600, origemKm: "salva", pedagioEixoKm: 0.15 });
+  });
+
+  it("com ponto de passagem diferente não usa a rota salva", () => {
+    const e = estimarRota([m("Mandaguari/PR"), m("Dourados/MS"), m("Maracaju/MS")], indexarSalvas([salva]))!;
+    expect(e.origemKm).not.toBe("salva");
   });
 });
 

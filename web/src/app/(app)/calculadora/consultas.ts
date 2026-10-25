@@ -2,6 +2,7 @@
    migration 20261028000100) e, vindo da ficha da viagem, os valores dela para preencher a tela. */
 import type { Banco, Database, Json } from "@/lib/banco";
 import { FISCAL_PADRAO, type Coeficiente, type ParamFiscais, type TipoCarga } from "@/lib/calculadora/regras";
+import type { RotaSalva } from "@/lib/calculadora/rota";
 import { lerFrete } from "@/lib/frete";
 
 type Embutido<T> = T | T[] | null;
@@ -108,4 +109,20 @@ export async function daViagem(db: Banco, id: string): Promise<DaViagem | null> 
     freteMotorista: frete.freteMotorista,
     contratadoPf: frete.contratadoPf,
   };
+}
+
+/** Rotas salvas pela equipe (tabela `rota_salva`), em ordem de origem e destino. */
+export async function rotasSalvas(db: Banco): Promise<RotaSalva[]> {
+  const r = await db.from("rota_salva").select("id, origem, destino, vias, km, eixos, pedagio, updated_at").order("origem").order("destino");
+  if (r.error) throw r.error;
+  return r.data.map((x) => ({
+    id: x.id,
+    origem: x.origem,
+    destino: x.destino,
+    vias: x.vias,
+    km: x.km,
+    eixos: x.eixos,
+    pedagio: x.pedagio === null ? null : Number(x.pedagio),
+    atualizada: x.updated_at,
+  }));
 }

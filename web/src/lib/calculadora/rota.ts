@@ -110,7 +110,20 @@ function indexar(rotas: readonly RotaMedida[]): Map<string, Medida> {
 
 const MEDIDAS = indexar(ROTAS_MEDIDAS);
 
-export type OrigemKm = "medida" | "estimada";
+export type OrigemKm = "salva" | "medida" | "estimada";
+
+/** Rota salva pela equipe (tabela `rota_salva`): km e pedágio conferidos no Qualp. */
+export type RotaSalva = { id: string; origem: string; destino: string; vias: string[]; km: number; eixos: number; pedagio: number | null; atualizada: string };
+
+/** A mesma chave de `rota_salva.chave` (migration 20261029000100). */
+export function chaveRota(origem: string, destino: string, vias: readonly string[] = []): string {
+  const v = vias.map(normalizar).filter(Boolean);
+  return `${normalizar(origem)}>${normalizar(destino)}${v.length ? `|${v.join(">")}` : ""}`;
+}
+
+export function indexarSalvas(rotas: readonly RotaSalva[]): Map<string, RotaSalva> {
+  return new Map(rotas.map((r) => [chaveRota(r.origem, r.destino, r.vias), r]));
+}
 
 export type Estimativa = {
   km: number;
@@ -120,11 +133,38 @@ export type Estimativa = {
   trechos: number;
   pedagioEixoKm: number;
   origemPedagio: string;
+  /** A rota salva usada (ida ou volta), quando houver. */
+  salva?: RotaSalva;
 };
 
-/** Km e pedágio de origem → (pontos de passagem) → destino. */
-export function estimarRota(pontos: readonly Municipio[]): Estimativa | null {
+/** Data de um instante no fuso de Brasília (o `updated_at` vem em UTC). */
+export const dataBr = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+
+/** Km e pedágio de origem → (pontos de passagem) → destino. A rota salva pela equipe vale primeiro (a
+   volta sem pontos de passagem serve para o km); depois a medida pela Prisa; senão, a estimativa. */
+export function estimarRota(pontos: readonly Municipio[], salvas?: Map<string, RotaSalva>): Estimativa | null {
   if (pontos.length < 2) return null;
+  if (salvas?.size) {
+    const a = pontos[0].nome;
+    const b = pontos[pontos.length - 1].nome;
+    const vias = pontos.slice(1, -1).map((p) => p.nome);
+    const ida = salvas.get(chaveRota(a, b, vias));
+    const volta = vias.length ? undefined : salvas.get(chaveRota(b, a));
+    const s = ida ?? volta;
+    if (s) {
+      const regiao = pedagioDaRegiao(pontos[pontos.length - 1]);
+      const comPedagio = ida && ida.pedagio && ida.eixos ? ida.pedagio / (ida.km * ida.eixos) : null;
+      return {
+        km: s.km,
+        origemKm: "salva",
+        fator: FATOR_PADRAO,
+        trechos: pontos.length - 1,
+        pedagioEixoKm: comPedagio ?? regiao.valor,
+        origemPedagio: comPedagio !== null ? `da rota salva em ${dataBr(s.atualizada)}` : `média da região: ${regiao.regiao}`,
+        salva: s,
+      };
+    }
+  }
   let km = 0;
   let pedagioKm = 0;
   let todosMedidos = true;

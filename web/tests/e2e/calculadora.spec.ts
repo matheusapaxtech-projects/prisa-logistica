@@ -101,3 +101,42 @@ test("lote de carga: composição, preço mínimo e abrir um caminhão na carga 
   await expect(page.getByLabel("Frete do motorista", { exact: true })).toHaveValue("5.620,00");
   await expect(page.getByLabel("Peso da carga", { exact: true })).toHaveValue("38,00");
 });
+
+test("rotas salvas: salvar, usar no lugar da estimativa e apagar", async ({ page }) => {
+  // Rota fictícia no Acre (nenhuma rota da Prisa passa por lá); limpa antes e depois.
+  const db = bancoAdmin();
+  const limpar = () => db.from("rota_salva").delete().eq("chave", "acrelandia/ac>assis brasil/ac");
+  await limpar();
+  try {
+    await page.goto("/calculadora");
+    await page.getByLabel("Carga em", { exact: true }).fill("Acrelândia/AC");
+    await page.getByLabel("Descarga em", { exact: true }).fill("Assis Brasil/AC");
+    await expect(page.getByText(/^estimado: linha reta/)).toBeVisible({ timeout: 20_000 });
+    await page.getByLabel("Km da rota", { exact: true }).fill("345");
+    await page.getByLabel("Pedágio (vale-pedágio)", { exact: true }).fill("70");
+    await page.getByRole("button", { name: "Salvar rota para a equipe" }).click();
+    await expect(page.getByText("Rota salva: 345 km e pedágio de R$ 70,00 para 7 eixos.")).toBeVisible();
+
+    await expect(page.getByLabel("Km da rota", { exact: true })).toHaveValue("345");
+    await expect(page.getByText(/^rota salva pela equipe em/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Atualizar rota salva" })).toBeDisabled();
+    const linha = page.getByRole("row", { name: /Acrelândia\/AC → Assis Brasil\/AC/ });
+    await expect(linha).toContainText("R$ 70,00 / 7 eixos");
+    // 5 eixos: o pedágio da rota salva é convertido por eixo/km
+    await page.getByRole("group", { name: "Eixos do caminhão" }).getByRole("button", { name: "5", exact: true }).click();
+    await expect(page.getByLabel("Pedágio (vale-pedágio)", { exact: true })).toHaveValue("50,00");
+    await prepararPrint(page);
+    await page.screenshot({ path: path.join(PRINTS, "7-rota-salva.png"), fullPage: true });
+
+    await page.getByLabel("Descarga em", { exact: true }).fill("Maracaju/MS");
+    await linha.getByRole("button", { name: "Usar" }).click();
+    await expect(page.getByLabel("Descarga em", { exact: true })).toHaveValue("Assis Brasil/AC");
+
+    await linha.getByRole("button", { name: /Apagar a rota/ }).click();
+    await linha.getByRole("button", { name: "Confirmar" }).click();
+    await expect(page.getByText("Rota apagada.")).toBeVisible();
+    await expect(linha).toHaveCount(0);
+  } finally {
+    await limpar();
+  }
+});

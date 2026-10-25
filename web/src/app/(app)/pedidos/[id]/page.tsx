@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { RE_ID } from "../../_pessoa/formulario";
 import { CabPainel, Dash } from "../../_pessoa/partes";
 import { enderecoDoLocal } from "../../clientes/consultas";
-import { carregarPedido, listarConjuntosAbertos, type LocalFicha, type ParteFicha, type ViagemDoPedido } from "../consultas";
+import { carregarPedido, listarConjuntosAbertos, rotaSalvaDoPedido, type LocalFicha, type ParteFicha, type ViagemDoPedido } from "../consultas";
 import { bloqueioDoCancelamento, situacaoDaViagem, SUFIXO_TARIFA, TIPOS_CARGA_ANTT } from "../regras";
 import { CancelarPedido } from "./cancelar-pedido";
 import { NovaViagem } from "./nova-viagem";
@@ -74,7 +74,13 @@ export default async function FichaPedidoPage({ params, searchParams }: Params) 
   if (!f) notFound();
 
   const aberto = f.situacao === "aberto";
-  const conjuntos = aberto && podeEditar ? await listarConjuntosAbertos(db) : [];
+  const [conjuntos, rotaSalva] =
+    aberto && podeEditar
+      ? await Promise.all([
+          listarConjuntosAbertos(db),
+          f.coleta && f.descarga ? rotaSalvaDoPedido(db, `${f.coleta.cidade}/${f.coleta.uf}`, `${f.descarga.cidade}/${f.descarga.uf}`) : Promise.resolve(null),
+        ])
+      : [[], null];
   const vivas = f.viagens.filter((v) => !v.cancelada_em);
   const pct = f.pesoTotalKg > 0 ? Math.min(100, Math.max(0, (f.alocadoKg / f.pesoTotalKg) * 100)) : 0;
 
@@ -115,7 +121,7 @@ export default async function FichaPedidoPage({ params, searchParams }: Params) 
         {aberto && podeEditar && (
           <div className="acoes">
             <CancelarPedido pedidoId={f.id} numero={f.numero} bloqueio={bloqueioDoCancelamento(f.viagens)} />
-            <NovaViagem pedidoId={f.id} numero={f.numero} saldoKg={f.saldoKg} conjuntos={conjuntos} />
+            <NovaViagem pedidoId={f.id} numero={f.numero} saldoKg={f.saldoKg} conjuntos={conjuntos} rotaSalva={rotaSalva} />
           </div>
         )}
       </div>

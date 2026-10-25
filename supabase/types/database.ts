@@ -1420,6 +1420,51 @@ export type Database = {
         }
         Relationships: []
       }
+      rota_salva: {
+        Row: {
+          chave: string
+          created_at: string
+          created_by: string | null
+          destino: string
+          eixos: number
+          id: string
+          km: number
+          origem: string
+          pedagio: number | null
+          updated_at: string
+          updated_by: string | null
+          vias: string[]
+        }
+        Insert: {
+          chave: string
+          created_at?: string
+          created_by?: string | null
+          destino: string
+          eixos: number
+          id?: string
+          km: number
+          origem: string
+          pedagio?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          vias?: string[]
+        }
+        Update: {
+          chave?: string
+          created_at?: string
+          created_by?: string | null
+          destino?: string
+          eixos?: number
+          id?: string
+          km?: number
+          origem?: string
+          pedagio?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          vias?: string[]
+        }
+        Relationships: []
+      }
       tipo_arquivo: {
         Row: {
           aplica_pessoa: boolean
@@ -2409,6 +2454,17 @@ export type Database = {
         Returns: string
       }
       so_digitos: { Args: { p: string }; Returns: string }
+      salvar_rota: {
+        Args: {
+          p_destino: string
+          p_eixos: number
+          p_km: number
+          p_origem: string
+          p_pedagio?: number
+          p_vias: string[]
+        }
+        Returns: string
+      }
       tem_papel: {
         Args: { p: Database["public"]["Enums"]["app_papel"][] }
         Returns: boolean
