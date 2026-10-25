@@ -53,7 +53,19 @@ export function NovaViagem(props: Props) {
   );
 }
 
-function DialogoViagem({ pedidoId, numero, saldoKg, conjuntos, rotaSalva, aberto, aoFechar }: Props & { aberto: boolean; aoFechar: () => void }) {
+/** Sugestão do despacho (ranking ou composição do lote): o conjunto já marcado e o peso dele. */
+export type InicialViagem = { conjuntoId: string; pesoKg: number };
+
+export function DialogoViagem({
+  pedidoId,
+  numero,
+  saldoKg,
+  conjuntos,
+  rotaSalva,
+  aberto,
+  aoFechar,
+  inicial: sugestao,
+}: Props & { aberto: boolean; aoFechar: () => void; inicial?: InicialViagem }) {
   const router = useRouter();
   const peso = useRef<HTMLInputElement>(null);
   const pedagio = useRef<HTMLInputElement>(null);
@@ -63,7 +75,7 @@ function DialogoViagem({ pedidoId, numero, saldoKg, conjuntos, rotaSalva, aberto
   const campos: Record<string, string> = estado && !estado.ok && "campos" in estado ? estado.campos : {};
   const erro = estado && !estado.ok && !("campos" in estado) ? estado.erro : null;
   const travado = gravando || (estado?.ok ?? false);
-  const inicial = pesoSugerido(saldoKg, null);
+  const inicial = sugestao ? sugestao.pesoKg : pesoSugerido(saldoKg, null);
 
   useEffect(() => {
     if (!estado?.ok) return;
@@ -91,6 +103,18 @@ function DialogoViagem({ pedidoId, numero, saldoKg, conjuntos, rotaSalva, aberto
       pedagio.current.value = pedagioSugerido.current;
     }
   }
+
+  useEffect(() => {
+    // Veio do despacho: o pedágio da rota salva já sai pelos eixos do conjunto sugerido (o peso vem pronto).
+    const c = sugestao && conjuntos.find((x) => x.id === sugestao.conjuntoId);
+    const pe = rotaSalva?.pedagioEixoKm;
+    if (c && pe && c.eixos && pedagio.current && pedagio.current.value === "") {
+      pedagioSugerido.current = formato.numeroCampo(Math.round(rotaSalva.km * c.eixos * pe * 100) / 100, 2);
+      pedagio.current.value = pedagioSugerido.current;
+    }
+    // Só ao abrir com a sugestão.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const descr = (nome: string, ajuda = true) => [ajuda ? `${nome}-ajuda` : "", campos[nome] ? `${nome}-erro` : ""].filter(Boolean).join(" ") || undefined;
 
@@ -134,7 +158,14 @@ function DialogoViagem({ pedidoId, numero, saldoKg, conjuntos, rotaSalva, aberto
           <div className="conjuntos" role="radiogroup" aria-label="Conjuntos abertos com motorista">
             {conjuntos.map((c, i) => (
               <label className="conjunto-opcao" key={c.id}>
-                <input type="radio" name="conjunto_id" value={c.id} id={i === 0 ? "conjunto_id" : undefined} onChange={() => aoEscolher(c)} />
+                <input
+                  type="radio"
+                  name="conjunto_id"
+                  value={c.id}
+                  id={i === 0 ? "conjunto_id" : undefined}
+                  defaultChecked={sugestao?.conjuntoId === c.id}
+                  onChange={() => aoEscolher(c)}
+                />
                 <span>
                   <span className="placas">
                     <Placa placa={c.cavalo} />

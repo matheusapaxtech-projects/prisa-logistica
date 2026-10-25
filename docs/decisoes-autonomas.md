@@ -48,3 +48,21 @@ Banco: migrations `20261029000200` e `20261029000300`, aplicadas no supabase-nil
 Banco: migration `20261029000400`, aplicada no supabase-nilt. `quebra_estadia.test.sql` (14 verificações) rodou e passou no banco, com o caso de quebra do motor (32 t → 31,74 t, 0,3%: 0,26 t, excedente 0,164 t).
 
 **Pendente de confirmar:** o valor da estadia por t/h vigente e o percentual de repasse ao motorista.
+
+## 2c. Disponibilidade, ranking e composição do lote (branch `feat/despacho-ranking`)
+
+| Decisão | O que escolhi | Por quê |
+|---|---|---|
+| Check-in "Estou livre" | Sem o app do motorista, a operação registra na tela **Motoristas livres** (`/disponiveis`) o que ele avisa: cidade e por quanto tempo está livre (12 h, 24 h, 2 dias, 3 dias) | É o check-in do motor, com a posição pela cidade em vez do GPS. Quando o app existir, ele grava na mesma tabela. |
+| Onde aparece | Atalho no Quadro e no painel "Despacho" da ficha do pedido; sem pílula nova no menu | O menu do topo já está cheio; o despacho acontece no pedido. |
+| Quem é candidato | O motorista de cada conjunto aberto (eixos e capacidade das peças) | O NILT planeja a viagem pelo conjunto. |
+| RNTRC e PF/PJ | Os do dono na ANTT do cavalo | É quem é contratado no CIOT. |
+| Fica de fora | Cadastro do motorista fora do normal, já em viagem, sem disponibilidade ou vencida, sem RNTRC, CNH vencida no embarque, a mais de 300 km | Filtros do motor, mais "já em viagem", que o NILT sabe pelo Quadro. A carroceria não entra: o cadastro do veículo não tem esse campo. |
+| Nota | Pesos do motor: distância 40%, frescor 20%, ocupação 20%, custo por tonelada 10%, histórico 10% | Valores de partida do motor; a confirmar com a operação. |
+| Embarque | Coleta prevista às 8 h; sem data ou com data passada, daqui a 12 h | O pedido só guarda a data. |
+| Lote sugerido | Só quando o saldo passa da capacidade de um caminhão; motorista no piso; margem do lote só para admin e financeiro | Mesma regra de sigilo da calculadora. |
+| Planejar viagem | Abre a nova viagem já com o conjunto e o peso sugeridos; nada é criado sozinho | A operação confirma frete, km e pedágio. |
+
+Banco: migration `20261029000500` (tabela `motorista_disponibilidade` e view `v_motorista_livre`), aplicada no supabase-nilt. Ranking e composição testados contra o cenário do motor (150 t em 3 caminhões de 9 eixos, R$ 24.681).
+
+**Observação técnica:** o servidor de desenvolvimento que estava aberto (de outra conversa) ficou com o código antigo em cache e dava erro na ficha do pedido. O código foi conferido num build de produção próprio, onde os testes de tela passaram.

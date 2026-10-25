@@ -15,6 +15,9 @@ import { enderecoDoLocal } from "../../clientes/consultas";
 import { carregarPedido, listarConjuntosAbertos, rotaSalvaDoPedido, type LocalFicha, type ParteFicha, type ViagemDoPedido } from "../consultas";
 import { bloqueioDoCancelamento, situacaoDaViagem, SUFIXO_TARIFA, TIPOS_CARGA_ANTT } from "../regras";
 import { CancelarPedido } from "./cancelar-pedido";
+import { parametros, rotasSalvas, tabelaAntt } from "../../calculadora/consultas";
+import { despachoDoPedido } from "../despacho";
+import { DespachoPainel } from "./despacho-painel";
 import { NovaViagem } from "./nova-viagem";
 import "@/styles/paginas/proprietarios.css";
 import "@/styles/paginas/pedidos.css";
@@ -74,13 +77,33 @@ export default async function FichaPedidoPage({ params, searchParams }: Params) 
   if (!f) notFound();
 
   const aberto = f.situacao === "aberto";
-  const [conjuntos, rotaSalva] =
-    aberto && podeEditar
-      ? await Promise.all([
-          listarConjuntosAbertos(db),
-          f.coleta && f.descarga ? rotaSalvaDoPedido(db, `${f.coleta.cidade}/${f.coleta.uf}`, `${f.descarga.cidade}/${f.descarga.uf}`) : Promise.resolve(null),
-        ])
-      : [[], null];
+  const [conjuntos, rotaSalva, tabela, param, rotas] = aberto
+    ? await Promise.all([
+        listarConjuntosAbertos(db),
+        f.coleta && f.descarga ? rotaSalvaDoPedido(db, `${f.coleta.cidade}/${f.coleta.uf}`, `${f.descarga.cidade}/${f.descarga.uf}`) : Promise.resolve(null),
+        tabelaAntt(db),
+        parametros(db),
+        rotasSalvas(db),
+      ])
+    : [[], null, [], null, []];
+  // Despacho (motor): ranking dos motoristas livres e composição do lote para o saldo.
+  const despacho =
+    aberto && param
+      ? await despachoDoPedido(db, {
+          coleta: f.coleta,
+          descarga: f.descarga,
+          saldoKg: f.saldoKg,
+          tipo: f.tipoCarga,
+          coletaPrevista: f.coletaPrevista,
+          freteValor: f.freteValor,
+          freteTipo: f.freteTipo,
+          pesoTotalKg: f.pesoTotalKg,
+          conjuntos,
+          tabela,
+          fiscal: param.fiscal,
+          rotas,
+        })
+      : null;
   const vivas = f.viagens.filter((v) => !v.cancelada_em);
   const pct = f.pesoTotalKg > 0 ? Math.min(100, Math.max(0, (f.alocadoKg / f.pesoTotalKg) * 100)) : 0;
 
@@ -191,6 +214,19 @@ export default async function FichaPedidoPage({ params, searchParams }: Params) 
           </div>
         </aside>
       </div>
+
+      {despacho && (
+        <DespachoPainel
+          dados={despacho}
+          podeEditar={podeEditar}
+          verResultado={pode(perfil, "financeiro")}
+          pedidoId={f.id}
+          numero={f.numero}
+          saldoKg={f.saldoKg}
+          conjuntos={conjuntos}
+          rotaSalva={rotaSalva}
+        />
+      )}
 
       <section className="subsecao" style={{ marginTop: 32 }}>
         <CabPainel titulo={`Viagens (${f.viagens.length})`} />

@@ -719,6 +719,51 @@ export type Database = {
         }
         Relationships: []
       }
+      motorista_disponibilidade: {
+        Row: {
+          cidade: string
+          created_at: string
+          created_by: string | null
+          id: string
+          latitude: number
+          livre_ate: string
+          livre_desde: string
+          longitude: number
+          motorista_id: string
+          observacao: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          cidade: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          latitude: number
+          livre_ate?: string
+          livre_desde?: string
+          longitude: number
+          motorista_id: string
+          observacao?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          cidade?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          latitude?: number
+          livre_ate?: string
+          livre_desde?: string
+          longitude?: number
+          motorista_id?: string
+          observacao?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       pedido: {
         Row: {
           coleta_prevista: string | null
@@ -2214,6 +2259,22 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      v_motorista_livre: {
+        Row: {
+          cidade: string | null
+          created_at: string | null
+          id: string | null
+          latitude: number | null
+          livre_ate: string | null
+          livre_desde: string | null
+          longitude: number | null
+          motorista_id: string | null
+          observacao: string | null
+          ocorrencias: number | null
+          viagens_finalizadas: number | null
+        }
+        Relationships: []
       }
       v_pedido_saldo: {
         Row: {

@@ -1,0 +1,6 @@
+/* NILT — Motoristas livres (/disponiveis). Usa a base da calculadora (calculadora.css: painéis, grade e
+   pílulas); aqui só o que é desta tela. */
+.disp .disp-registrar { margin-top: 18px; width: 100%; }
+.disp .disp-vencidas summary { cursor: pointer; font-size: var(--fs-section); font-weight: 500; }
+.disp .disp-vencidas[open] summary { margin-bottom: 12px; }
+.disp .tabela .linha2 { display: block; font-size: 12px; color: var(--muted); line-height: 16px; margin-top: 2px; }
