@@ -7,3 +7,8 @@ node_modules/
 # saídas de inspeção visual (regeráveis)
 .taste-skill/inspect/
 .impeccable/review/
+
+# configurações pessoais do Claude Code e cópias de trabalho (worktrees)
+.claude/settings.local.json
+.claude/worktrees/
+.claude/launch.json
