@@ -189,6 +189,7 @@ export function descreverEvento(e: EventoBanco): { titulo: string; detalhes: str
   const detalhes: string[] = [];
 
   if (d.tipo === "pagamento_saida") return { titulo: "Adiantamento e vale-pedágio confirmados", detalhes };
+  if (d.tipo === "saldo_pago") return { titulo: "Saldo de 30% confirmado", detalhes };
 
   if (e.de === null && e.para !== null) {
     const travas = lerAptidao(d.aptidao).filter((a) => a.nivel === "trava");
@@ -207,6 +208,11 @@ export function descreverEvento(e: EventoBanco): { titulo: string; detalhes: str
   if (d.peso_chegada_kg != null) detalhes.push(`Peso de chegada: ${kgDe(d.peso_chegada_kg)}`);
   if (typeof d.chave_cte === "string") detalhes.push(`CT-e: ${d.chave_cte.replace(/\D/g, "")}`);
   if (typeof d.chave_mdfe === "string") detalhes.push(`MDF-e: ${d.chave_mdfe.replace(/\D/g, "")}`);
+  if (typeof d.chave_nfe === "string") detalhes.push(`NF-e: ${d.chave_nfe.replace(/\D/g, "")}`);
+  if (typeof d.ciot === "string") detalhes.push(`CIOT: ${d.ciot.replace(/\D/g, "")}`);
+  if (typeof d.averbacao === "string" && d.averbacao.trim()) detalhes.push(`Averbação: ${d.averbacao.trim()}`);
+  if (d.checklist_veiculo === true) detalhes.push("Checklist do veículo conferido");
+  if (d.mdfe_encerrado === true && d.ciot_encerrado === true) detalhes.push("MDF-e e CIOT encerrados");
   if (typeof d.pausa_tipo === "string") {
     const tipo = TIPOS_PAUSA[d.pausa_tipo as TipoPausa] ?? d.pausa_tipo;
     detalhes.push(d.pausa_programada === true ? `${tipo}, programada` : d.pausa_programada === false ? `${tipo}, não programada` : tipo);

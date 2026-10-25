@@ -37,7 +37,7 @@ const PNG_1X1 = Buffer.from(
  * `chaveDfeValida` (web/src/lib/quadro.ts) e de `chave_dfe_valida` (mover_viagem.sql).
  * cUF 41 (PR), AAMM 2610, CNPJ 11222333000181, série 001, número `n`, emissão normal (1).
  */
-function chaveDfe(modelo: "57" | "58", n: number): string {
+function chaveDfe(modelo: "55" | "57" | "58", n: number): string {
   const base = `41261011222333000181${modelo}001${String(n).padStart(9, "0")}1${String(n * 7 + 13).padStart(8, "0").slice(-8)}`;
   let soma = 0;
   for (let i = 0; i < 43; i++) soma += Number(base[i]) * (2 + ((42 - i) % 8));
@@ -52,7 +52,7 @@ type Livre = { id: string; placa: string; travas: number };
 async function conjuntosLivres(db: SupabaseClient): Promise<Livre[]> {
   const [cs, vs] = await Promise.all([
     db.from("conjunto").select("id, cavalo_id, motorista_id").is("fim", null).not("motorista_id", "is", null),
-    db.from("viagem").select("cavalo_id, motorista_id").is("cancelada_em", null).not("status_campo", "is", null).neq("status_campo", "frete_finalizado"),
+    db.from("viagem").select("cavalo_id, motorista_id").is("cancelada_em", null).not("status_campo", "is", null).not("status_campo", "in", "(aguardando_saldo,frete_finalizado)"),
   ]);
   if (cs.error) throw cs.error;
   if (vs.error) throw vs.error;
@@ -77,7 +77,7 @@ async function conjuntosLivres(db: SupabaseClient): Promise<Livre[]> {
  * exige o canhoto no Storage: se o teste caiu antes de enviá-lo, a viagem fica lá e o erro diz qual é).
  */
 async function tirarDoQuadro(db: SupabaseClient, viagemId: string) {
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 12; i++) {
     const v = await db.from("viagem").select("numero, status_campo, cancelada_em").eq("id", viagemId).maybeSingle();
     if (v.error) throw v.error;
     if (!v.data || v.data.cancelada_em || v.data.status_campo === "frete_finalizado") return;
@@ -94,9 +94,19 @@ async function tirarDoQuadro(db: SupabaseClient, viagemId: string) {
       if (p.error) throw p.error;
       para = p.data?.coluna_origem ?? "em_rota";
     } else if (st === "em_rota") para = "aguardando_descarga";
-    else if (st === "aguardando_descarga") [para, dados] = ["aguardando_contagem", { peso_chegada_kg: 1 }];
-    else if (st === "aguardando_contagem") [para, dados] = ["frete_finalizado", { divergencia: "sem_divergencia" }];
-    else if (st === "resolucao_divergencia") [para, dados] = ["frete_finalizado", { resolucao: `${MARCA}: limpeza do teste` }];
+    else if (st === "aguardando_descarga") para = "descarregando";
+    else if (st === "descarregando") [para, dados] = ["aguardando_contagem", { peso_chegada_kg: 1 }];
+    else if (st === "aguardando_contagem") [para, dados] = ["aguardando_saldo", { divergencia: "sem_divergencia" }];
+    else if (st === "resolucao_divergencia") [para, dados] = ["aguardando_saldo", { resolucao: `${MARCA}: limpeza do teste` }];
+    else if (st === "aguardando_saldo") {
+      const s = await db.from("viagem").select("saldo_pago_em").eq("id", viagemId).single();
+      if (s.error) throw s.error;
+      if (!s.data.saldo_pago_em) {
+        const c = await db.rpc("confirmar_saldo", { p_viagem: viagemId });
+        if (c.error) throw new Error(`Não foi possível confirmar o saldo da viagem #${v.data.numero}: ${c.error.message}`);
+      }
+      [para, dados] = ["frete_finalizado", { mdfe_encerrado: true, ciot_encerrado: true }];
+    }
     const r = await db.rpc("mover_viagem", { p_viagem: viagemId, p_de: st, p_para: para, p_dados: dados });
     if (r.error) throw new Error(`A viagem #${v.data.numero} ficou em "${st}": ${r.error.message}`);
   }
@@ -266,7 +276,17 @@ test.describe("quadro da operação", () => {
     await aoVivo(page);
     await expect(cartao(coluna(page, "Trânsito"), n)).toBeVisible();
     await mover(page, n, "Aguardando carregamento");
-    await mover(page, n, "Em carregamento");
+    await mover(
+      page,
+      n,
+      "Em carregamento",
+      async (d) => {
+        for (const item of ["Carroceria limpa e sem avaria", "Lona e amarração em ordem", "CRLV, CNH e tacógrafo conferidos (fotos)"]) {
+          await d.getByLabel(item).check();
+        }
+      },
+      `Checklist do veículo da viagem #${n}`,
+    );
     await mover(page, n, "Aguardando NF e pagamento", (d) => d.locator("#passagem-peso").fill("37.050"), `Peso de saída da viagem #${n}`);
 
     // 5) Pagamento de saída pelo cartão; depois as chaves (CT-e e MDF-e) para ir a "Em rota"
@@ -290,8 +310,11 @@ test.describe("quadro da operação", () => {
         // como copiada do DACTE: com espaços (só os dígitos contam)
         await d.locator("#passagem-cte").fill(cte.replace(/(\d{4})/g, "$1 ").trim());
         await d.locator("#passagem-mdfe").fill(mdfe);
+        await d.locator("#passagem-nfe").fill(chaveDfe("55", n));
+        await d.locator("#passagem-ciot").fill("123456789012");
+        await d.locator("#passagem-averbacao").fill(`AV-${n}`);
       },
-      `CT-e e MDF-e da viagem #${n}`,
+      `Documentos de saída da viagem #${n}`,
     );
 
     // 6) Pausa (almoço, programada) e de volta a "Em rota"
@@ -308,9 +331,10 @@ test.describe("quadro da operação", () => {
     await expect(cartao(coluna(page, "Pausa"), n).getByText("Almoço, programada")).toBeVisible();
     await mover(page, n, "Em rota");
 
-    // 7) Descarga: canhoto (PNG fictício) e peso de chegada; contagem sem divergência
+    // 7) Descarga: "Descarregando", canhoto (PNG fictício) e peso de chegada; contagem sem divergência
     await mover(page, n, "Aguardando descarga");
     await expect(cartao(coluna(page, "Aguardando descarga"), n).getByText("Falta canhoto")).toBeVisible();
+    await mover(page, n, "Descarregando");
     await mover(
       page,
       n,
@@ -324,15 +348,35 @@ test.describe("quadro da operação", () => {
     await mover(
       page,
       n,
-      "Frete finalizado",
+      "Aguardando saldo (30%)",
       async (d) => {
         await d.getByRole("radio", { name: "Sem divergência" }).check();
       },
       `Contagem da viagem #${n}`,
     );
+
+    // 8) Saldo de 30% pelo cartão; depois o encerramento (MDF-e e CIOT) para "Frete finalizado"
+    const noSaldo = cartao(coluna(page, "Aguardando saldo (30%)"), n);
+    await expect(noSaldo.getByText("Falta pagar o saldo")).toBeVisible();
+    await noSaldo.getByRole("button", { name: `Confirmar pagamento do saldo da viagem #${n}` }).click();
+    const dlgSaldo = page.getByRole("dialog", { name: `Saldo da viagem #${n}` });
+    await dlgSaldo.getByRole("button", { name: "Confirmar" }).click();
+    await expect(dlgSaldo).toBeHidden({ timeout: 15_000 });
+    await expect(page.locator(".toast", { hasText: "Saldo de 30% confirmado." })).toBeVisible();
+    await expect(noSaldo.getByText("Saldo pago", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await mover(
+      page,
+      n,
+      "Frete finalizado",
+      async (d) => {
+        await d.getByLabel("MDF-e encerrado").check();
+        await d.getByLabel("CIOT encerrado").check();
+      },
+      `Encerramento da viagem #${n}`,
+    );
     await expect(cartao(coluna(page, "Frete finalizado"), n).getByText("Canhoto", { exact: true })).toBeVisible();
 
-    // 8) No banco: o que as passagens gravaram
+    // 9) No banco: o que as passagens gravaram
     const v = await db
       .from("viagem")
       .select("status_campo, peso_saida_kg, peso_chegada_kg, chave_cte, chave_mdfe, pagamento_saida_em, divergencia, finalizada_em")
@@ -350,13 +394,13 @@ test.describe("quadro da operação", () => {
     expect(v.data!.pagamento_saida_em).not.toBeNull();
     expect(v.data!.finalizada_em).not.toBeNull();
     const ev = await db.from("viagem_evento").select("id", { count: "exact", head: true }).eq("viagem_id", viagemId);
-    expect(ev.count).toBe(11);
+    expect(ev.count).toBe(14);
 
-    // 9) Linha do tempo na ficha: "Viagem planejada" + as 11 passagens, na ordem
+    // 10) Linha do tempo na ficha: "Viagem planejada", o início, os dois pagamentos e as passagens, na ordem
     await cartao(coluna(page, "Frete finalizado"), n).getByRole("link", { name: `Abrir a viagem #${n}` }).click();
     await expect(page).toHaveURL(new RegExp(`/viagens/${viagemId}$`));
     const titulos = page.locator(".linha-tempo > li > span > b");
-    await expect(titulos).toHaveCount(12);
+    await expect(titulos).toHaveCount(15);
     await expect(titulos).toHaveText([
       "Viagem planejada",
       /^Viagem iniciada( com exceção)?: Trânsito$/,
@@ -368,8 +412,11 @@ test.describe("quadro da operação", () => {
       "Em rota → Pausa",
       "Pausa → Em rota",
       "Em rota → Aguardando descarga",
-      "Aguardando descarga → Aguardando contagem de divergência",
-      "Aguardando contagem de divergência → Frete finalizado",
+      "Aguardando descarga → Descarregando",
+      "Descarregando → Aguardando contagem de divergência",
+      "Aguardando contagem de divergência → Aguardando saldo (30%)",
+      "Saldo de 30% confirmado",
+      "Aguardando saldo (30%) → Frete finalizado",
     ]);
   });
 
@@ -416,7 +463,17 @@ test.describe("quadro da operação", () => {
     if (c.error) throw c.error;
     const v = await db
       .from("viagem")
-      .insert({ pedido_id: pedidoId, conjunto_id: conj.id, cavalo_id: c.data.cavalo_id, motorista_id: c.data.motorista_id, peso_previsto_kg: 37000 })
+      // Frete do motorista e km acima do piso da ANTT (sem eles a viagem tem trava, migration 20261027000100).
+      .insert({
+        pedido_id: pedidoId,
+        conjunto_id: conj.id,
+        cavalo_id: c.data.cavalo_id,
+        motorista_id: c.data.motorista_id,
+        peso_previsto_kg: 37000,
+        frete_motorista_valor: 9000,
+        frete_motorista_tipo: "total",
+        km_viagem: 400,
+      })
       .select("id, numero")
       .single();
     if (v.error) throw v.error;
