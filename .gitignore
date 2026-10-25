@@ -10,3 +10,6 @@ node_modules/
 
 # vercel (ligação local do projeto)
 .vercel
+
+# configurações locais do Claude Code (permissões, launch e worktrees desta máquina)
+.claude/

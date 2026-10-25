@@ -1,0 +1,38 @@
+# Verificações automáticas do NILT: a cada PR (qualquer branch de destino) e a cada push na main.
+# Roda o que não depende do banco vivo: lint, tipos e testes de unidade do web/. Os testes do banco
+# (supabase/tests, pgTAP) e os de tela (Playwright) precisam do Supabase e de usuários de teste e
+# continuam rodando à parte (ver supabase/tests/README.md e web/playwright.config.ts).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Lint, tipos e testes de unidade
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Instalar dependências
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Tipos
+        run: npx tsc --noEmit -p .
+      - name: Testes de unidade
+        run: npm test
