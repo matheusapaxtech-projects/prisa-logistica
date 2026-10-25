@@ -16,19 +16,30 @@
 --
 -- IDS FIXOS: 00000000-0000-4000-8000-<12 dígitos>. O bloco do ID fica no último grupo:
 --   pessoa                  ...000000000101 a ...000000000112   (pNN do protótipo = 100 + NN)
+--                           ...000000000113 a ...000000000121   (Quadro: 113-114 clientes PJ, 115-121 motoristas)
 --   motorista/proprietario  mesmo id da pessoa (chave = pessoa_id)
+--   cliente                 mesmo id da pessoa (113, 114)
 --   veiculo                 ...000000000201 a ...000000000221   (vNN = 200 + NN: 201-205, 211-219, 221)
+--                           ...000000000222 a ...000000000237   (Quadro: cavalos 222-228, graneleiros 231-237)
 --   conjunto                ...000000000301 a ...000000000305   (c01-c04 abertos; 305 = histórico c00 encerrado)
+--                           ...000000000306 a ...000000000312   (Quadro: abertos)
 --   conjunto_item           sem id próprio (chave conjunto_id + posicao)
 --   arquivo                 ...000000000401 a ...000000000454   (aNN = 400 + NN: 401-416, 421, 431-436, 451-454)
---   pessoa_endereco         ...000000000501 em diante           (501-513)
+--                           ...000000000455 a ...000000000457   (Quadro: canhotos das viagens 1208-1210)
+--   pessoa_endereco         ...000000000501 em diante           (501-513; Quadro: 514-517 locais de coleta/descarga)
+--   pedido                  ...000000001101 a ...000000001102
+--   viagem                  ...000000001201 a ...000000001212   (uma por coluna do Quadro + 2 planejadas)
+--   viagem_pausa            ...000000001301
+--   viagem_ocorrencia       ...000000001401
+--   viagem_evento           id gerado (bigint); só é gravado para viagem da seed sem nenhum evento
 --   pessoa_telefone         ...000000000601 em diante           (601-613)
 --   pessoa_email            ...000000000701 em diante           (701-706)
 --   motorista_referencia    ...000000000801 em diante           (801-804)
 --   pessoa_conta_bancaria   ...000000000901 em diante           (901-905)
 --   pessoa_chave_pix        ...000000001001 em diante           (1001-1004)
 --
--- LIMPEZA (Task 12): apagar na ordem conjunto (cascade nos itens) -> veiculo -> pessoa (cascade em
+-- LIMPEZA: supabase/seed/limpar_dados_ficticios.sql. Ordem: eventos/pausas/ocorrências/arquivos de
+-- viagem -> viagem -> pedido -> cliente -> conjunto (cascade nos itens) -> veiculo -> pessoa (cascade em
 -- motorista, proprietario, endereço, telefone, e-mail, referência, conta, Pix e arquivo) pelos
 -- intervalos de id acima, e depois as linhas de `auditoria` cujo registro_id esteja nesses blocos.
 -- =============================================================================================
@@ -210,6 +221,213 @@ insert into public.arquivo (id, tipo_arquivo_id, pessoa_id, veiculo_id, storage_
   ('00000000-0000-4000-8000-000000000452', 1, '00000000-0000-4000-8000-000000000110', null, 'pessoa/00000000-0000-4000-8000-000000000110/00000000-0000-4000-8000-000000000452-rntrc-rodo-norte.pdf', 'rntrc-rodo-norte.pdf', 'application/pdf', 118000, null, (current_date - 12), false, now() - interval '9120 hours'),
   ('00000000-0000-4000-8000-000000000453', 4, '00000000-0000-4000-8000-000000000110', null, 'pessoa/00000000-0000-4000-8000-000000000110/00000000-0000-4000-8000-000000000453-cnd-federal-rodo-norte.pdf', 'cnd-federal-rodo-norte.pdf', 'application/pdf', 96000, null, (current_date + 74), false, null),
   ('00000000-0000-4000-8000-000000000454', 7, '00000000-0000-4000-8000-000000000111', null, 'pessoa/00000000-0000-4000-8000-000000000111/00000000-0000-4000-8000-000000000454-contrato-social-ivai.pdf', 'contrato-social-ivai.pdf', 'application/pdf', 1240000, null, null, true, null)
+on conflict do nothing;
+
+-- =============================================================================================
+-- QUADRO DA OPERAÇÃO (Task 5): clientes, locais, pedidos e viagens em todas as colunas
+-- =============================================================================================
+-- Gravado direto como postgres (as RPCs exigem usuário logado com perfil; a seed não tem). Cada viagem
+-- tem a linha do tempo (viagem_evento) coerente com a coluna em que está: um evento por passagem até
+-- ela (mais o de pagamento de saída, de = para), como iniciar_viagem/mover_viagem gravariam. status_desde
+-- escalonado para alguns cartões ficarem âmbar/vermelho com os tempos-limite padrão (quadro_limite).
+-- Tempos relativos a now(): rodar de novo não atualiza viagens que já existem (on conflict do nothing),
+-- só envelhece os cartões. "Frete finalizado" só aparece no dia (Brasília) em que a seed rodou.
+-- Cada cavalo/motorista está em uma única viagem ativa (o que iniciar_viagem garante).
+--
+-- Viagens (ids ...1201 a ...1212; viagem.numero é gerado pelo banco):
+--   1201 Trânsito (liberada com exceção pelo admin: RTU1F45 com cadastro pendente)
+--   1202 Aguardando carregamento            1203 Em carregamento (âmbar)
+--   1204 Aguardando NF e pagamento (vermelho; pagamento de saída ainda não confirmado)
+--   1205 Em rota (com ocorrência aberta)    1206 Pausa não programada (âmbar)
+--   1207 Aguardando descarga                1208 Aguardando contagem de divergência (vermelho)
+--   1209 Resolução de divergência na carga (âmbar; falta)
+--   1210 Frete finalizado hoje              1211 Planejada apta    1212 Planejada com CNH vencida
+
+-- pessoa: 2 clientes PJ e 7 motoristas PF
+insert into public.pessoa (id, tipo, nome, apelido, cpf, cnpj, situacao_cadastro, nome_fantasia) values
+  ('00000000-0000-4000-8000-000000000113', 'pj', 'Cooperativa Agroindustrial Vale do Ivaí (fictícia)', 'Coop Ivaí', null, '73418296000139', 'normal', 'Coop Ivaí'),
+  ('00000000-0000-4000-8000-000000000114', 'pj', 'Terminal Graneleiro Litoral Ltda (fictício)', 'Terminal Litoral', null, '58230714000176', 'normal', 'Terminal Litoral'),
+  ('00000000-0000-4000-8000-000000000115', 'pf', 'Valdir Souza Bueno', 'Valdir', '28476193564', null, 'normal', null),
+  ('00000000-0000-4000-8000-000000000116', 'pf', 'Rogério Antunes Lima', 'Rogério', '41709362804', null, 'normal', null),
+  ('00000000-0000-4000-8000-000000000117', 'pf', 'Anderson Pires Camargo', null, '53928410741', null, 'normal', null),
+  ('00000000-0000-4000-8000-000000000118', 'pf', 'Leandro Fagundes Rocha', 'Leco', '60281739404', null, 'normal', null),
+  ('00000000-0000-4000-8000-000000000119', 'pf', 'Paulo Henrique Duarte', 'PH', '73519628040', null, 'normal', null),
+  ('00000000-0000-4000-8000-000000000120', 'pf', 'Márcio Teixeira Lopes', 'Márcio', '84620357162', null, 'normal', null),
+  ('00000000-0000-4000-8000-000000000121', 'pf', 'Sérgio Batista Moura', 'Serginho', '95731846219', null, 'normal', null)
+on conflict do nothing;
+
+-- cliente (a Coop Ivaí exige GR)
+insert into public.cliente (pessoa_id, condicao_faturamento, email_xml, email_cobranca, exige_gr, gerenciadora, exige_sm, exigencias) values
+  ('00000000-0000-4000-8000-000000000113', 'quinzenal', 'xml@coopivai.exemplo', 'financeiro@coopivai.exemplo', true, 'Rota Segura GR (fictícia)', false, 'Lona obrigatória; agendar descarga com 24h.'),
+  ('00000000-0000-4000-8000-000000000114', 'por_cte', 'cte@terminallitoral.exemplo', null, false, null, false, null)
+on conflict do nothing;
+
+-- locais de coleta (Coop Ivaí) e de descarga (Terminal Litoral)
+insert into public.pessoa_endereco (id, pessoa_id, tipo, cep, logradouro, numero, bairro, cidade, uf, principal, janela_atendimento, contato_local) values
+  ('00000000-0000-4000-8000-000000000514', '00000000-0000-4000-8000-000000000113', 'coleta_descarga', '86700000', 'Rodovia PR-218, km 3', 's/n', 'Zona Rural', 'Arapongas', 'PR', false, 'seg a sáb 6h–18h', 'Balança: Joel'),
+  ('00000000-0000-4000-8000-000000000515', '00000000-0000-4000-8000-000000000113', 'coleta_descarga', '86800000', 'Estrada do Pirapó', '1200', 'Distrito Industrial', 'Apucarana', 'PR', false, 'seg a sex 7h–17h', 'Portaria'),
+  ('00000000-0000-4000-8000-000000000516', '00000000-0000-4000-8000-000000000114', 'coleta_descarga', '83203000', 'Avenida Portuária', '4400', 'Dom Pedro II', 'Paranaguá', 'PR', false, '24h com agendamento', 'Pátio de triagem'),
+  ('00000000-0000-4000-8000-000000000517', '00000000-0000-4000-8000-000000000114', 'coleta_descarga', '84043000', 'Rodovia BR-376, km 500', 's/n', 'Distrito Industrial', 'Ponta Grossa', 'PR', false, 'seg a sex 7h–19h', 'Recebimento')
+on conflict do nothing;
+
+-- motorista (7; o Serginho está com a CNH vencida). Datas no dia de Brasília.
+insert into public.motorista (pessoa_id, cnh_categoria, cnh_validade, situacao_cadastro, situacao_gr, gr_validade) values
+  ('00000000-0000-4000-8000-000000000115', 'e', ((now() at time zone 'America/Sao_Paulo')::date + 540), 'normal', 'habilitado', ((now() at time zone 'America/Sao_Paulo')::date + 90)),
+  ('00000000-0000-4000-8000-000000000116', 'e', ((now() at time zone 'America/Sao_Paulo')::date + 610), 'normal', 'habilitado', ((now() at time zone 'America/Sao_Paulo')::date + 75)),
+  ('00000000-0000-4000-8000-000000000117', 'e', ((now() at time zone 'America/Sao_Paulo')::date + 230), 'normal', 'habilitado', ((now() at time zone 'America/Sao_Paulo')::date + 60)),
+  ('00000000-0000-4000-8000-000000000118', 'e', ((now() at time zone 'America/Sao_Paulo')::date + 905), 'normal', 'habilitado', ((now() at time zone 'America/Sao_Paulo')::date + 110)),
+  ('00000000-0000-4000-8000-000000000119', 'e', ((now() at time zone 'America/Sao_Paulo')::date + 400), 'normal', 'habilitado', ((now() at time zone 'America/Sao_Paulo')::date + 45)),
+  ('00000000-0000-4000-8000-000000000120', 'e', ((now() at time zone 'America/Sao_Paulo')::date + 720), 'normal', 'habilitado', ((now() at time zone 'America/Sao_Paulo')::date + 130)),
+  ('00000000-0000-4000-8000-000000000121', 'e', ((now() at time zone 'America/Sao_Paulo')::date - 9), 'normal', 'habilitado', ((now() at time zone 'America/Sao_Paulo')::date + 20))
+on conflict do nothing;
+
+-- veiculo: 7 cavalos (222-228) e 7 graneleiros (231-237) da TSC Transportes, CRLV do exercício do ano.
+-- Placas fictícias com o prefixo TST da regra do projeto, no formato Mercosul (TST1B01…, TST2C01…): não
+-- colidem com as dos testes pgTAP, que geram TST + 4 dígitos (TST0001…).
+insert into public.veiculo (id, placa, tipo_veiculo_id, modelo, proprietario_posse_id, proprietario_documento_id, situacao_operacional, situacao_cadastro, exercicio_doc, cmt_t, pbt_t, tara_t, unidade_operacional_id) values
+  ('00000000-0000-4000-8000-000000000222', 'TST1B01', 7, 'Cavalo 6x4 (fictício)', '00000000-0000-4000-8000-000000000109', '00000000-0000-4000-8000-000000000109', 'ativo', 'normal', extract(year from (now() at time zone 'America/Sao_Paulo'))::int, 74, 23, 9.2, 1),
+  ('00000000-0000-4000-8000-000000000223', 'TST1B02', 7, 'Cavalo 6x4 (fictício)', '00000000-0000-4000-8000-000000000109', '00000000-0000-4000-8000-000000000109', 'ativo', 'normal', extract(year from (now() at time zone 'America/Sao_Paulo'))::int, 74, 23, 9.2, 1),
+  ('00000000-0000-4000-8000-000000000224', 'TST1B03', 7, 'Cavalo 6x4 (fictício)', '00000000-0000-4000-8000-000000000109', '00000000-0000-4000-8000-000000000109', 'ativo', 'normal', extract(year from (now() at time zone 'America/Sao_Paulo'))::int, 74, 23, 9.2, 2),
+  ('00000000-0000-4000-8000-000000000225', 'TST1B04', 7, 'Cavalo 6x4 (fictício)', '00000000-0000-4000-8000-000000000109', '00000000-0000-4000-8000-000000000109', 'ativo', 'normal', extract(year from (now() at time zone 'America/Sao_Paulo'))::int, 74, 23, 9.2, 2),
+  ('00000000-0000-4000-8000-000000000226', 'TST1B05', 7, 'Cavalo 6x4 (fictício)', '00000000-0000-4000-8000-000000000109', '00000000-0000-4000-8000-000000000109', 'ativo', 'normal', extract(year from (now() at time zone 'America/Sao_Paulo'))::int, 74, 23, 9.2, 3),
+  ('00000000-0000-4000-8000-000000000227', 'TST1B06', 7, 'Cavalo 6x4 (fictício)', '00000000-0000-4000-8000-000000000109', '00000000-0000-4000-8000-000000000109', 'ativo', 'normal', extract(year from (now() at time zone 'America/Sao_Paulo'))::int, 74, 23, 9.2, 3),
+  ('00000000-0000-4000-8000-000000000228', 'TST1B07', 7, 'Cavalo 6x4 (fictício)', '00000000-0000-4000-8000-000000000109', '00000000-0000-4000-8000-000000000109', 'ativo', 'normal', extract(year from (now() at time zone 'America/Sao_Paulo'))::int, 74, 23, 9.2, 1),
+  ('00000000-0000-4000-8000-000000000231', 'TST2C01', 10, 'Graneleiro 3E (fictício)', '00000000-0000-4000-8000-000000000109', '00000000-0000-4000-8000-000000000109', 'ativo', 'normal', extract(year from (now() at time zone 'America/Sao_Paulo'))::int, null, 45, 7.8, 1),
+  ('00000000-0000-4000-8000-000000000232', 'TST2C02', 10, 'Graneleiro 3E (fictício)', '00000000-0000-4000-8000-000000000109', '00000000-0000-4000-8000-000000000109', 'ativo', 'normal', extract(year from (now() at time zone 'America/Sao_Paulo'))::int, null, 45, 7.8, 1),
+  ('00000000-0000-4000-8000-000000000233', 'TST2C03', 10, 'Graneleiro 3E (fictício)', '00000000-0000-4000-8000-000000000109', '00000000-0000-4000-8000-000000000109', 'ativo', 'normal', extract(year from (now() at time zone 'America/Sao_Paulo'))::int, null, 45, 7.8, 2),
+  ('00000000-0000-4000-8000-000000000234', 'TST2C04', 10, 'Graneleiro 3E (fictício)', '00000000-0000-4000-8000-000000000109', '00000000-0000-4000-8000-000000000109', 'ativo', 'normal', extract(year from (now() at time zone 'America/Sao_Paulo'))::int, null, 45, 7.8, 2),
+  ('00000000-0000-4000-8000-000000000235', 'TST2C05', 10, 'Graneleiro 3E (fictício)', '00000000-0000-4000-8000-000000000109', '00000000-0000-4000-8000-000000000109', 'ativo', 'normal', extract(year from (now() at time zone 'America/Sao_Paulo'))::int, null, 45, 7.8, 3),
+  ('00000000-0000-4000-8000-000000000236', 'TST2C06', 10, 'Graneleiro 3E (fictício)', '00000000-0000-4000-8000-000000000109', '00000000-0000-4000-8000-000000000109', 'ativo', 'normal', extract(year from (now() at time zone 'America/Sao_Paulo'))::int, null, 45, 7.8, 3),
+  ('00000000-0000-4000-8000-000000000237', 'TST2C07', 10, 'Graneleiro 3E (fictício)', '00000000-0000-4000-8000-000000000109', '00000000-0000-4000-8000-000000000109', 'ativo', 'normal', extract(year from (now() at time zone 'America/Sao_Paulo'))::int, null, 45, 7.8, 1)
+on conflict do nothing;
+
+-- conjunto (7 abertos: cavalo 222+i, graneleiro 231+i, motorista 115+i)
+insert into public.conjunto (id, cavalo_id, motorista_id, inicio) values
+  ('00000000-0000-4000-8000-000000000306', '00000000-0000-4000-8000-000000000222', '00000000-0000-4000-8000-000000000115', (current_date - 30)::timestamptz),
+  ('00000000-0000-4000-8000-000000000307', '00000000-0000-4000-8000-000000000223', '00000000-0000-4000-8000-000000000116', (current_date - 30)::timestamptz),
+  ('00000000-0000-4000-8000-000000000308', '00000000-0000-4000-8000-000000000224', '00000000-0000-4000-8000-000000000117', (current_date - 30)::timestamptz),
+  ('00000000-0000-4000-8000-000000000309', '00000000-0000-4000-8000-000000000225', '00000000-0000-4000-8000-000000000118', (current_date - 30)::timestamptz),
+  ('00000000-0000-4000-8000-000000000310', '00000000-0000-4000-8000-000000000226', '00000000-0000-4000-8000-000000000119', (current_date - 30)::timestamptz),
+  ('00000000-0000-4000-8000-000000000311', '00000000-0000-4000-8000-000000000227', '00000000-0000-4000-8000-000000000120', (current_date - 30)::timestamptz),
+  ('00000000-0000-4000-8000-000000000312', '00000000-0000-4000-8000-000000000228', '00000000-0000-4000-8000-000000000121', (current_date - 30)::timestamptz)
+on conflict do nothing;
+
+insert into public.conjunto_item (conjunto_id, posicao, veiculo_id) values
+  ('00000000-0000-4000-8000-000000000306', 1, '00000000-0000-4000-8000-000000000231'),
+  ('00000000-0000-4000-8000-000000000307', 1, '00000000-0000-4000-8000-000000000232'),
+  ('00000000-0000-4000-8000-000000000308', 1, '00000000-0000-4000-8000-000000000233'),
+  ('00000000-0000-4000-8000-000000000309', 1, '00000000-0000-4000-8000-000000000234'),
+  ('00000000-0000-4000-8000-000000000310', 1, '00000000-0000-4000-8000-000000000235'),
+  ('00000000-0000-4000-8000-000000000311', 1, '00000000-0000-4000-8000-000000000236'),
+  ('00000000-0000-4000-8000-000000000312', 1, '00000000-0000-4000-8000-000000000237')
+on conflict do nothing;
+
+-- pedido (2): soja Arapongas → Paranaguá (tomador Coop Ivaí) e milho Apucarana → Ponta Grossa (tomador Terminal)
+insert into public.pedido (id, tomador_id, remetente_id, destinatario_id, local_coleta_id, local_descarga_id, produto, peso_total_kg, coleta_prevista, entrega_prevista, frete_empresa_valor, frete_empresa_tipo, observacao) values
+  ('00000000-0000-4000-8000-000000001101', '00000000-0000-4000-8000-000000000113', '00000000-0000-4000-8000-000000000113', '00000000-0000-4000-8000-000000000114', '00000000-0000-4000-8000-000000000514', '00000000-0000-4000-8000-000000000516', 'Soja em grãos', 444000, ((now() at time zone 'America/Sao_Paulo')::date - 2), ((now() at time zone 'America/Sao_Paulo')::date + 5), 165, 'por_tonelada', 'Contrato de safra (fictício).'),
+  ('00000000-0000-4000-8000-000000001102', '00000000-0000-4000-8000-000000000114', '00000000-0000-4000-8000-000000000113', '00000000-0000-4000-8000-000000000114', '00000000-0000-4000-8000-000000000515', '00000000-0000-4000-8000-000000000517', 'Milho em grãos', 222000, ((now() at time zone 'America/Sao_Paulo')::date - 4), ((now() at time zone 'America/Sao_Paulo')::date + 3), 98, 'por_tonelada', null)
+on conflict do nothing;
+
+-- viagem: 10 iniciadas (uma por coluna). liberacao_aptidao = aptidão do conjunto calculada agora (como
+-- iniciar_viagem guarda); dentro deste insert nenhuma viagem ainda está ativa, então a própria viagem não
+-- aparece como "cavalo em viagem".
+insert into public.viagem (id, pedido_id, conjunto_id, cavalo_id, motorista_id, peso_previsto_kg, status_campo, status_desde, iniciada_em, liberacao_justificativa, liberacao_aptidao, peso_saida_kg, chave_cte, chave_mdfe, pagamento_saida_em, peso_chegada_kg, divergencia, divergencia_descricao, finalizada_em) values
+  ('00000000-0000-4000-8000-000000001201', '00000000-0000-4000-8000-000000001101', '00000000-0000-4000-8000-000000000304', '00000000-0000-4000-8000-000000000204', '00000000-0000-4000-8000-000000000106', 37000, 'transito', now() - interval '40 minutes', now() - interval '40 minutes', 'Cadastro do arrendamento em revisão; saída liberada pela diretoria (fictício)', (select coalesce(jsonb_agg(jsonb_build_object('codigo', a.codigo, 'nivel', a.nivel, 'mensagem', a.mensagem) order by a.n), '[]'::jsonb) from public.aptidao_viagem('00000000-0000-4000-8000-000000000304', '00000000-0000-4000-8000-000000000113') with ordinality as a(codigo, nivel, mensagem, n)), null, null, null, null, null, null, null, null),
+  ('00000000-0000-4000-8000-000000001202', '00000000-0000-4000-8000-000000001101', '00000000-0000-4000-8000-000000000302', '00000000-0000-4000-8000-000000000202', '00000000-0000-4000-8000-000000000104', 57000, 'aguardando_carregamento', now() - interval '50 minutes', now() - interval '180 minutes', null, (select coalesce(jsonb_agg(jsonb_build_object('codigo', a.codigo, 'nivel', a.nivel, 'mensagem', a.mensagem) order by a.n), '[]'::jsonb) from public.aptidao_viagem('00000000-0000-4000-8000-000000000302', '00000000-0000-4000-8000-000000000113') with ordinality as a(codigo, nivel, mensagem, n)), null, null, null, null, null, null, null, null),
+  ('00000000-0000-4000-8000-000000001203', '00000000-0000-4000-8000-000000001101', '00000000-0000-4000-8000-000000000303', '00000000-0000-4000-8000-000000000203', '00000000-0000-4000-8000-000000000108', 31000, 'em_carregamento', now() - interval '150 minutes', now() - interval '300 minutes', null, (select coalesce(jsonb_agg(jsonb_build_object('codigo', a.codigo, 'nivel', a.nivel, 'mensagem', a.mensagem) order by a.n), '[]'::jsonb) from public.aptidao_viagem('00000000-0000-4000-8000-000000000303', '00000000-0000-4000-8000-000000000113') with ordinality as a(codigo, nivel, mensagem, n)), null, null, null, null, null, null, null, null),
+  ('00000000-0000-4000-8000-000000001204', '00000000-0000-4000-8000-000000001102', '00000000-0000-4000-8000-000000000306', '00000000-0000-4000-8000-000000000222', '00000000-0000-4000-8000-000000000115', 37000, 'aguardando_nf_pagamento', now() - interval '270 minutes', now() - interval '600 minutes', null, (select coalesce(jsonb_agg(jsonb_build_object('codigo', a.codigo, 'nivel', a.nivel, 'mensagem', a.mensagem) order by a.n), '[]'::jsonb) from public.aptidao_viagem('00000000-0000-4000-8000-000000000306', '00000000-0000-4000-8000-000000000114') with ordinality as a(codigo, nivel, mensagem, n)), 36850, null, null, null, null, null, null, null),
+  ('00000000-0000-4000-8000-000000001205', '00000000-0000-4000-8000-000000001101', '00000000-0000-4000-8000-000000000307', '00000000-0000-4000-8000-000000000223', '00000000-0000-4000-8000-000000000116', 37000, 'em_rota', now() - interval '180 minutes', now() - interval '1500 minutes', null, (select coalesce(jsonb_agg(jsonb_build_object('codigo', a.codigo, 'nivel', a.nivel, 'mensagem', a.mensagem) order by a.n), '[]'::jsonb) from public.aptidao_viagem('00000000-0000-4000-8000-000000000307', '00000000-0000-4000-8000-000000000113') with ordinality as a(codigo, nivel, mensagem, n)), 37120, '41261046912078000183570010000012051195423956', '41261046912078000183580010000012051195423950', now() - interval '1150 minutes', null, null, null, null),
+  ('00000000-0000-4000-8000-000000001206', '00000000-0000-4000-8000-000000001101', '00000000-0000-4000-8000-000000000308', '00000000-0000-4000-8000-000000000224', '00000000-0000-4000-8000-000000000117', 37000, 'pausa', now() - interval '45 minutes', now() - interval '1600 minutes', null, (select coalesce(jsonb_agg(jsonb_build_object('codigo', a.codigo, 'nivel', a.nivel, 'mensagem', a.mensagem) order by a.n), '[]'::jsonb) from public.aptidao_viagem('00000000-0000-4000-8000-000000000308', '00000000-0000-4000-8000-000000000113') with ordinality as a(codigo, nivel, mensagem, n)), 36940, '41261046912078000183570010000012061195503140', '41261046912078000183580010000012061195503144', now() - interval '1290 minutes', null, null, null, null),
+  ('00000000-0000-4000-8000-000000001207', '00000000-0000-4000-8000-000000001102', '00000000-0000-4000-8000-000000000309', '00000000-0000-4000-8000-000000000225', '00000000-0000-4000-8000-000000000118', 37000, 'aguardando_descarga', now() - interval '60 minutes', now() - interval '2000 minutes', null, (select coalesce(jsonb_agg(jsonb_build_object('codigo', a.codigo, 'nivel', a.nivel, 'mensagem', a.mensagem) order by a.n), '[]'::jsonb) from public.aptidao_viagem('00000000-0000-4000-8000-000000000309', '00000000-0000-4000-8000-000000000114') with ordinality as a(codigo, nivel, mensagem, n)), 37010, '41261046912078000183570010000012071195582331', '41261046912078000183580010000012071195582335', now() - interval '1650 minutes', null, null, null, null),
+  ('00000000-0000-4000-8000-000000001208', '00000000-0000-4000-8000-000000001102', '00000000-0000-4000-8000-000000000310', '00000000-0000-4000-8000-000000000226', '00000000-0000-4000-8000-000000000119', 37000, 'aguardando_contagem', now() - interval '1560 minutes', now() - interval '3500 minutes', null, (select coalesce(jsonb_agg(jsonb_build_object('codigo', a.codigo, 'nivel', a.nivel, 'mensagem', a.mensagem) order by a.n), '[]'::jsonb) from public.aptidao_viagem('00000000-0000-4000-8000-000000000310', '00000000-0000-4000-8000-000000000114') with ordinality as a(codigo, nivel, mensagem, n)), 36980, '41261046912078000183570010000012081195661522', '41261046912078000183580010000012081195661526', now() - interval '3150 minutes', 36950, null, null, null),
+  ('00000000-0000-4000-8000-000000001209', '00000000-0000-4000-8000-000000001102', '00000000-0000-4000-8000-000000000311', '00000000-0000-4000-8000-000000000227', '00000000-0000-4000-8000-000000000120', 37000, 'resolucao_divergencia', now() - interval '1800 minutes', now() - interval '5000 minutes', null, (select coalesce(jsonb_agg(jsonb_build_object('codigo', a.codigo, 'nivel', a.nivel, 'mensagem', a.mensagem) order by a.n), '[]'::jsonb) from public.aptidao_viagem('00000000-0000-4000-8000-000000000311', '00000000-0000-4000-8000-000000000114') with ordinality as a(codigo, nivel, mensagem, n)), 36800, '41261046912078000183570010000012091195740713', '41261046912078000183580010000012091195740717', now() - interval '4650 minutes', 36380, 'falta', 'Faltaram 420 kg na balança do terminal', null),
+  ('00000000-0000-4000-8000-000000001210', '00000000-0000-4000-8000-000000001101', '00000000-0000-4000-8000-000000000301', '00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000101', 37000, 'frete_finalizado', greatest(now() - interval '50 minutes', ((now() at time zone 'America/Sao_Paulo')::date)::timestamp at time zone 'America/Sao_Paulo'), now() - interval '1800 minutes', null, (select coalesce(jsonb_agg(jsonb_build_object('codigo', a.codigo, 'nivel', a.nivel, 'mensagem', a.mensagem) order by a.n), '[]'::jsonb) from public.aptidao_viagem('00000000-0000-4000-8000-000000000301', '00000000-0000-4000-8000-000000000113') with ordinality as a(codigo, nivel, mensagem, n)), 37050, '41261046912078000183570010000012101195819906', '41261046912078000183580010000012101195819900', now() - interval '1450 minutes', 37030, 'sem_divergencia', null, greatest(now() - interval '50 minutes', ((now() at time zone 'America/Sao_Paulo')::date)::timestamp at time zone 'America/Sao_Paulo'))
+on conflict do nothing;
+
+-- viagem: 2 planejadas (status_campo nulo)
+insert into public.viagem (id, pedido_id, conjunto_id, cavalo_id, motorista_id, peso_previsto_kg, frete_motorista_valor, frete_motorista_tipo, observacao) values
+  ('00000000-0000-4000-8000-000000001211', '00000000-0000-4000-8000-000000001102', '00000000-0000-4000-8000-000000000301', '00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000101', 37000, 92, 'por_tonelada', 'Planejada apta: pode iniciar.'),
+  ('00000000-0000-4000-8000-000000001212', '00000000-0000-4000-8000-000000001101', '00000000-0000-4000-8000-000000000312', '00000000-0000-4000-8000-000000000228', '00000000-0000-4000-8000-000000000121', 37000, 95, 'por_tonelada', 'Planejada com trava: CNH do motorista vencida.')
+on conflict do nothing;
+
+-- viagem_evento (id gerado: só grava para as viagens da seed que ainda não têm nenhum evento)
+insert into public.viagem_evento (viagem_id, de, para, em, motivo, dados)
+select e.viagem_id::uuid, e.de::public.status_campo, e.para::public.status_campo, e.em, e.motivo, e.dados
+from (values
+  ('00000000-0000-4000-8000-000000001201', null, 'transito', now() - interval '40 minutes', 'Cadastro do arrendamento em revisão; saída liberada pela diretoria (fictício)', jsonb_build_object('aptidao', (select x.liberacao_aptidao from public.viagem x where x.id = '00000000-0000-4000-8000-000000001201'))),
+  ('00000000-0000-4000-8000-000000001202', null, 'transito', now() - interval '180 minutes', null, jsonb_build_object('aptidao', (select x.liberacao_aptidao from public.viagem x where x.id = '00000000-0000-4000-8000-000000001202'))),
+  ('00000000-0000-4000-8000-000000001202', 'transito', 'aguardando_carregamento', now() - interval '50 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001203', null, 'transito', now() - interval '300 minutes', null, jsonb_build_object('aptidao', (select x.liberacao_aptidao from public.viagem x where x.id = '00000000-0000-4000-8000-000000001203'))),
+  ('00000000-0000-4000-8000-000000001203', 'transito', 'aguardando_carregamento', now() - interval '220 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001203', 'aguardando_carregamento', 'em_carregamento', now() - interval '150 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001204', null, 'transito', now() - interval '600 minutes', null, jsonb_build_object('aptidao', (select x.liberacao_aptidao from public.viagem x where x.id = '00000000-0000-4000-8000-000000001204'))),
+  ('00000000-0000-4000-8000-000000001204', 'transito', 'aguardando_carregamento', now() - interval '480 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001204', 'aguardando_carregamento', 'em_carregamento', now() - interval '400 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001204', 'em_carregamento', 'aguardando_nf_pagamento', now() - interval '270 minutes', null, '{"peso_saida_kg":36850}'::jsonb),
+  ('00000000-0000-4000-8000-000000001205', null, 'transito', now() - interval '1500 minutes', null, jsonb_build_object('aptidao', (select x.liberacao_aptidao from public.viagem x where x.id = '00000000-0000-4000-8000-000000001205'))),
+  ('00000000-0000-4000-8000-000000001205', 'transito', 'aguardando_carregamento', now() - interval '1380 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001205', 'aguardando_carregamento', 'em_carregamento', now() - interval '1300 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001205', 'em_carregamento', 'aguardando_nf_pagamento', now() - interval '1200 minutes', null, '{"peso_saida_kg":37120}'::jsonb),
+  ('00000000-0000-4000-8000-000000001205', 'aguardando_nf_pagamento', 'aguardando_nf_pagamento', now() - interval '1150 minutes', null, '{"tipo": "pagamento_saida"}'::jsonb),
+  ('00000000-0000-4000-8000-000000001205', 'aguardando_nf_pagamento', 'em_rota', now() - interval '180 minutes', null, '{"chave_cte":"41261046912078000183570010000012051195423956","chave_mdfe":"41261046912078000183580010000012051195423950"}'::jsonb),
+  ('00000000-0000-4000-8000-000000001206', null, 'transito', now() - interval '1600 minutes', null, jsonb_build_object('aptidao', (select x.liberacao_aptidao from public.viagem x where x.id = '00000000-0000-4000-8000-000000001206'))),
+  ('00000000-0000-4000-8000-000000001206', 'transito', 'aguardando_carregamento', now() - interval '1500 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001206', 'aguardando_carregamento', 'em_carregamento', now() - interval '1400 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001206', 'em_carregamento', 'aguardando_nf_pagamento', now() - interval '1320 minutes', null, '{"peso_saida_kg":36940}'::jsonb),
+  ('00000000-0000-4000-8000-000000001206', 'aguardando_nf_pagamento', 'aguardando_nf_pagamento', now() - interval '1290 minutes', null, '{"tipo": "pagamento_saida"}'::jsonb),
+  ('00000000-0000-4000-8000-000000001206', 'aguardando_nf_pagamento', 'em_rota', now() - interval '240 minutes', null, '{"chave_cte":"41261046912078000183570010000012061195503140","chave_mdfe":"41261046912078000183580010000012061195503144"}'::jsonb),
+  ('00000000-0000-4000-8000-000000001206', 'em_rota', 'pausa', now() - interval '45 minutes', null, '{"pausa_tipo":"problema","pausa_programada":false}'::jsonb),
+  ('00000000-0000-4000-8000-000000001207', null, 'transito', now() - interval '2000 minutes', null, jsonb_build_object('aptidao', (select x.liberacao_aptidao from public.viagem x where x.id = '00000000-0000-4000-8000-000000001207'))),
+  ('00000000-0000-4000-8000-000000001207', 'transito', 'aguardando_carregamento', now() - interval '1900 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001207', 'aguardando_carregamento', 'em_carregamento', now() - interval '1800 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001207', 'em_carregamento', 'aguardando_nf_pagamento', now() - interval '1700 minutes', null, '{"peso_saida_kg":37010}'::jsonb),
+  ('00000000-0000-4000-8000-000000001207', 'aguardando_nf_pagamento', 'aguardando_nf_pagamento', now() - interval '1650 minutes', null, '{"tipo": "pagamento_saida"}'::jsonb),
+  ('00000000-0000-4000-8000-000000001207', 'aguardando_nf_pagamento', 'em_rota', now() - interval '1500 minutes', null, '{"chave_cte":"41261046912078000183570010000012071195582331","chave_mdfe":"41261046912078000183580010000012071195582335"}'::jsonb),
+  ('00000000-0000-4000-8000-000000001207', 'em_rota', 'aguardando_descarga', now() - interval '60 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001208', null, 'transito', now() - interval '3500 minutes', null, jsonb_build_object('aptidao', (select x.liberacao_aptidao from public.viagem x where x.id = '00000000-0000-4000-8000-000000001208'))),
+  ('00000000-0000-4000-8000-000000001208', 'transito', 'aguardando_carregamento', now() - interval '3400 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001208', 'aguardando_carregamento', 'em_carregamento', now() - interval '3300 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001208', 'em_carregamento', 'aguardando_nf_pagamento', now() - interval '3200 minutes', null, '{"peso_saida_kg":36980}'::jsonb),
+  ('00000000-0000-4000-8000-000000001208', 'aguardando_nf_pagamento', 'aguardando_nf_pagamento', now() - interval '3150 minutes', null, '{"tipo": "pagamento_saida"}'::jsonb),
+  ('00000000-0000-4000-8000-000000001208', 'aguardando_nf_pagamento', 'em_rota', now() - interval '3000 minutes', null, '{"chave_cte":"41261046912078000183570010000012081195661522","chave_mdfe":"41261046912078000183580010000012081195661526"}'::jsonb),
+  ('00000000-0000-4000-8000-000000001208', 'em_rota', 'aguardando_descarga', now() - interval '1700 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001208', 'aguardando_descarga', 'aguardando_contagem', now() - interval '1560 minutes', null, '{"peso_chegada_kg":36950}'::jsonb),
+  ('00000000-0000-4000-8000-000000001209', null, 'transito', now() - interval '5000 minutes', null, jsonb_build_object('aptidao', (select x.liberacao_aptidao from public.viagem x where x.id = '00000000-0000-4000-8000-000000001209'))),
+  ('00000000-0000-4000-8000-000000001209', 'transito', 'aguardando_carregamento', now() - interval '4900 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001209', 'aguardando_carregamento', 'em_carregamento', now() - interval '4800 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001209', 'em_carregamento', 'aguardando_nf_pagamento', now() - interval '4700 minutes', null, '{"peso_saida_kg":36800}'::jsonb),
+  ('00000000-0000-4000-8000-000000001209', 'aguardando_nf_pagamento', 'aguardando_nf_pagamento', now() - interval '4650 minutes', null, '{"tipo": "pagamento_saida"}'::jsonb),
+  ('00000000-0000-4000-8000-000000001209', 'aguardando_nf_pagamento', 'em_rota', now() - interval '4500 minutes', null, '{"chave_cte":"41261046912078000183570010000012091195740713","chave_mdfe":"41261046912078000183580010000012091195740717"}'::jsonb),
+  ('00000000-0000-4000-8000-000000001209', 'em_rota', 'aguardando_descarga', now() - interval '3200 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001209', 'aguardando_descarga', 'aguardando_contagem', now() - interval '3000 minutes', null, '{"peso_chegada_kg":36380}'::jsonb),
+  ('00000000-0000-4000-8000-000000001209', 'aguardando_contagem', 'resolucao_divergencia', now() - interval '1800 minutes', null, '{"divergencia":"falta","divergencia_descricao":"Faltaram 420 kg na balança do terminal"}'::jsonb),
+  ('00000000-0000-4000-8000-000000001210', null, 'transito', now() - interval '1800 minutes', null, jsonb_build_object('aptidao', (select x.liberacao_aptidao from public.viagem x where x.id = '00000000-0000-4000-8000-000000001210'))),
+  ('00000000-0000-4000-8000-000000001210', 'transito', 'aguardando_carregamento', now() - interval '1700 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001210', 'aguardando_carregamento', 'em_carregamento', now() - interval '1600 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001210', 'em_carregamento', 'aguardando_nf_pagamento', now() - interval '1500 minutes', null, '{"peso_saida_kg":37050}'::jsonb),
+  ('00000000-0000-4000-8000-000000001210', 'aguardando_nf_pagamento', 'aguardando_nf_pagamento', now() - interval '1450 minutes', null, '{"tipo": "pagamento_saida"}'::jsonb),
+  ('00000000-0000-4000-8000-000000001210', 'aguardando_nf_pagamento', 'em_rota', now() - interval '1300 minutes', null, '{"chave_cte":"41261046912078000183570010000012101195819906","chave_mdfe":"41261046912078000183580010000012101195819900"}'::jsonb),
+  ('00000000-0000-4000-8000-000000001210', 'em_rota', 'aguardando_descarga', now() - interval '400 minutes', null, '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000001210', 'aguardando_descarga', 'aguardando_contagem', now() - interval '200 minutes', null, '{"peso_chegada_kg":37030}'::jsonb),
+  ('00000000-0000-4000-8000-000000001210', 'aguardando_contagem', 'frete_finalizado', greatest(now() - interval '50 minutes', ((now() at time zone 'America/Sao_Paulo')::date)::timestamp at time zone 'America/Sao_Paulo'), null, '{"divergencia":"sem_divergencia"}'::jsonb)
+) as e (viagem_id, de, para, em, motivo, dados)
+where not exists (select 1 from public.viagem_evento x where x.viagem_id = e.viagem_id::uuid);
+
+-- viagem_pausa: a pausa aberta da 1206 (não programada, a partir de Em rota)
+insert into public.viagem_pausa (id, viagem_id, tipo, programada, coluna_origem, inicio) values
+  ('00000000-0000-4000-8000-000000001301', '00000000-0000-4000-8000-000000001206', 'problema', false, 'em_rota', now() - interval '45 minutes')
+on conflict do nothing;
+
+-- viagem_ocorrencia: uma aberta na 1205 (Em rota)
+insert into public.viagem_ocorrencia (id, viagem_id, tipo, descricao, aberta_em) values
+  ('00000000-0000-4000-8000-000000001401', '00000000-0000-4000-8000-000000001205', 'atraso', 'Fila na balança da BR-376 (fictício).', now() - interval '100 minutes')
+on conflict do nothing;
+
+-- arquivo: canhotos (tipo 15) das viagens que já passaram de Aguardando descarga (sem objeto no Storage)
+insert into public.arquivo (id, tipo_arquivo_id, viagem_id, storage_path, nome_original, mime) values
+  ('00000000-0000-4000-8000-000000000455', 15, '00000000-0000-4000-8000-000000001208', 'viagem/00000000-0000-4000-8000-000000001208/00000000-0000-4000-8000-000000000455-canhoto.jpg', 'canhoto.jpg', 'image/jpeg'),
+  ('00000000-0000-4000-8000-000000000456', 15, '00000000-0000-4000-8000-000000001209', 'viagem/00000000-0000-4000-8000-000000001209/00000000-0000-4000-8000-000000000456-canhoto.jpg', 'canhoto.jpg', 'image/jpeg'),
+  ('00000000-0000-4000-8000-000000000457', 15, '00000000-0000-4000-8000-000000001210', 'viagem/00000000-0000-4000-8000-000000001210/00000000-0000-4000-8000-000000000457-canhoto.jpg', 'canhoto.jpg', 'image/jpeg')
 on conflict do nothing;
 
 commit;

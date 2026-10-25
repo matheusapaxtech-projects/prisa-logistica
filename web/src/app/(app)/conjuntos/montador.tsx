@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, Check, CircleX, Link2, Plus, Unlink, X } from "lucide-react";
+import { Acoplamento, Peca, type PecaEngate } from "@/components/Engate";
 import { Placa } from "@/components/Placa";
 import { toast } from "@/components/Toast";
-import { capacidade } from "@/lib/conjunto";
+import { capacidade, MENSAGENS_CONJUNTO, podeSerBase } from "@/lib/conjunto";
 import { formato, mascaras } from "@/lib/formato";
 import { validacao } from "@/lib/validacao";
 import { salvarConjunto } from "./actions";
@@ -52,59 +53,25 @@ const erroMsg = (msg: string, chave: string | number) => (
   </span>
 );
 
-function Eixos({ n }: { n: number }) {
-  return (
-    <span className="peca-eixos" aria-hidden="true">
-      {Array.from({ length: n }, (_, i) => (
-        <i key={i} />
-      ))}
-    </span>
-  );
-}
+/** A peça do montador como `<Peca>` do Engate (modelinho + rodas + nome + placa). */
+const comoPeca = (v: VeiculoConjunto): PecaEngate => ({
+  placa: v.placa,
+  categoria: v.categoria as PecaEngate["categoria"],
+  configuracao_cavalo: v.configuracao_cavalo,
+  eixos: v.eixos,
+  tipo: v.tipo,
+  capacidade_carga_t: v.capacidade_carga_t ?? (v.pbt_t != null && v.tara_t != null ? Math.round((v.pbt_t - v.tara_t) * 100) / 100 : null),
+});
 
-/** Mesma marcação de `<Engate>` (components/Engate.tsx), com a vaga da próxima peça no fim. */
-function PecaDesenho({ v }: { v: VeiculoConjunto }) {
-  const rot =
-    v.categoria === "cavalo"
-      ? v.configuracao_cavalo === "trucado"
-        ? "Cavalo trucado"
-        : "Cavalo toco"
-      : ({ dolly: "Dolly", carreta: "Carreta", caminhao: "Caminhão", outros: "Outro" } as Record<string, string>)[v.categoria] ||
-        "Veículo";
-  const carga = v.capacidade_carga_t ?? (v.pbt_t != null && v.tara_t != null ? Math.round((v.pbt_t - v.tara_t) * 100) / 100 : null);
-  return (
-    <div className={`peca ${v.categoria}`}>
-      <div className="peca-corpo">
-        {rot}
-        {v.categoria === "carreta" && (
-          <>
-            {" "}
-            <span className="muted" style={{ fontWeight: 500 }}>
-              {formato.t(carga)}
-            </span>
-          </>
-        )}
-      </div>
-      <Eixos n={v.eixos} />
-      <span className="peca-placa">{v.placa}</span>
-    </div>
-  );
-}
-
-const Acoplamento = () => <span className="acoplamento" aria-hidden="true" />;
-
+/** Mesmo desenho de `<Engate>` (components/Engate.tsx), com a guia tracejada e a vaga da próxima peça. */
 function Previa({ cavalo, itens }: { cavalo: VeiculoConjunto | null; itens: VeiculoConjunto[] }) {
   if (!cavalo) {
-    const g = (cls: string, rot: string, eixos: number, nota: string) => (
-      <div className={`peca ${cls}`}>
-        <div className="peca-corpo">{rot}</div>
-        <Eixos n={eixos} />
-        <span className="peca-nota">{nota}</span>
-      </div>
+    const g = (categoria: PecaEngate["categoria"], rotulo: string, eixos: number, nota: string) => (
+      <Peca v={{ placa: "", categoria, eixos }} fantasma rotulo={rotulo} nota={nota} />
     );
     return (
       <div className="engate fantasma" role="img" aria-label="Ordem de engate: cavalo, carreta da posição 1, dolly opcional, carreta da posição 2">
-        {g("cavalo", "1. Cavalo", 3, "escolha acima")}
+        {g("cavalo", "1. Cavalo", 3, "escolha abaixo")}
         <Acoplamento />
         {g("carreta", "2. Carreta", 3, "engata no cavalo")}
         <Acoplamento />
@@ -117,30 +84,20 @@ function Previa({ cavalo, itens }: { cavalo: VeiculoConjunto | null; itens: Veic
   const n = itens.length;
   return (
     <div className="engate" role="img" aria-label={`Conjunto ${[cavalo, ...itens].map((v) => v.placa).join(", ")}`}>
-      <PecaDesenho v={cavalo} />
+      <Peca v={comoPeca(cavalo)} />
       {itens.map((v, i) => (
-        <PecaComAcoplamento key={`${v.id}-${i}`} v={v} />
+        <Fragment key={`${v.id}-${i}`}>
+          <Acoplamento />
+          <Peca v={comoPeca(v)} />
+        </Fragment>
       ))}
-      {n < MAX_PECAS && (
+      {n < MAX_PECAS && cavalo.categoria !== "caminhao" && (
         <>
           <Acoplamento />
-          <div className="peca vaga">
-            <div className="peca-corpo">{n ? "próxima peça" : "carreta da posição 1"}</div>
-            <span className="peca-eixos" />
-            <span className="peca-placa">&nbsp;</span>
-          </div>
+          <Peca v={{ placa: "", categoria: "carreta", eixos: 3 }} fantasma rotulo={n ? "próxima peça" : "carreta da posição 1"} nota="adicione abaixo" />
         </>
       )}
     </div>
-  );
-}
-
-function PecaComAcoplamento({ v }: { v: VeiculoConjunto }) {
-  return (
-    <>
-      <Acoplamento />
-      <PecaDesenho v={v} />
-    </>
   );
 }
 
@@ -157,7 +114,7 @@ export function Montador({ base, editar, cavaloInicial }: Props) {
   const conjuntoId = editar?.conjuntoId ?? null;
 
   const inicialCavalo =
-    editar?.cavaloId ?? (cavaloInicial && V.get(cavaloInicial)?.categoria === "cavalo" ? cavaloInicial : null);
+    editar?.cavaloId ?? (cavaloInicial && podeSerBase(V.get(cavaloInicial)?.categoria ?? "outros") ? cavaloInicial : null);
   const ultimoDe = (cid: string | null) => {
     const u = cid ? V.get(cid)?.ultimo_motorista_id : null;
     return u && normais.has(u) ? u : null;
@@ -213,6 +170,7 @@ export function Montador({ base, editar, cavaloInicial }: Props) {
   }
 
   const n = itens.length;
+  const truck = cavalo?.categoria === "caminhao";
   const nErros = errosCavalo.length + errosItens.reduce((s, e) => s + e.length, 0);
   const nomeAtual = cavalo ? nomeConjunto([cavalo.placa, ...pecasV.map((v) => v.placa)]) : "";
   const nomeEditado = editar ? nomeConjunto([editar.cavaloId, ...editar.itens].map(placaDe)) : "";
@@ -221,23 +179,25 @@ export function Montador({ base, editar, cavaloInicial }: Props) {
   /* ----- motivo do salvar ----- */
   let motivo: ReactNode;
   if (erroBanco && !erroBanco.local) motivo = <>Não foi salvo: <b>{erroBanco.mensagem}</b></>;
-  else if (!cavaloId) motivo = "Para salvar, escolha o cavalo.";
-  else if (!n && !errosCavalo.length) motivo = "Para salvar, adicione pelo menos uma carreta.";
+  else if (!cavaloId) motivo = "Para salvar, escolha o cavalo ou o truck.";
+  else if (!n && !truck && !errosCavalo.length) motivo = "Para salvar, adicione pelo menos uma carreta.";
   else if (nErros) {
     const iPos = errosItens.findIndex((e) => e.length);
     const primeira = errosCavalo[0] ?? errosItens[iPos][0];
     motivo = (
       <>
         {erroBanco ? "Não foi salvo" : "Salvar desligado"}: {nErros === 1 ? "1 problema" : `${nErros} problemas`}. <b>{primeira}</b> (
-        {errosCavalo.length ? "no cavalo" : `posição ${iPos + 1}`}).
+        {errosCavalo.length ? (truck ? "no truck" : "no cavalo") : `posição ${iPos + 1}`}).
       </>
     );
   } else if (cavalo) {
-    motivo = capacidade(cavalo, pecasV).excede_cmt ? "Pronto para salvar, com aviso: passa do CMT do cavalo." : "Pronto para salvar.";
+    motivo = truck
+      ? "Pronto para salvar: truck roda sozinho, sem carreta."
+      : capacidade(cavalo, pecasV).excede_cmt ? "Pronto para salvar, com aviso: passa do CMT do cavalo." : "Pronto para salvar.";
   }
   // recusa de composição (com lugar na peça/cavalo) desliga até a montagem mudar; erro geral
   // (sessão, falha de rede, conjunto encerrado…) deixa tentar de novo
-  const desligado = !cavaloId || !n || nErros > 0 || !!erroBanco?.local || salvando;
+  const desligado = !cavaloId || (!n && !truck) || nErros > 0 || !!erroBanco?.local || salvando;
 
   /* ----- ações ----- */
   function escolherCavalo(id: string) {
@@ -326,7 +286,7 @@ export function Montador({ base, editar, cavaloInicial }: Props) {
 
   /* ----- cavalo ----- */
   const termo = validacao.normalizarPlaca(buscaCav);
-  const cavalos = base.veiculos.filter((v) => v.categoria === "cavalo");
+  const cavalos = base.veiculos.filter((v) => podeSerBase(v.categoria));
   const visiveis = cavalos.filter((v) => !termo || v.placa.includes(termo) || v.id === cavaloId);
   const digitado = termo.length === 7 ? base.veiculos.find((v) => v.placa === termo) : undefined;
 
@@ -357,7 +317,7 @@ export function Montador({ base, editar, cavaloInicial }: Props) {
     areaCavalo = (
       <>
         <div className="campo" style={{ maxWidth: 280, marginBottom: 12 }}>
-          <label htmlFor="busca-cav">Buscar placa do cavalo</label>
+          <label htmlFor="busca-cav">Buscar placa do cavalo ou do truck</label>
           <input
             id="busca-cav"
             autoComplete="off"
@@ -367,7 +327,7 @@ export function Montador({ base, editar, cavaloInicial }: Props) {
             onChange={(e) => setBuscaCav(mascaras.placa(e.target.value))}
           />
         </div>
-        <div className="lista-op" id="lista-cav" role="radiogroup" aria-label="Cavalos">
+        <div className="lista-op" id="lista-cav" role="radiogroup" aria-label="Cavalos e trucks">
           {visiveis.length ? (
             visiveis.map((v) => {
               const o = abertoCom(v.id, base.abertos);
@@ -404,16 +364,16 @@ export function Montador({ base, editar, cavaloInicial }: Props) {
             })
           ) : (
             <div className="vazio-bloco" style={{ border: 0 }}>
-              Nenhum cavalo com “{termo}” na placa.
+              Nenhum cavalo ou truck com “{termo}” na placa.
             </div>
           )}
         </div>
         <div id="erro-cav" style={{ marginTop: 12 }}>
-          {digitado && digitado.categoria !== "cavalo" && (
+          {digitado && !podeSerBase(digitado.categoria) && (
             <>
-              <div className="erros-peca">{erroMsg("o cavalo do conjunto precisa ser da categoria cavalo", "dig")}</div>
+              <div className="erros-peca">{erroMsg(MENSAGENS_CONJUNTO.cavaloInvalido, "dig")}</div>
               <p className="ajuda" style={{ marginTop: 4 }}>
-                {digitado.placa} é {tipoTxt(digitado.tipo).toLowerCase()}. Escolha um veículo da categoria cavalo.
+                {digitado.placa} é {tipoTxt(digitado.tipo).toLowerCase()}. Escolha um cavalo ou um truck.
               </p>
             </>
           )}
@@ -511,7 +471,7 @@ export function Montador({ base, editar, cavaloInicial }: Props) {
             itens={[
               nomeAtual,
               `${cavalo.eixos + pecasV.reduce((s, v) => s + v.eixos, 0)} eixos`,
-              `${n} ${n === 1 ? "peça" : "peças"} atrás do cavalo`,
+              truck ? "truck, sem carreta" : `${n} ${n === 1 ? "peça" : "peças"} atrás do cavalo`,
             ]}
           />
         ) : (
@@ -530,12 +490,14 @@ export function Montador({ base, editar, cavaloInicial }: Props) {
       >
         <section className="secao" aria-labelledby="s-cav">
           <div className="secao-rotulo">
-            <h2 id="s-cav">Cavalo</h2>
-            <p>A peça que traciona. Só aparecem veículos da categoria cavalo.</p>
+            <h2 id="s-cav">Cavalo ou truck</h2>
+            <p>A peça que traciona. Aparecem cavalos e trucks; o truck roda sozinho, sem carreta.</p>
           </div>
           <div id="cavalo-area">{areaCavalo}</div>
         </section>
 
+        {/* truck roda sozinho: sem a seção de peças (volta se houver peça a remover) */}
+        {(!truck || n > 0) && (
         <section className="secao" aria-labelledby="s-pecas">
           <div className="secao-rotulo">
             <h2 id="s-pecas">Peças em ordem de engate</h2>
@@ -703,6 +665,7 @@ export function Montador({ base, editar, cavaloInicial }: Props) {
             </div>
           </div>
         </section>
+        )}
 
         <section className="secao" aria-labelledby="s-cap">
           <div className="secao-rotulo">

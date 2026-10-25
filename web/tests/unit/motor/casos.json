@@ -1,0 +1,281 @@
+{
+  "geradoEm": "2026-10-24",
+  "calcularCTe": [
+    {
+      "entrada": {
+        "freteEmpresa": 8928,
+        "freteMotorista": 6844.4,
+        "pedagio": 155.6,
+        "origemUF": "PR",
+        "destinoUF": "MS",
+        "motoristaPF": false
+      },
+      "saida": {
+        "icms": 614.07,
+        "impostoFederal": 297.78,
+        "inssPatronal": 0,
+        "retencoesMotorista": 0,
+        "freteMotoristaDevido": 6844.4,
+        "taxaPanCard": 71,
+        "seguroCarga": 0,
+        "descontoDuplicata": 0,
+        "resultado": 945.15,
+        "margem": 0.1059,
+        "irpjCsll": 200.01,
+        "resultadoLiquido": 745.14,
+        "margemLiquida": 0.0835,
+        "faixa": "Abaixo do mínimo"
+      }
+    },
+    {
+      "entrada": {
+        "freteEmpresa": 8928,
+        "freteMotorista": 6844.4,
+        "pedagio": 155.6,
+        "origemUF": "PR",
+        "destinoUF": "MS",
+        "motoristaPF": false,
+        "valorMercadoria": 60000
+      },
+      "saida": {
+        "icms": 614.07,
+        "impostoFederal": 297.78,
+        "inssPatronal": 0,
+        "retencoesMotorista": 0,
+        "freteMotoristaDevido": 6844.4,
+        "taxaPanCard": 71,
+        "seguroCarga": 48,
+        "descontoDuplicata": 0,
+        "resultado": 897.15,
+        "margem": 0.1005,
+        "irpjCsll": 200.01,
+        "resultadoLiquido": 697.14,
+        "margemLiquida": 0.0781,
+        "faixa": "Abaixo do mínimo"
+      }
+    },
+    {
+      "entrada": {
+        "freteEmpresa": 9980,
+        "freteMotorista": 7200,
+        "pedagio": 202.5,
+        "origemUF": "PR",
+        "destinoUF": "SP",
+        "motoristaPF": true
+      },
+      "saida": {
+        "icms": 1173.3,
+        "impostoFederal": 314.05,
+        "inssPatronal": 288,
+        "retencoesMotorista": 194.4,
+        "freteMotoristaDevido": 7005.6,
+        "taxaPanCard": 73.08,
+        "seguroCarga": 0,
+        "descontoDuplicata": 0,
+        "resultado": 729.07,
+        "margem": 0.0731,
+        "irpjCsll": 222.93,
+        "resultadoLiquido": 506.14,
+        "margemLiquida": 0.0507,
+        "faixa": "Abaixo do mínimo"
+      }
+    },
+    {
+      "entrada": {
+        "freteEmpresa": 5300,
+        "freteMotorista": 3900,
+        "pedagio": 280.44,
+        "origemUF": "PR",
+        "destinoUF": "PR",
+        "motoristaPF": true,
+        "repassarInss": true,
+        "descontarDuplicata": true
+      },
+      "saida": {
+        "icms": 0,
+        "impostoFederal": 183.21,
+        "inssPatronal": 156,
+        "retencoesMotorista": 105.3,
+        "freteMotoristaDevido": 3638.7,
+        "taxaPanCard": 40.19,
+        "seguroCarga": 0,
+        "descontoDuplicata": 280.9,
+        "resultado": 615.25,
+        "margem": 0.1161,
+        "irpjCsll": 114.45,
+        "resultadoLiquido": 500.81,
+        "margemLiquida": 0.0945,
+        "faixa": "Mínimo aceitável"
+      }
+    }
+  ],
+  "pisoAntt": [
+    {
+      "entrada": {
+        "tipo": "Granel sólido",
+        "eixos": 7,
+        "km": 755
+      },
+      "saida": 7035.2
+    },
+    {
+      "entrada": {
+        "tipo": "Granel sólido",
+        "eixos": 8,
+        "km": 755
+      },
+      "saida": 7035.2
+    },
+    {
+      "entrada": {
+        "tipo": "Carga geral",
+        "eixos": 5,
+        "km": 413
+      },
+      "saida": 3477.69
+    },
+    {
+      "entrada": {
+        "tipo": "Granel pressurizada",
+        "eixos": 7,
+        "km": 300
+      },
+      "saida": 3168.38
+    }
+  ],
+  "aliquotaIcms": [
+    {
+      "entrada": {
+        "origem": "PR",
+        "destino": "MS"
+      },
+      "saida": 0.07
+    },
+    {
+      "entrada": {
+        "origem": "PR",
+        "destino": "SP"
+      },
+      "saida": 0.12
+    },
+    {
+      "entrada": {
+        "origem": "PR",
+        "destino": "PR"
+      },
+      "saida": 0
+    },
+    {
+      "entrada": {
+        "origem": "SP",
+        "destino": "GO"
+      },
+      "saida": 0.07
+    },
+    {
+      "entrada": {
+        "origem": "GO",
+        "destino": "PR"
+      },
+      "saida": 0.12
+    }
+  ],
+  "podeMover": [
+    {
+      "entrada": {
+        "cartao": {
+          "etapa": "aguardando_carregamento",
+          "historico": [
+            {
+              "etapa": "aguardando_conferencia",
+              "em": "2026-10-26T06:00:00Z"
+            }
+          ]
+        },
+        "para": "carregando"
+      },
+      "saida": {
+        "ok": false,
+        "faltando": [
+          "Checklist do veículo"
+        ]
+      }
+    },
+    {
+      "entrada": {
+        "cartao": {
+          "etapa": "liberacao",
+          "historico": [
+            {
+              "etapa": "aguardando_conferencia",
+              "em": "2026-10-26T06:00:00Z"
+            }
+          ],
+          "nfCliente": true,
+          "cte": true,
+          "mdfe": true,
+          "ciot": true,
+          "seguroAverbado": true,
+          "adiantamentoPago": true
+        },
+        "para": "em_rota"
+      },
+      "saida": {
+        "ok": false,
+        "faltando": [
+          "Vale-pedágio comprado"
+        ]
+      }
+    },
+    {
+      "entrada": {
+        "cartao": {
+          "etapa": "aguardando_conferencia",
+          "historico": [
+            {
+              "etapa": "aguardando_conferencia",
+              "em": "2026-10-26T06:00:00Z"
+            }
+          ],
+          "conferenciaAprovada": true
+        },
+        "para": "aguardando_saldo"
+      },
+      "saida": {
+        "ok": false,
+        "faltando": [
+          "Ticket de pesagem no destino",
+          "MDF-e encerrado"
+        ]
+      }
+    }
+  ],
+  "verificarQuebra": [
+    {
+      "entrada": {
+        "origem": 32,
+        "destino": 31.74,
+        "tolerancia": 0.3
+      },
+      "saida": {
+        "difT": 0.26,
+        "pct": 0.813,
+        "divergente": true,
+        "excedenteT": 0.164
+      }
+    },
+    {
+      "entrada": {
+        "origem": 32,
+        "destino": 31.95,
+        "tolerancia": 0.3
+      },
+      "saida": {
+        "difT": 0.05,
+        "pct": 0.156,
+        "divergente": false,
+        "excedenteT": 0
+      }
+    }
+  ]
+}

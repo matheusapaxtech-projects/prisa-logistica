@@ -287,6 +287,8 @@ export type PessoaAchada = {
   telefone: string | null;
   motorista: { situacao_cadastro: string } | null;
   proprietario: { enquadramento_antt: string | null; rntrc: string | null } | null;
+  /** Já tem o papel de cliente. */
+  cliente: boolean;
 };
 
 const MSG_DOC_INVALIDO = {
@@ -305,7 +307,7 @@ export async function buscarPessoa(documento: string): Promise<ResultadoAcao<Pes
     const { data, error } = await db
       .from("pessoa")
       .select(
-        "id, tipo, nome, cpf, cnpj, motorista(situacao_cadastro), proprietario(enquadramento_antt, rntrc), pessoa_telefone(numero, principal, restrito)",
+        "id, tipo, nome, cpf, cnpj, motorista(situacao_cadastro), proprietario(enquadramento_antt, rntrc), cliente(pessoa_id), pessoa_telefone(numero, principal, restrito)",
       )
       .eq(coluna, d)
       .maybeSingle();
@@ -323,6 +325,7 @@ export async function buscarPessoa(documento: string): Promise<ResultadoAcao<Pes
       proprietario: data.proprietario
         ? { enquadramento_antt: data.proprietario.enquadramento_antt, rntrc: data.proprietario.rntrc }
         : null,
+      cliente: !!data.cliente,
     };
   });
 }

@@ -94,7 +94,7 @@ ol.eventos { list-style: none; margin: 0; padding: 0; }
 .eventos .evento:first-child .no::before { top: 24px; }
 .eventos .evento:last-child .no::before { bottom: auto; height: 24px; }
 .eventos .evento:only-child .no::before { display: none; }
-.evento .no::after { content: ""; position: absolute; left: 2px; top: 20px; width: 7px; height: 7px; border-radius: 50%; background: #8a928d; box-shadow: 0 0 0 3px var(--sheet); }
+.evento .no::after { content: ""; position: absolute; left: 2px; top: 20px; width: 7px; height: 7px; border-radius: 50%; background: #8a8a82; box-shadow: 0 0 0 3px var(--sheet); }
 .evento.visto .no::after { left: 1px; top: 19px; width: 9px; height: 9px; border-radius: 1px; background: var(--azul); }
 .evento .txt { min-width: 0; padding-top: 4px; }
 .evento .txt p { line-height: 20px; }

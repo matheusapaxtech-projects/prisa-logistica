@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { renderToStaticMarkup } from "react-dom/server";
 import { Sinal } from "@/components/Sinal";
 import { Placa } from "@/components/Placa";
-import { Engate } from "@/components/Engate";
+import { carroceriaDe, Engate } from "@/components/Engate";
 import { MarcoKm } from "@/components/MarcoKm";
 import { Campo } from "@/components/Campo";
 import { Avatar } from "@/components/Avatar";
@@ -78,6 +78,21 @@ describe("Engate", () => {
     expect(engate.querySelector(".peca.cavalo .peca-corpo")).toHaveTextContent("Cavalo trucado");
     expect(engate.querySelectorAll(".peca.dolly .peca-eixos i")).toHaveLength(2);
     expect(engate.querySelector(".peca.carreta .peca-corpo")).toHaveTextContent("Carreta 30,0 t");
+  });
+
+  it("a carroceria do modelinho segue o tipo do cadastro; sem tipo, graneleiro", () => {
+    expect(carroceriaDe("CARRETA BAU - 3 EIXOS")).toBe("bau");
+    expect(carroceriaDe("CARGA SEMI-REBOQUE FECHADA - 3 EIXOS")).toBe("bau");
+    expect(carroceriaDe("CARRETA SIDER - 3 EIXOS")).toBe("sider");
+    expect(carroceriaDe("CARRETA BASCULANTE - 3 EIXOS")).toBe("basculante");
+    expect(carroceriaDe("CARRETA CONTEINER TRUCADA - 3 EIXOS")).toBe("conteiner");
+    expect(carroceriaDe("CARRETA GRANELEIRO SIMPLES - 2 EIXOS")).toBe("graneleiro");
+    expect(carroceriaDe(null)).toBe("graneleiro");
+    const { container } = render(
+      <Engate cavalo={peca("AAA1A11", "cavalo")} itens={[{ ...peca("BBB2B22", "carreta"), tipo: "CARRETA SIDER - 3 EIXOS" }]} />,
+    );
+    expect(container.querySelector(".peca.carreta .peca-modelo")).toHaveAttribute("data-carroceria", "sider");
+    expect(container.querySelector(".peca.carreta .peca-corpo")).toHaveTextContent("Carreta sider 30,0 t");
   });
 
   it("destacar marca a peça do veículo com 'atual' e texto para leitor de tela", () => {

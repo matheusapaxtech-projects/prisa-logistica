@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { formato, mascaras } from "@/lib/formato";
+import { formato, lerNumeroBr, mascaras } from "@/lib/formato";
 
 describe("formato de documentos", () => {
   it("cpf formata 11 dígitos e devolve o resto como veio", () => {
@@ -78,6 +78,51 @@ describe("formato de números", () => {
     expect(formato.dias(18)).toBe("vence em 18 dias");
     expect(formato.dias(-1)).toBe("venceu ontem");
     expect(formato.dias(-6)).toBe("venceu há 6 dias");
+  });
+  it("kg agrupa o milhar com ponto e mostra até uma casa", () => {
+    expect(formato.kg(30000)).toBe("30.000 kg");
+    expect(formato.kg(37000.5)).toBe("37.000,5 kg");
+    expect(formato.kg(null)).toBe("—");
+  });
+  it("reais usa duas casas e o prefixo R$", () => {
+    expect(formato.reais(1234.56)).toBe("R$ 1.234,56");
+    expect(formato.reais(150)).toBe("R$ 150,00");
+    expect(formato.reais(null)).toBe("—");
+  });
+  it("numeroCampo devolve o texto que o campo aceita de volta", () => {
+    expect(formato.numeroCampo(30000)).toBe("30.000");
+    expect(formato.numeroCampo(37000.5)).toBe("37.000,5");
+    expect(formato.numeroCampo(1234.56, 2)).toBe("1.234,56");
+    expect(formato.numeroCampo(null)).toBe("");
+  });
+});
+
+describe("lerNumeroBr (pesos e dinheiro digitados em pt-BR)", () => {
+  it("ponto é milhar e vírgula é decimal", () => {
+    expect(lerNumeroBr("30.000")).toBe(30000);
+    expect(lerNumeroBr("37.000,5")).toBe(37000.5);
+    expect(lerNumeroBr("1.234,56")).toBe(1234.56);
+    expect(lerNumeroBr("1.234.567,8")).toBe(1234567.8);
+  });
+  it("aceita sem separador de milhar, com espaços e com R$", () => {
+    expect(lerNumeroBr("30000")).toBe(30000);
+    expect(lerNumeroBr("37,5")).toBe(37.5);
+    expect(lerNumeroBr(" 25.000 ")).toBe(25000);
+    expect(lerNumeroBr("R$ 1.234,56")).toBe(1234.56);
+  });
+  it("vazio é null", () => {
+    expect(lerNumeroBr("")).toBeNull();
+    expect(lerNumeroBr("   ")).toBeNull();
+    expect(lerNumeroBr(undefined)).toBeNull();
+    expect(lerNumeroBr(null)).toBeNull();
+  });
+  it("o que não é número em pt-BR é NaN (nunca adivinha)", () => {
+    expect(lerNumeroBr("1.5")).toBeNaN();
+    expect(lerNumeroBr("37.0000")).toBeNaN();
+    expect(lerNumeroBr("1,234.56")).toBeNaN();
+    expect(lerNumeroBr("abc")).toBeNaN();
+    expect(lerNumeroBr("-3")).toBeNaN();
+    expect(lerNumeroBr("3,")).toBeNaN();
   });
 });
 

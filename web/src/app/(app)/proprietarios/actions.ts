@@ -6,6 +6,19 @@ import { comSessao, type ResultadoAcao } from "@/lib/acao";
 import { tipado } from "@/lib/banco";
 import { mensagemDeErro } from "@/lib/erros";
 import { validacao } from "@/lib/validacao";
+import {
+  camposPessoaPf,
+  camposPessoaPj,
+  CNPJ_INVALIDO,
+  CPF_INVALIDO,
+  data,
+  marcado,
+  pessoaPfParaBanco,
+  pessoaPjParaBanco,
+  texto,
+  uf,
+  vazioOuNulo,
+} from "../_pessoa/dados-pessoa";
 import { errosDoZod, lerForm, RE_ID, type ResultadoForm } from "../_pessoa/formulario";
 import { chaves, ROT, UFS } from "../_pessoa/rotulos";
 import { faltasAoCriar, lerNumero } from "./regras";
@@ -32,12 +45,6 @@ const REGRAS_FRETE = [
 const DESCONTOS = ["nao", "inss_sest_senat", "sest_senat"] as const;
 const QUALIFICACOES_INSS = ["qualificado", "nao_qualificado", "com_pendencia"] as const;
 
-const data = z.union([z.literal(""), z.iso.date("Data inválida.")]);
-const texto = (max: number) => z.string().max(max, `Até ${max} caracteres.`);
-const vazioOuNulo = <T extends string>(v: T | "" | undefined): T | null => (v ? v : null);
-const marcado = (v: string | undefined) => v === "on" || v === "true";
-const enumOpcional = <T extends Record<string, string>>(mapa: T) => z.union([z.literal(""), z.enum(chaves(mapa))]);
-const uf = z.union([z.literal(""), z.enum(UFS)]);
 
 const dinheiro = z
   .string()
@@ -68,9 +75,6 @@ const Antt = {
 };
 
 /* ---------- novo proprietário ---------- */
-
-const CPF_INVALIDO = "CPF inválido: os dois últimos dígitos não conferem. Copie de novo do documento.";
-const CNPJ_INVALIDO = "CNPJ inválido: os dois últimos dígitos não conferem. Copie de novo do cartão CNPJ.";
 
 const NovoPf = z.object({
   cpf: z.string().refine((v) => validacao.cpf(v), CPF_INVALIDO),
@@ -324,33 +328,11 @@ const Comum = {
   limite_adiantamento_valor: dinheiro,
   frete_empresa_motorista_valor: dinheiro,
   frete_empresa_motorista_percentual: percentual,
-  inscricao_estadual_isento: z.string().optional(),
-  inscricao_estadual: texto(30).default(""),
-  inscricao_municipal: texto(30).default(""),
-  cnae_principal: texto(300).default(""),
-  receita_consultada: z.string().optional(),
 };
 
 const FichaPf = z.object({
   ...Comum,
-  nome: z.string().min(1, "Informe o nome completo, como está no CPF.").max(110, "O nome tem até 110 caracteres."),
-  apelido: texto(60).default(""),
-  cpf: z.string().refine((v) => validacao.cpf(v), CPF_INVALIDO),
-  situacao_cpf: enumOpcional(ROT.situacao_cpf).default(""),
-  dt_consulta_cpf: data.default(""),
-  nascimento: data.default(""),
-  sexo: enumOpcional(ROT.sexo).default(""),
-  raca_cor: enumOpcional(ROT.raca_cor).default(""),
-  estado_civil: enumOpcional(ROT.estado_civil).default(""),
-  naturalidade: texto(80).default(""),
-  naturalidade_uf: uf.default(""),
-  grau_instrucao: enumOpcional(ROT.grau_instrucao).default(""),
-  rg: texto(20).default(""),
-  rg_orgao: texto(20).default(""),
-  rg_uf: uf.default(""),
-  rg_emissao: data.default(""),
-  pai: texto(80).default(""),
-  mae: texto(80).default(""),
+  ...camposPessoaPf,
   nr_inss: z
     .string()
     .refine((v) => !so(v) || so(v).length === 11, "O NIT tem 11 dígitos.")
@@ -366,13 +348,7 @@ const FichaPf = z.object({
 const FichaPj = z
   .object({
     ...Comum,
-    nome: z.string().min(1, "Informe a razão social, como está no cartão CNPJ.").max(110, "A razão social tem até 110 caracteres."),
-    cnpj: z.string().refine((v) => validacao.cnpj(v), CNPJ_INVALIDO),
-    nome_fantasia: texto(110).default(""),
-    fundacao: data.default(""),
-    natureza_juridica: texto(200).default(""),
-    optante_simples: z.enum(["sim", "nao"]).optional(),
-    dt_consulta_simples: data.default(""),
+    ...camposPessoaPj,
     responsavel_nome: texto(110).default(""),
     responsavel_telefone: telefoneOpcional.default(""),
     responsavel_whatsapp: z.string().optional(),
@@ -402,46 +378,14 @@ export async function salvarFicha(pessoaId: string, form: FormData): Promise<Res
     const f = v.data as z.infer<typeof FichaPf> & z.infer<typeof FichaPj>;
     const n = vazioOuNulo;
 
-    const pessoa = {
-      nome: f.nome.trim().replace(/\s+/g, " "),
-      inscricao_estadual_isento: marcado(f.inscricao_estadual_isento),
-      inscricao_estadual: marcado(f.inscricao_estadual_isento) ? null : n(f.inscricao_estadual),
-      inscricao_municipal: n(f.inscricao_municipal),
-      cnae_principal: n(f.cnae_principal),
-    };
+    // Pessoa: identificação e inscrições (_pessoa/dados-pessoa) e, na PF, o INSS do autônomo.
     const p = await db
       .from("pessoa")
       .update(
         pj
-          ? {
-              ...pessoa,
-              cnpj: so(f.cnpj),
-              nome_fantasia: n(f.nome_fantasia),
-              fundacao: n(f.fundacao),
-              natureza_juridica: n(f.natureza_juridica),
-              optante_simples: f.optante_simples ? f.optante_simples === "sim" : null,
-              dt_consulta_simples: n(f.dt_consulta_simples),
-              ...(f.receita_consultada ? { dt_consulta_brasilapi: new Date().toISOString() } : {}),
-            }
+          ? pessoaPjParaBanco(f)
           : {
-              ...pessoa,
-              cpf: so(f.cpf),
-              apelido: n(f.apelido),
-              situacao_cpf: n(f.situacao_cpf),
-              dt_consulta_cpf: n(f.dt_consulta_cpf),
-              nascimento: n(f.nascimento),
-              sexo: n(f.sexo),
-              raca_cor: n(f.raca_cor),
-              estado_civil: n(f.estado_civil),
-              naturalidade: n(f.naturalidade),
-              naturalidade_uf: n(f.naturalidade_uf),
-              grau_instrucao: n(f.grau_instrucao),
-              rg: n(f.rg),
-              rg_orgao: n(f.rg_orgao),
-              rg_uf: n(f.rg_uf),
-              rg_emissao: n(f.rg_emissao),
-              pai: n(f.pai),
-              mae: n(f.mae),
+              ...pessoaPfParaBanco(f),
               nr_inss: n(so(f.nr_inss)),
               qualificacao_inss: n(f.qualificacao_inss),
               nr_dependentes: f.nr_dependentes === "" ? null : Number(f.nr_dependentes),

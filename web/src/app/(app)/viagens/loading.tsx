@@ -1,0 +1,72 @@
+import "@/styles/paginas/proprietarios.css";
+import "@/styles/paginas/pedidos.css";
+
+/* Esqueleto da lista de viagens: mesmo título, abas, busca e linhas da tabela, com barras no lugar
+   do texto. */
+function Barra({ w, h = 12, r }: { w: number | string; h?: number; r?: number | string }) {
+  return <i style={{ width: w, height: h, ...(r != null ? { borderRadius: r } : {}) }} />;
+}
+
+const COLUNAS = ["Nº", "Pedido e cliente", "Cavalo e motorista", "Origem → destino", "Situação", ""];
+const CLASSES = ["col-num", "", "", "some-celular", "", "num some-tablet"];
+
+export default function CarregandoViagens() {
+  return (
+    <main className="prop ped" aria-busy="true" aria-label="Carregando as viagens">
+      <div className="titulo">
+        <div>
+          <h1>Viagens</h1>
+          <p className="sub carregando" aria-hidden="true">
+            <Barra w={300} h={14} />
+          </p>
+        </div>
+      </div>
+      <div className="abas carregando" aria-hidden="true" style={{ paddingBottom: 12 }}>
+        {[90, 80, 90, 90].map((w, i) => (
+          <Barra key={i} w={w} h={14} />
+        ))}
+      </div>
+      <div className="ferramentas carregando" aria-hidden="true">
+        <Barra w={320} h={32} r={6} />
+        <Barra w={90} h={14} />
+      </div>
+      <div className="tabela-wrap">
+        <table className="tabela" aria-hidden="true">
+          <thead>
+            <tr>
+              {COLUNAS.map((c, i) => (
+                <th key={i} scope="col" className={CLASSES[i] || undefined}>
+                  {c}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="carregando">
+            {Array.from({ length: 6 }, (_, n) => (
+              <tr key={n}>
+                <td>
+                  <Barra w={40} h={14} />
+                </td>
+                <td>
+                  <Barra w={160} h={14} />
+                </td>
+                <td>
+                  <Barra w={92} h={22} r={4} />
+                </td>
+                <td className="some-celular">
+                  <Barra w={200} />
+                </td>
+                <td>
+                  <Barra w={90} h={22} r={4} />
+                </td>
+                <td className="num some-tablet">
+                  <Barra w={110} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </main>
+  );
+}

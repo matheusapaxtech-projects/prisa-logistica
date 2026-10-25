@@ -1,0 +1,160 @@
+import { describe, expect, it } from "vitest";
+import { esquemaPessoaPf, esquemaPessoaPj, pessoaPfParaBanco, pessoaPjParaBanco } from "@/app/(app)/_pessoa/dados-pessoa";
+import { esquemaFaturamento, esquemaLocal } from "@/app/(app)/clientes/regras";
+
+/** Primeira mensagem do zod para o campo (o que a tela mostra ao lado dele). */
+function erroDe(r: { success: boolean; error?: { issues: { path: PropertyKey[]; message: string }[] } }, campo: string) {
+  return r.error?.issues.find((i) => i.path[0] === campo)?.message;
+}
+
+describe("esquemaFaturamento (salvarFaturamento)", () => {
+  const base = { pessoa_id: "11111111-1111-1111-1111-111111111111", condicao_faturamento: "por_cte" };
+
+  it("aceita o mínimo e grava os vazios como nulo", () => {
+    const r = esquemaFaturamento.safeParse(base);
+    expect(r.success).toBe(true);
+    expect(r.data).toMatchObject({
+      condicao_faturamento: "por_cte",
+      email_xml: null,
+      email_cobranca: null,
+      exige_gr: false,
+      gerenciadora: null,
+      exige_sm: false,
+      exigencias: null,
+    });
+  });
+
+  it("tolerância de quebra: vazia vale 0,30%; com vírgula vira número; fora de 0 a 5% é recusada", () => {
+    expect(esquemaFaturamento.safeParse(base).data?.tolerancia_quebra_pct).toBe(0.3);
+    expect(esquemaFaturamento.safeParse({ ...base, tolerancia_quebra_pct: "0,25" }).data?.tolerancia_quebra_pct).toBe(0.25);
+    const r = esquemaFaturamento.safeParse({ ...base, tolerancia_quebra_pct: "7" });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0]).toMatchObject({ path: ["tolerancia_quebra_pct"], message: "Tolerância de 0 a 5%, com vírgula: 0,30." });
+  });
+
+  it('e-mail do XML inválido → "E-mail inválido"', () => {
+    const r = esquemaFaturamento.safeParse({ ...base, email_xml: "xml@semdominio" });
+    expect(r.success).toBe(false);
+    expect(erroDe(r, "email_xml")).toBe("E-mail inválido");
+  });
+
+  it('e-mail de cobrança inválido → "E-mail inválido"', () => {
+    const r = esquemaFaturamento.safeParse({ ...base, email_cobranca: "cobranca.empresa.com" });
+    expect(erroDe(r, "email_cobranca")).toBe("E-mail inválido");
+  });
+
+  it('exige GR sem gerenciadora → "Informe a gerenciadora"', () => {
+    const r = esquemaFaturamento.safeParse({ ...base, exige_gr: "on", gerenciadora: "" });
+    expect(r.success).toBe(false);
+    expect(erroDe(r, "gerenciadora")).toBe("Informe a gerenciadora");
+  });
+
+  it("exige GR com gerenciadora passa; e-mails em minúsculas", () => {
+    const r = esquemaFaturamento.safeParse({
+      ...base,
+      condicao_faturamento: "mensal",
+      exige_gr: "on",
+      gerenciadora: "Gerenciadora Teste",
+      exige_sm: "on",
+      email_xml: "XML@Teste.com.br",
+    });
+    expect(r.success).toBe(true);
+    expect(r.data).toMatchObject({ exige_gr: true, gerenciadora: "Gerenciadora Teste", exige_sm: true, email_xml: "xml@teste.com.br" });
+  });
+
+  it("sem exigir GR, a gerenciadora não é gravada", () => {
+    const r = esquemaFaturamento.safeParse({ ...base, gerenciadora: "Sobrou do antes" });
+    expect(r.data?.gerenciadora).toBeNull();
+  });
+
+  it("condição fora da lista é recusada", () => {
+    expect(esquemaFaturamento.safeParse({ ...base, condicao_faturamento: "anual" }).success).toBe(false);
+  });
+});
+
+describe("esquemaLocal (salvarLocal)", () => {
+  const base = { pessoa_id: "11111111-1111-1111-1111-111111111111", cidade: "Apucarana", uf: "PR" };
+
+  it("sem cidade é recusado", () => {
+    const r = esquemaLocal.safeParse({ ...base, cidade: "" });
+    expect(r.success).toBe(false);
+    expect(erroDe(r, "cidade")).toBeTruthy();
+  });
+
+  it("sem UF é recusado", () => {
+    const r = esquemaLocal.safeParse({ ...base, uf: "" });
+    expect(r.success).toBe(false);
+    expect(erroDe(r, "uf")).toBeTruthy();
+  });
+
+  it("CEP formatado 86800-000 vira 86800000", () => {
+    const r = esquemaLocal.safeParse({ ...base, cep: "86800-000" });
+    expect(r.success).toBe(true);
+    expect(r.data?.cep).toBe("86800000");
+  });
+
+  it("CEP incompleto é recusado; vazio vira nulo", () => {
+    expect(esquemaLocal.safeParse({ ...base, cep: "86800" }).success).toBe(false);
+    expect(esquemaLocal.safeParse({ ...base, cep: "" }).data?.cep).toBeNull();
+  });
+
+  it("guarda janela de atendimento e contato do local; número vazio vira s/n", () => {
+    const r = esquemaLocal.safeParse({
+      ...base,
+      logradouro: "Rodovia Teste, km 1",
+      janela_atendimento: "Seg a sex, 7h às 17h",
+      contato_local: "Portaria (43) 3000-0000",
+    });
+    expect(r.success).toBe(true);
+    expect(r.data).toMatchObject({ janela_atendimento: "Seg a sex, 7h às 17h", contato_local: "Portaria (43) 3000-0000", numero: "s/n" });
+  });
+
+  it("id de edição precisa ser um id válido", () => {
+    expect(esquemaLocal.safeParse({ ...base, id: "abc" }).success).toBe(false);
+    expect(esquemaLocal.safeParse({ ...base, id: "22222222-2222-2222-2222-222222222222" }).success).toBe(true);
+  });
+});
+
+describe("dados da pessoa (_pessoa/dados-pessoa, aba Dados de proprietário e cliente)", () => {
+  it("PJ: limpa nome e CNPJ, isenção zera a IE, Simples sim/não, consulta à Receita só quando marcada", () => {
+    const f = esquemaPessoaPj.parse({
+      nome: "  Empresa   Teste  Ltda ",
+      cnpj: "90.765.431/0001-31",
+      nome_fantasia: "",
+      optante_simples: "sim",
+      inscricao_estadual_isento: "on",
+      inscricao_estadual: "123",
+      receita_consultada: "1",
+    });
+    expect(pessoaPjParaBanco(f, () => "2026-10-23T12:00:00.000Z")).toEqual({
+      nome: "Empresa Teste Ltda",
+      inscricao_estadual_isento: true,
+      inscricao_estadual: null,
+      inscricao_municipal: null,
+      cnae_principal: null,
+      cnpj: "90765431000131",
+      nome_fantasia: null,
+      fundacao: null,
+      natureza_juridica: null,
+      optante_simples: true,
+      dt_consulta_simples: null,
+      dt_consulta_brasilapi: "2026-10-23T12:00:00.000Z",
+    });
+    expect(pessoaPjParaBanco(esquemaPessoaPj.parse({ nome: "X", cnpj: "90765431000131" }))).not.toHaveProperty("dt_consulta_brasilapi");
+  });
+
+  it("PF: CPF só dígitos, vazios viram nulo e nada de INSS", () => {
+    const b = pessoaPfParaBanco(esquemaPessoaPf.parse({ nome: "Maria Teste", cpf: "529.982.247-25", sexo: "feminino", naturalidade_uf: "PR" }));
+    expect(b).toMatchObject({ nome: "Maria Teste", cpf: "52998224725", sexo: "feminino", naturalidade_uf: "PR", apelido: null, rg: null });
+    expect(b).not.toHaveProperty("nr_inss");
+  });
+
+  it("mesmas mensagens da ficha de proprietário", () => {
+    const pj = esquemaPessoaPj.safeParse({ nome: "", cnpj: "90765431000132" });
+    expect(pj.error?.issues.map((i) => [i.path[0], i.message])).toEqual([
+      ["nome", "Informe a razão social, como está no cartão CNPJ."],
+      ["cnpj", "CNPJ inválido: os dois últimos dígitos não conferem. Copie de novo do cartão CNPJ."],
+    ]);
+    expect(esquemaPessoaPf.safeParse({ nome: "A", cpf: "52998224724" }).error?.issues[0].message).toMatch(/^CPF inválido/);
+  });
+});

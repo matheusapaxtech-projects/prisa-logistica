@@ -1,3 +1,4 @@
+import { pastaDoDono, type DonoArquivo } from "@/lib/arquivos";
 import { tipado } from "@/lib/banco";
 import { estadoValidade } from "@/lib/datas";
 import { formato } from "@/lib/formato";
@@ -5,9 +6,7 @@ import { getPerfil, pode } from "@/lib/permissoes";
 import { createClient } from "@/lib/supabase/server";
 import { DocumentosLista, type LinhaDocumento, type TipoDocumento } from "@/components/documentos-cliente";
 
-type Dono = { pessoaId: string; veiculoId?: undefined } | { veiculoId: string; pessoaId?: undefined };
-
-type Props = Dono & {
+type Props = DonoArquivo & {
   /** Pode enviar e conferir (normalmente `pode(perfil, "editar")`). Apagar e "restrito" só aparecem
      para o administrador, decidido aqui pelo perfil logado. */
   podeEditar: boolean;
@@ -21,7 +20,7 @@ type Props = Dono & {
   idEnvio?: string;
 };
 
-/* Documentos de uma pessoa ou de um veículo (aba "Documentos" das fichas): lista com tipo, validade,
+/* Documentos de uma pessoa, de um veículo ou de uma viagem (aba "Documentos" das fichas, "Arquivos da viagem"): lista com tipo, validade,
    conferência e acesso; abrir (registra a visualização e gera link de 60 s), conferir, enviar e,
    para o administrador, apagar e marcar como restrito. Linhas cujo objeto não está no Storage
    (envio interrompido) aparecem como "envio falhou", com "Enviar de novo". */
@@ -30,7 +29,7 @@ export async function Documentos({ podeEditar, titulo, vazio, tipoSugerido, idEn
   const admin = pode(perfil, "admin");
   const supabase = await createClient();
   const db = tipado(supabase);
-  const pasta = dono.pessoaId ? `pessoa/${dono.pessoaId}` : `veiculo/${dono.veiculoId}`;
+  const pasta = pastaDoDono(dono);
 
   let consulta = db
     .from("arquivo")
@@ -39,9 +38,11 @@ export async function Documentos({ podeEditar, titulo, vazio, tipoSugerido, idEn
     )
     .order("created_at")
     .order("id");
-  consulta = dono.pessoaId ? consulta.eq("pessoa_id", dono.pessoaId) : consulta.eq("veiculo_id", dono.veiculoId!);
+  if (dono.pessoaId) consulta = consulta.eq("pessoa_id", dono.pessoaId);
+  else if (dono.veiculoId) consulta = consulta.eq("veiculo_id", dono.veiculoId);
+  else consulta = consulta.eq("viagem_id", dono.viagemId!);
   let tiposQ = db.from("tipo_arquivo").select("id, nome").order("nome");
-  tiposQ = dono.pessoaId ? tiposQ.eq("aplica_pessoa", true) : tiposQ.eq("aplica_veiculo", true);
+  tiposQ = tiposQ.eq(dono.pessoaId ? "aplica_pessoa" : dono.veiculoId ? "aplica_veiculo" : "aplica_viagem", true);
 
   const [arquivos, tipos, objetos] = await Promise.all([
     consulta,
@@ -84,7 +85,7 @@ export async function Documentos({ podeEditar, titulo, vazio, tipoSugerido, idEn
 
   return (
     <DocumentosLista
-      dono={dono.pessoaId ? { pessoaId: dono.pessoaId } : { veiculoId: dono.veiculoId! }}
+      dono={dono.pessoaId ? { pessoaId: dono.pessoaId } : dono.veiculoId ? { veiculoId: dono.veiculoId } : { viagemId: dono.viagemId! }}
       linhas={linhas}
       tipos={listaTipos}
       podeEditar={podeEditar}

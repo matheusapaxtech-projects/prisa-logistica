@@ -20,7 +20,7 @@ async function contar(consulta: PromiseLike<{ count: number | null; error: { mes
 
 /** Número da placa de advertência cujo rótulo é `rotulo` (o aria-label é "N Rótulo"). */
 async function placa(page: Page, rotulo: string): Promise<number> {
-  const rot = await page.locator(".advertencia", { hasText: rotulo }).getAttribute("aria-label");
+  const rot = await page.locator("#advertencias .advertencia", { hasText: rotulo }).getAttribute("aria-label");
   expect(rot, `placa "${rotulo}"`).toMatch(new RegExp(`^\\d+ ${rotulo}$`));
   return Number(rot!.split(" ")[0]);
 }
@@ -81,10 +81,11 @@ test.describe("início", () => {
       semComprovante: await placa(page, "Sem comprovante de residência"),
     };
     expect(nasPlacas).toEqual({ vencidos, arrendadoSemContrato, acimaCmt, semCnh, semComprovante });
-    await expect(page.locator(".advertencia")).toHaveCount(5);
+    // Só as placas do bloco Pendências (o bloco Operação, no topo, tem as filas do Quadro).
+    await expect(page.locator("#advertencias .advertencia")).toHaveCount(5);
     // O número dentro de cada placa é o mesmo do rótulo, e cada placa leva à lista do tipo.
-    await expect(page.locator(".advertencia").nth(0)).toHaveAttribute("href", "/pendencias?tipo=arquivo_vencido");
-    await expect(page.locator(".advertencia").nth(2).locator("b").first()).toHaveText(String(acimaCmt));
+    await expect(page.locator("#advertencias .advertencia").nth(0)).toHaveAttribute("href", "/pendencias?tipo=arquivo_vencido");
+    await expect(page.locator("#advertencias .advertencia").nth(2).locator("b").first()).toHaveText(String(acimaCmt));
 
     // O selo do menu é a soma das 5 placas (mesma conta).
     const soma = vencidos + arrendadoSemContrato + acimaCmt + semCnh + semComprovante;

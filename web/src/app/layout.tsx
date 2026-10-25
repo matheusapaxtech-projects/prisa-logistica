@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { Overpass, Overpass_Mono } from "next/font/google";
+import { Outfit, Overpass_Mono } from "next/font/google";
+import { ReactGrabDev } from "@/components/ReactGrabDev";
 import "./globals.css";
 
-const overpass = Overpass({
-  variable: "--font-overpass",
+const outfit = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   display: "swap",
@@ -25,8 +26,11 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className={`${overpass.variable} ${overpassMono.variable}`}>
-      <body>{children}</body>
+    <html lang="pt-BR" className={`${outfit.variable} ${overpassMono.variable}`}>
+      <body>
+        {children}
+        <ReactGrabDev />
+      </body>
     </html>
   );
 }

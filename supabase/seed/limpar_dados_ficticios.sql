@@ -22,9 +22,15 @@
 --
 -- O QUE É APAGADO
 --   Seed (supabase/seed/dev_dados_ficticios.sql, ids fixos 00000000-0000-4000-8000-<12 dígitos>):
---     pessoa ...000000000101 a ...112, veículo ...201 a ...221, conjunto ...301 a ...305; o resto da
---     seed (motorista, proprietário, endereços, telefones, e-mails, referências, contas, Pix e
---     arquivos 401-454) sai em cascata com a pessoa ou o veículo.
+--     pessoa ...000000000101 a ...121, veículo ...201 a ...237, conjunto ...301 a ...312; o resto da
+--     seed (motorista, proprietário, endereços e locais de coleta/descarga, telefones, e-mails,
+--     referências, contas, Pix e arquivos 401-454) sai em cascata com a pessoa ou o veículo.
+--   Quadro da operação (seed e o que as telas/E2E criaram em cima dela):
+--     pedido ...1101 a ...1102 e todo pedido cujo tomador, remetente ou destinatário seja pessoa desta
+--     limpeza; viagem ...1201 a ...1212 e toda viagem desses pedidos ou de um conjunto desta limpeza, com
+--     os eventos, pausas, ocorrências e arquivos (canhotos) dela; o papel cliente das pessoas da limpeza.
+--     Ordem: eventos/pausas/ocorrências/arquivos de viagem → viagem → pedido → cliente → conjunto →
+--     veículo → pessoa (viagem e pedido apontam para conjunto, local e cliente com on delete restrict).
 --   Testes E2E (web/tests/e2e/*.spec.ts):
 --     pessoas com nome "E2E Motorista …" ou "E2E Proprietário …" (prefixo "E2E "), veículos com
 --     modelo "E2E Teste", e tudo o que pende deles (cascata). Conjuntos montados pelos testes sobre
@@ -48,7 +54,9 @@
 --     ninguém entraria no sistema depois da limpeza;
 --   - algum conjunto da limpeza (escolhido porque o motorista é fictício) tem cavalo ou peça real:
 --     troque o motorista desse conjunto pela tela antes de limpar;
---   - ainda há documentos destes cadastros no Storage.
+--   - alguma viagem entra na limpeza só por usar um conjunto fictício, mas é de um pedido real: é uma
+--     viagem real com veículo/motorista fictício; decida o que fazer com ela antes de limpar;
+--   - ainda há documentos destes cadastros (ou canhotos destas viagens) no Storage.
 -- =============================================================================================
 
 
@@ -58,20 +66,33 @@
 with
 pessoas as (
   select id from public.pessoa
-  where id between '00000000-0000-4000-8000-000000000101' and '00000000-0000-4000-8000-000000000112'
+  where id between '00000000-0000-4000-8000-000000000101' and '00000000-0000-4000-8000-000000000121'
      or nome like 'E2E %'
 ),
 veiculos as (
   select id from public.veiculo
-  where id between '00000000-0000-4000-8000-000000000201' and '00000000-0000-4000-8000-000000000221'
+  where id between '00000000-0000-4000-8000-000000000201' and '00000000-0000-4000-8000-000000000237'
      or modelo = 'E2E Teste'
 ),
 conjuntos as (
   select c.id, c.fim from public.conjunto c
-  where c.id between '00000000-0000-4000-8000-000000000301' and '00000000-0000-4000-8000-000000000305'
+  where c.id between '00000000-0000-4000-8000-000000000301' and '00000000-0000-4000-8000-000000000312'
      or c.cavalo_id in (select id from veiculos)
      or c.motorista_id in (select id from pessoas)
      or exists (select 1 from public.conjunto_item i where i.conjunto_id = c.id and i.veiculo_id in (select id from veiculos))
+),
+pedidos as (
+  select p.id from public.pedido p
+  where p.id between '00000000-0000-4000-8000-000000001101' and '00000000-0000-4000-8000-000000001102'
+     or p.tomador_id in (select id from pessoas)
+     or p.remetente_id in (select id from pessoas)
+     or p.destinatario_id in (select id from pessoas)
+),
+viagens as (
+  select v.id, v.pedido_id from public.viagem v
+  where v.id between '00000000-0000-4000-8000-000000001201' and '00000000-0000-4000-8000-000000001212'
+     or v.pedido_id in (select id from pedidos)
+     or v.conjunto_id in (select id from conjuntos)
 ),
 usuarios as (
   select id from auth.users
@@ -93,11 +114,13 @@ select o_que, quantos from (values
   (10, 'conjuntos (abertos + encerrados)',    (select count(*) from conjuntos)),
   (11, '  abertos',                           (select count(*) from conjuntos where fim is null)),
   (12, 'itens de conjunto',                   (select count(*) from public.conjunto_item where conjunto_id in (select id from conjuntos))),
-  (13, 'arquivos (linhas)',                   (select count(*) from public.arquivo where pessoa_id in (select id from pessoas) or veiculo_id in (select id from veiculos))),
+  (13, 'arquivos (linhas, inclusive canhotos)', (select count(*) from public.arquivo where pessoa_id in (select id from pessoas) or veiculo_id in (select id from veiculos)
+                                                                                    or viagem_id in (select id from viagens))),
   (14, 'objetos ainda no Storage (deve ser 0)', (select count(*) from storage.objects o
                                                   where o.bucket_id = 'documentos'
                                                     and o.name in (select a.storage_path from public.arquivo a
-                                                                   where a.pessoa_id in (select id from pessoas) or a.veiculo_id in (select id from veiculos)))),
+                                                                   where a.pessoa_id in (select id from pessoas) or a.veiculo_id in (select id from veiculos)
+                                                                      or a.viagem_id in (select id from viagens)))),
   (15, 'usuários de teste',                   (select count(*) from usuarios)),
   (16, 'perfis dos usuários de teste',        (select count(*) from public.perfil_usuario where user_id in (select id from usuarios))),
   (17, 'auditoria feita pelos usuários de teste', (select count(*) from public.auditoria where usuario_id in (select id from usuarios))),
@@ -120,7 +143,17 @@ select o_que, quantos from (values
   (23, 'administradores reais ativos (deve ser 1 ou mais)',
                                               (select count(*) from public.perfil_usuario p
                                                where p.papel = 'admin' and p.ativo
-                                                 and p.user_id not in (select id from usuarios)))
+                                                 and p.user_id not in (select id from usuarios))),
+  (24, 'clientes (papel; a pessoa sai depois)', (select count(*) from public.cliente where pessoa_id in (select id from pessoas))),
+  (25, 'pedidos',                             (select count(*) from pedidos)),
+  (26, 'viagens',                             (select count(*) from viagens)),
+  (27, 'eventos, pausas e ocorrências de viagem', (select (select count(*) from public.viagem_evento where viagem_id in (select id from viagens))
+                                                    + (select count(*) from public.viagem_pausa where viagem_id in (select id from viagens))
+                                                    + (select count(*) from public.viagem_ocorrencia where viagem_id in (select id from viagens)))),
+  (28, 'bloqueios: viagens de pedido real em conjunto fictício (deve ser 0)',
+                                              (select count(*) from viagens where pedido_id not in (select id from pedidos))),
+  (29, 'pedidos que ficam',                   (select count(*) from public.pedido where id not in (select id from pedidos))),
+  (30, 'viagens que ficam',                   (select count(*) from public.viagem where id not in (select id from viagens)))
 ) as t(ordem, o_que, quantos)
 order by ordem;
 
@@ -136,20 +169,33 @@ begin;
 -- Alvos (mesmos critérios da prévia), guardados antes de apagar.
 create temporary table limpeza_pessoa on commit drop as
   select id from public.pessoa
-  where id between '00000000-0000-4000-8000-000000000101' and '00000000-0000-4000-8000-000000000112'
+  where id between '00000000-0000-4000-8000-000000000101' and '00000000-0000-4000-8000-000000000121'
      or nome like 'E2E %';
 
 create temporary table limpeza_veiculo on commit drop as
   select id from public.veiculo
-  where id between '00000000-0000-4000-8000-000000000201' and '00000000-0000-4000-8000-000000000221'
+  where id between '00000000-0000-4000-8000-000000000201' and '00000000-0000-4000-8000-000000000237'
      or modelo = 'E2E Teste';
 
 create temporary table limpeza_conjunto on commit drop as
   select c.id from public.conjunto c
-  where c.id between '00000000-0000-4000-8000-000000000301' and '00000000-0000-4000-8000-000000000305'
+  where c.id between '00000000-0000-4000-8000-000000000301' and '00000000-0000-4000-8000-000000000312'
      or c.cavalo_id in (select id from limpeza_veiculo)
      or c.motorista_id in (select id from limpeza_pessoa)
      or exists (select 1 from public.conjunto_item i where i.conjunto_id = c.id and i.veiculo_id in (select id from limpeza_veiculo));
+
+create temporary table limpeza_pedido on commit drop as
+  select p.id from public.pedido p
+  where p.id between '00000000-0000-4000-8000-000000001101' and '00000000-0000-4000-8000-000000001102'
+     or p.tomador_id in (select id from limpeza_pessoa)
+     or p.remetente_id in (select id from limpeza_pessoa)
+     or p.destinatario_id in (select id from limpeza_pessoa);
+
+create temporary table limpeza_viagem on commit drop as
+  select v.id, v.pedido_id from public.viagem v
+  where v.id between '00000000-0000-4000-8000-000000001201' and '00000000-0000-4000-8000-000000001212'
+     or v.pedido_id in (select id from limpeza_pedido)
+     or v.conjunto_id in (select id from limpeza_conjunto);
 
 create temporary table limpeza_usuario on commit drop as
   select id from auth.users
@@ -173,6 +219,12 @@ insert into limpeza_registro
   union all select 'conjunto_item', conjunto_id::text || ':' || posicao::text from public.conjunto_item where conjunto_id in (select id from limpeza_conjunto)
   union all select 'arquivo', id::text from public.arquivo
             where pessoa_id in (select id from limpeza_pessoa) or veiculo_id in (select id from limpeza_veiculo)
+               or viagem_id in (select id from limpeza_viagem)
+  union all select 'cliente', pessoa_id::text from public.cliente where pessoa_id in (select id from limpeza_pessoa)
+  union all select 'pedido', id::text from limpeza_pedido
+  union all select 'viagem', id::text from limpeza_viagem
+  union all select 'viagem_pausa', id::text from public.viagem_pausa where viagem_id in (select id from limpeza_viagem)
+  union all select 'viagem_ocorrencia', id::text from public.viagem_ocorrencia where viagem_id in (select id from limpeza_viagem)
   union all select 'perfil_usuario', id::text from limpeza_usuario;
 
 -- Trava: precisa existir um administrador real ativo (fora dos usuários de teste), senão ninguém entra
@@ -204,6 +256,14 @@ begin
   end if;
 end $$;
 
+-- Trava: uma viagem entra na limpeza só por usar um conjunto fictício, mas o pedido dela é real.
+do $$
+begin
+  if exists (select 1 from limpeza_viagem where pedido_id not in (select id from limpeza_pedido)) then
+    raise exception 'Há viagem de pedido real usando conjunto fictício (veículo ou motorista da seed). Resolva essa viagem pela tela e rode de novo.';
+  end if;
+end $$;
+
 -- Trava: objetos do Storage precisam sair antes (node web/scripts/dev-seed-storage.mjs --limpar).
 do $$
 begin
@@ -211,11 +271,23 @@ begin
     select 1 from storage.objects o
     join public.arquivo a on a.storage_path = o.name
     where o.bucket_id = 'documentos'
-      and (a.pessoa_id in (select id from limpeza_pessoa) or a.veiculo_id in (select id from limpeza_veiculo))
+      and (a.pessoa_id in (select id from limpeza_pessoa) or a.veiculo_id in (select id from limpeza_veiculo)
+           or a.viagem_id in (select id from limpeza_viagem))
   ) then
     raise exception 'Ainda há documentos destes cadastros no Storage. Rode antes, dentro de web/: node scripts/dev-seed-storage.mjs --limpar';
   end if;
 end $$;
+
+-- 0. Quadro da operação: o que pende da viagem (sairia em cascata; apagado antes, por clareza), a viagem
+--    (aponta para pedido e conjunto com on delete restrict), o pedido (aponta para cliente e locais com
+--    on delete restrict) e o papel cliente (aponta para a pessoa com on delete restrict).
+delete from public.viagem_evento where viagem_id in (select id from limpeza_viagem);
+delete from public.viagem_pausa where viagem_id in (select id from limpeza_viagem);
+delete from public.viagem_ocorrencia where viagem_id in (select id from limpeza_viagem);
+delete from public.arquivo where viagem_id in (select id from limpeza_viagem);
+delete from public.viagem where id in (select id from limpeza_viagem);
+delete from public.pedido where id in (select id from limpeza_pedido);
+delete from public.cliente where pessoa_id in (select id from limpeza_pessoa);
 
 -- 1. Conjuntos (os itens saem em cascata). Antes dos veículos e motoristas: on delete restrict.
 delete from public.conjunto where id in (select id from limpeza_conjunto);
@@ -244,6 +316,8 @@ delete from public.auditoria where usuario_id in (select id from limpeza_usuario
 do $$
 begin
   if exists (select 1 from public.pessoa where id in (select id from limpeza_pessoa))
+     or exists (select 1 from public.viagem where id in (select id from limpeza_viagem))
+     or exists (select 1 from public.pedido where id in (select id from limpeza_pedido))
      or exists (select 1 from public.veiculo where id in (select id from limpeza_veiculo))
      or exists (select 1 from public.conjunto where id in (select id from limpeza_conjunto))
      or exists (select 1 from auth.users where id in (select id from limpeza_usuario)) then

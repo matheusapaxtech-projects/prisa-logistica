@@ -7,7 +7,7 @@
 .val { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .val::before { content: ""; width: 8px; height: 8px; flex: none; display: none; }
 .val-vencendo { color: var(--amarelo-tinta); font-weight: 600; }
-.val-vencendo::before { display: block; background: var(--amarelo); transform: rotate(45deg) scale(0.86); border-radius: 1px; box-shadow: 0 0 0 1px #c99700; }
+.val-vencendo::before { display: block; background: var(--amarelo); transform: rotate(45deg) scale(0.86); border-radius: 1px; box-shadow: 0 0 0 1px #b8901a; }
 .val-vencido { color: var(--vermelho-tinta); font-weight: 600; }
 .val-vencido::before { display: block; width: 9px; height: 9px; border: 2px solid var(--vermelho); border-radius: 50%; }
 .val-pendente { color: var(--laranja-tinta); font-weight: 600; }

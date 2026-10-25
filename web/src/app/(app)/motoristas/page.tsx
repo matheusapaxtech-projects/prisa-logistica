@@ -22,12 +22,14 @@ function achado(linhas: LinhaMotorista[]): string[] {
   const ativos = linhas.filter((l) => l.situacao !== "cancelado");
   const cnhVenc = ativos.filter((l) => l.cnh.cls === "vencido").length;
   const cnhVencendo = ativos.filter((l) => l.cnh.cls === "vencendo").length;
-  const grAtencao = ativos.filter((l) => l.gr.chave === "vencendo" || l.gr.chave === "vencido").length;
+  const grVenc = ativos.filter((l) => l.gr.chave === "vencido").length;
+  const grVencendo = ativos.filter((l) => l.gr.chave === "vencendo").length;
   const partes: string[] = [];
   if (cnhVenc) partes.push(`${cnhVenc} ${cnhVenc === 1 ? "CNH vencida" : "CNHs vencidas"}`);
   if (cnhVencendo) partes.push(`${cnhVencendo} ${cnhVencendo === 1 ? "CNH vence" : "CNHs vencem"} em até 30 dias`);
-  if (grAtencao)
-    partes.push(`${grAtencao} ${grAtencao === 1 ? "consulta de risco vence" : "consultas de risco vencem"} em até 30 dias`);
+  if (grVenc) partes.push(`${grVenc} ${grVenc === 1 ? "consulta de risco vencida" : "consultas de risco vencidas"}`);
+  if (grVencendo)
+    partes.push(`${grVencendo} ${grVencendo === 1 ? "consulta de risco vence" : "consultas de risco vencem"} em até 30 dias`);
   return [`${linhas.length} ${linhas.length === 1 ? "motorista cadastrado" : "motoristas cadastrados"}`, ...(partes.length ? partes : ["nenhum documento vencendo"])];
 }
 

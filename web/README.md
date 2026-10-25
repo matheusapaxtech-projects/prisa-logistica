@@ -7,40 +7,48 @@ documentos, usuários e auditoria. Next.js 16 (App Router) ligado ao banco Supab
 
 ## Requisitos
 
-- Node.js 24 (testado com 24.14) e npm.
-- Acesso ao projeto Supabase do NILT (para pegar a URL e a chave publicável).
+- Node.js 24 (`../.nvmrc`; testado com 24.14) e npm.
+- Docker Desktop, para o Supabase local (`npx supabase start`, ver `../README.md`).
 - Para os testes de ponta a ponta: o Chromium do Playwright (`npx playwright install chromium`).
 
 ## Como rodar
 
+O passo a passo completo, com o banco local, está no [`README` da raiz](../README.md#começando-em-10-minutos).
+Resumo:
+
 ```bash
+npx supabase start           # na raiz do repositório
 cd web
 npm install
-cp .env.example .env.local   # e preencha os dois valores
+cp .env.example .env.local   # já vem com os valores do banco local
 npm run dev                  # http://localhost:3000
 ```
 
 `web/.env.local` (nunca vai para o git) tem só duas variáveis públicas:
 
-| Variável | O que é |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | URL do projeto (`https://tkfpbpqbnasabtzatojk.supabase.co`) |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | chave publicável do projeto (painel do Supabase → Project Settings → API Keys) |
+| Variável | Banco local | Nuvem |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | `http://127.0.0.1:55321` | `https://tkfpbpqbnasabtzatojk.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | a do `.env.example` (`npx supabase status`) | painel do Supabase → Project Settings → API Keys |
 
 O app **nunca** usa a chave secreta (service role): toda leitura e gravação passa pelo login do
 usuário e pelas regras de acesso (RLS) do banco.
 
 Outros comandos: `npm run build` (build de produção), `npm run start` (serve o build),
-`npm run lint`.
+`npm run lint`, `npm run typecheck` (checagem de tipos).
 
 ## Testes
 
 | Comando | O que roda |
 |---|---|
 | `npm test` | testes unitários (Vitest, `tests/unit/`) |
-| `npm run test:e2e` | testes de ponta a ponta (Playwright, `tests/e2e/*.spec.ts`) contra o banco de desenvolvimento |
+| `npm run test:e2e` | testes de ponta a ponta (Playwright, `tests/e2e/*.spec.ts`) contra o banco configurado em `.env.local` (de preferência o local) |
 | `npm run test:prints` | prints de todas as rotas em 1440, 768 e 390 ao lado do protótipo (`tests/e2e/rotas.prints.ts`) |
 
+- No banco local, `cp .env.test.example .env.test.local` já traz os três usuários de teste
+  (criados por `../supabase/seed/local_usuarios.sql`) e `node scripts/dev-seed-storage.mjs` envia os PDFs
+  fictícios ao Storage local.
+- Se a porta 3000 estiver ocupada, rode com `E2E_PORTA=3100 npm run test:e2e`.
 - Os testes E2E precisam de `web/.env.test.local` (nunca vai para o git) com as credenciais dos
   usuários de teste: `E2E_EMAIL`/`E2E_SENHA` (administrador), `E2E_SEMPERFIL_EMAIL`/`E2E_SEMPERFIL_SENHA`
   (sem perfil) e `E2E_OPERACAO_EMAIL`/`E2E_OPERACAO_SENHA` (operação). Sem elas os testes se pulam.
@@ -178,8 +186,9 @@ Para limpar, nesta ordem:
 - **Deploy na Vercel:** só com a confirmação do responsável. Configure as duas variáveis
   `NEXT_PUBLIC_SUPABASE_*` no projeto da Vercel e ajuste a URL do site em Authentication →
   URL Configuration no Supabase (ver "Senha esquecida e troca de senha").
-- **Supabase CLI:** as migrations foram aplicadas pelo MCP, que grava versões com a data da
+- **Supabase CLI contra a nuvem:** o CLI já é usado no banco local (`supabase start`, `db reset`).
+  Na nuvem, as migrations foram aplicadas pelo MCP, que grava versões com a data da
   aplicação (diferentes dos nomes em `../supabase/migrations/`). Antes de qualquer
-  `supabase db push` ou outro comando do CLI, rode `supabase migration repair` para alinhar o
+  `supabase link` + `supabase db push`, rode `supabase migration repair` para alinhar o
   histórico (detalhes em `../supabase/tests/README.md`), senão o CLI tenta reaplicar tudo.
 - App do motorista (Expo) e as fases seguintes (frota, risco, CT-e, financeiro).

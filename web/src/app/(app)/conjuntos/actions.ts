@@ -24,8 +24,8 @@ const Montagem = z.object({
   cavaloId: z.guid("Para salvar, escolha o cavalo."),
   motoristaId: z.guid("Motorista inválido. Escolha de novo.").nullable(),
   itens: z
+    // sem peças só vale para truck (caminhão roda sozinho): `conferirMontagem` confere no banco
     .array(z.guid("Peça inválida. Remova e adicione de novo."))
-    .min(1, "Para salvar, adicione pelo menos uma carreta.")
     .max(MAX_PECAS, `O conjunto já tem ${MAX_PECAS} peças, o máximo.`),
 });
 export type Montagem = z.infer<typeof Montagem>;

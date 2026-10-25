@@ -100,6 +100,7 @@ export function peca(v: VeiculoConjunto): PecaEngate {
     configuracao_cavalo: v.configuracao_cavalo,
     eixos: v.eixos,
     capacidade_carga_t: v.categoria === "carreta" ? cargaEfetiva(v) : null,
+    tipo: v.tipo,
   };
 }
 

@@ -1,9 +1,20 @@
 /* Caminho dos documentos no bucket `documentos` (convenção da migration 0800 e do
    "Fluxo canônico de upload" em supabase/tests/README.md):
-   pessoa/<pessoa_id>/<arquivo_id>-<nome> ou veiculo/<veiculo_id>/<arquivo_id>-<nome>. */
+   pessoa/<pessoa_id>/<arquivo_id>-<nome>, veiculo/<veiculo_id>/<arquivo_id>-<nome> ou
+   viagem/<viagem_id>/<arquivo_id>-<nome> (canhoto e fotos da viagem, migration 20261025000200). */
 import { formato } from "@/lib/formato";
 
-export type DonoArquivo = { pessoaId: string; veiculoId?: undefined } | { veiculoId: string; pessoaId?: undefined };
+export type DonoArquivo =
+  | { pessoaId: string; veiculoId?: undefined; viagemId?: undefined }
+  | { veiculoId: string; pessoaId?: undefined; viagemId?: undefined }
+  | { viagemId: string; pessoaId?: undefined; veiculoId?: undefined };
+
+/** Pasta do dono no bucket: pessoa/<id>, veiculo/<id> ou viagem/<id>. */
+export function pastaDoDono(dono: DonoArquivo): string {
+  if (dono.pessoaId) return `pessoa/${dono.pessoaId}`;
+  if (dono.veiculoId) return `veiculo/${dono.veiculoId}`;
+  return `viagem/${dono.viagemId}`;
+}
 
 const MAX_NOME = 80;
 
@@ -25,8 +36,7 @@ export function nomeSeguro(nome: string): string {
 }
 
 export function caminhoArquivo(dono: DonoArquivo, arquivoId: string, nome: string): string {
-  const pasta = dono.pessoaId ? `pessoa/${dono.pessoaId}` : `veiculo/${dono.veiculoId}`;
-  return `${pasta}/${arquivoId}-${nomeSeguro(nome)}`;
+  return `${pastaDoDono(dono)}/${arquivoId}-${nomeSeguro(nome)}`;
 }
 
 /** Limite do bucket (20 MB) e tipos aceitos (migration 0800). */

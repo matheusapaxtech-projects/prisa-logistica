@@ -1,19 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type ChangeEvent, type FocusEvent, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type FocusEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Check, CircleAlert, LoaderCircle, RefreshCw } from "lucide-react";
+import { CircleAlert } from "lucide-react";
 import { BarraSalvar, useAlteracoes } from "@/components/BarraSalvar";
 import { Campo } from "@/components/Campo";
 import { toast } from "@/components/Toast";
-import type { DadosCnpj } from "@/lib/brasilapi";
-import { hojeISO } from "@/lib/datas";
-import { MSG_SESSAO_EXPIRADA } from "@/lib/erros";
-import { formato } from "@/lib/formato";
 import { validacao } from "@/lib/validacao";
+import { BlocoPessoa } from "../../_pessoa/bloco-pessoa";
+import { Checar, Grupo, opc, Radio, Secao, Selecao, SimNao, simNao } from "../../_pessoa/campos-ficha";
 import { MSG_FALTAM_DADOS } from "../../_pessoa/formulario";
 import { Opcoes } from "../../_pessoa/partes";
-import { ROT, UFS } from "../../_pessoa/rotulos";
+import { ROT } from "../../_pessoa/rotulos";
 import { salvarFicha } from "../actions";
 import type { PessoaRow, ProprietarioRow } from "../consultas";
 import { lerNumero } from "../regras";
@@ -29,13 +27,6 @@ type Props = {
   tambemMotorista: boolean;
 };
 
-const opc = (
-  <>
-    {" "}
-    <span className="opcional">(opcional)</span>
-  </>
-);
-
 const moeda = (n: number | null) => (n == null ? "" : Number(n).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 const pct = (n: number | null) => (n == null ? "" : Number(n).toLocaleString("pt-BR", { maximumFractionDigits: 2 }));
 const real = (n: number) => "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -43,7 +34,6 @@ const finito = (s: string) => {
   const n = lerNumero(s);
   return n === null || Number.isNaN(n) ? null : n;
 };
-const simNao = (b: boolean | null) => (b === true ? "sim" : b === false ? "nao" : "");
 
 const REGRAS: [string, string, string][] = [
   ["peso_saida", "Peso de saída", "Paga pelo peso carregado na origem."],
@@ -52,99 +42,6 @@ const REGRAS: [string, string, string][] = [
   ["peso_chegada_com_tolerancia", "Peso de chegada com tolerância", "Paga pelo peso de chegada; a quebra até a tolerância do contrato é aceita."],
   ["peso_chegada_acima_tolerancia", "Peso de chegada, quando ultrapassar a tolerância", "Paga pelo peso de saída e só passa ao de chegada se a quebra passar da tolerância."],
 ];
-
-function Secao({ id, titulo, texto, children, depois }: { id: string; titulo: string; texto?: string; children?: ReactNode; depois?: ReactNode }) {
-  return (
-    <section className="secao" aria-labelledby={id}>
-      <div className="secao-rotulo">
-        <h2 id={id}>{titulo}</h2>
-        {texto && <p>{texto}</p>}
-      </div>
-      <div>
-        {children && <div className="campos">{children}</div>}
-        {depois}
-      </div>
-    </section>
-  );
-}
-
-function Grupo({ classe, id, rotulo, children, ajuda, erro }: { classe: string; id: string; rotulo: string; children: ReactNode; ajuda?: ReactNode; erro?: string }) {
-  return (
-    <div className={`campo ${classe}`}>
-      <span className="rotulo" id={id}>
-        {rotulo}
-      </span>
-      <div className="opcoes" role="radiogroup" aria-labelledby={id}>
-        {children}
-      </div>
-      {ajuda && <span className="ajuda">{ajuda}</span>}
-      {erro && <span className="erro">{erro}</span>}
-    </div>
-  );
-}
-
-function Radio({ nome, valor, atual, desabilitado, children }: { nome: string; valor: string; atual: string; desabilitado?: boolean; children: ReactNode }) {
-  return (
-    <label className="opcao">
-      <input type="radio" name={nome} value={valor} defaultChecked={valor === atual} disabled={desabilitado} />
-      <span>{children}</span>
-    </label>
-  );
-}
-
-function SimNao({ nome, atual }: { nome: string; atual: string }) {
-  return (
-    <>
-      <Radio nome={nome} valor="sim" atual={atual}>
-        Sim
-      </Radio>
-      <Radio nome={nome} valor="nao" atual={atual}>
-        Não
-      </Radio>
-    </>
-  );
-}
-
-function Checar({ nome, rotulo, marcado, classe, onChange }: { nome: string; rotulo: string; marcado: boolean; classe: string; onChange?: (e: ChangeEvent<HTMLInputElement>) => void }) {
-  return (
-    <div className={`campo ${classe}`}>
-      <span className="rotulo" aria-hidden="true">
-        &nbsp;
-      </span>
-      <label className="checar">
-        <input type="checkbox" id={nome} name={nome} defaultChecked={marcado} onChange={onChange} />
-        {rotulo}
-      </label>
-    </div>
-  );
-}
-
-function Selecao({ classe, nome, rotulo, valor, children, erro }: { classe: string; nome: string; rotulo: ReactNode; valor: string | null; children: ReactNode; erro?: string }) {
-  return (
-    <Campo
-      classe={classe}
-      id={nome}
-      label={rotulo}
-      erro={erro}
-      controle={
-        <select id={nome} name={nome} defaultValue={valor ?? ""}>
-          {children}
-        </select>
-      }
-    />
-  );
-}
-
-const OpcoesUfTraco = () => (
-  <>
-    <option value="">—</option>
-    {UFS.map((u) => (
-      <option key={u} value={u}>
-        {u}
-      </option>
-    ))}
-  </>
-);
 
 /** Campo de valor ("R$") ou percentual ("%"): número em formato brasileiro, alinhado à direita. */
 function Din({ nome, rotulo, valor, tipo, erro }: { nome: string; rotulo: string; valor: number | null; tipo: "R$" | "%"; erro?: string }) {
@@ -199,11 +96,6 @@ function lerVivo(f: HTMLFormElement | null, inicial: Vivo): Vivo {
   };
 }
 
-const MSG_404 = "CNPJ não encontrado na Receita. Confira o CNPJ acima; nada na ficha foi alterado.";
-const MSG_FALHOU = "A consulta à Receita não respondeu (BrasilAPI fora do ar ou sem internet). Nada na ficha foi alterado.";
-
-type MsgReceita = { ok: boolean; texto: ReactNode; tentarDeNovo?: boolean } | null;
-
 /* Dados, ANTT, Responsável e Pagamento da ficha (painelDados/painelAntt/painelResp/painelPagamento de
    prototipo/proprietario.html): um formulário só, com a barra de salvar da ficha. Contatos e Contas e Pix
    gravam na hora pelos diálogos (ver _pessoa). */
@@ -224,13 +116,6 @@ export function FichaFormulario({ pessoa: p, proprietario: pr, aba, podeEditar, 
     freteVal: moeda(pr.frete_empresa_motorista_valor),
   };
   const [vivo, setVivo] = useState<Vivo>(inicialVivo);
-  const [isento, setIsento] = useState(!!p.inscricao_estadual_isento);
-  const consultaOriginal = p.dt_consulta_brasilapi ? `Consultado na Receita em ${formato.dataHora(p.dt_consulta_brasilapi)}` : "Ainda sem consulta à Receita";
-  const [carimbo, setCarimbo] = useState(consultaOriginal);
-  const [consultada, setConsultada] = useState(false);
-  const [buscando, setBuscando] = useState(false);
-  const [msgReceita, setMsgReceita] = useState<MsgReceita>(null);
-  const buscaReceita = useRef(0);
   const focoPendente = useRef<string | null>(null);
 
   // Erro do servidor num campo de painel oculto: a página troca de aba e o foco vai para o campo aqui.
@@ -261,12 +146,6 @@ export function FichaFormulario({ pessoa: p, proprietario: pr, aba, podeEditar, 
     setCampos({});
     setErro(null);
     setVivo(lerVivo(f, inicialVivo));
-    setIsento(!!p.inscricao_estadual_isento);
-    setCarimbo(consultaOriginal);
-    setConsultada(false);
-    setMsgReceita(null);
-    buscaReceita.current++;
-    setBuscando(false);
     limpar();
   }
 
@@ -292,71 +171,10 @@ export function FichaFormulario({ pessoa: p, proprietario: pr, aba, podeEditar, 
         return;
       }
       setCampos({});
-      setConsultada(false);
       limpar();
       toast("Alterações salvas.");
       router.refresh();
     });
-  }
-
-  /** "Atualizar pela Receita" (BrasilAPI): preenche os campos da empresa; só grava ao salvar. */
-  async function atualizarPelaReceita(f: HTMLFormElement | null) {
-    if (!f) return;
-    const campo = (n: string) => f.elements.namedItem(n) as HTMLInputElement;
-    const d = validacao.soDigitos(campo("cnpj").value);
-    if (!validacao.cnpj(d)) {
-      setMsgReceita({ ok: false, texto: "CNPJ inválido: corrija os dígitos antes de consultar." });
-      return;
-    }
-    const minha = ++buscaReceita.current;
-    // Resposta de um CNPJ que já não está no campo, de uma busca mais velha ou de antes do "Descartar" não vale.
-    const atual = () => minha === buscaReceita.current && validacao.soDigitos(campo("cnpj").value) === d;
-    setBuscando(true);
-    setMsgReceita(null);
-    try {
-      const r = await fetch(`/api/cnpj/${d}`, { cache: "no-store" });
-      const x = (await r.json().catch(() => ({}))) as DadosCnpj & { erro?: string };
-      if (!atual()) return;
-      if (r.status === 401) throw new Error(MSG_SESSAO_EXPIRADA);
-      if (r.status === 404) throw new Error(MSG_404);
-      if (!r.ok || x.erro) throw new Error(MSG_FALHOU);
-      let mudou = 0;
-      for (const k of ["nome", "nome_fantasia", "fundacao", "natureza_juridica", "cnae_principal"] as const) {
-        const v = x[k];
-        if (v && campo(k).value !== v) {
-          campo(k).value = v;
-          mudou++;
-        }
-      }
-      if (x.optante_simples != null) {
-        const radio = f.querySelector<HTMLInputElement>(`input[name="optante_simples"][value="${x.optante_simples ? "sim" : "nao"}"]`);
-        if (radio && !radio.checked) {
-          radio.checked = true;
-          mudou++;
-        }
-      }
-      campo("dt_consulta_simples").value = hojeISO();
-      setCarimbo(`Consultado na Receita agora, às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`);
-      setConsultada(true);
-      const ativa = x.situacao.toUpperCase() === "ATIVA";
-      setMsgReceita({
-        ok: ativa,
-        texto: (
-          <>
-            {ativa ? "Ativa na Receita." : <>A Receita mostra a empresa como <b>{(x.situacao || "sem situação").toLowerCase()}</b>.</>}{" "}
-            {mudou ? `${mudou} ${mudou === 1 ? "campo mudou" : "campos mudaram"}: confira e salve.` : "Nada mudou em relação à ficha."} O endereço da Receita fica em Contatos se você
-            quiser trocar.
-          </>
-        ),
-      });
-      f.dispatchEvent(new Event("input", { bubbles: true }));
-    } catch (e) {
-      if (!atual()) return;
-      const m = (e as Error).message;
-      setMsgReceita({ ok: false, texto: m === MSG_404 || m === MSG_SESSAO_EXPIRADA ? m : MSG_FALHOU, tentarDeNovo: true });
-    } finally {
-      if (minha === buscaReceita.current) setBuscando(false);
-    }
   }
 
   /* ---------- prévias do pagamento ---------- */
@@ -376,70 +194,44 @@ export function FichaFormulario({ pessoa: p, proprietario: pr, aba, podeEditar, 
 
   /* ---------- painéis ---------- */
 
-  const inscricoes = (
-    <Secao id="h-insc" titulo="Inscrições" texto="Inscrição estadual e municipal, e a atividade econômica principal.">
-      <Checar nome="inscricao_estadual_isento" rotulo="Isento de inscrição estadual" marcado={isento} classe="f4" onChange={(e) => setIsento(e.currentTarget.checked)} />
-      <Campo classe="f4" id="inscricao_estadual" name="inscricao_estadual" label={<>Inscrição estadual{opc}</>} className="cod" autoComplete="off" disabled={isento} defaultValue={p.inscricao_estadual ?? ""} erro={campos.inscricao_estadual} />
-      <Campo classe="f4" id="inscricao_municipal" name="inscricao_municipal" label={<>Inscrição municipal{opc}</>} className="cod" autoComplete="off" defaultValue={p.inscricao_municipal ?? ""} erro={campos.inscricao_municipal} />
-      {!pj && (
-        <Campo classe="f12" id="cnae_principal" name="cnae_principal" label={<>Atividade econômica principal{opc}</>} placeholder="CNAE e descrição" autoComplete="off" defaultValue={p.cnae_principal ?? ""} erro={campos.cnae_principal} />
-      )}
+  const inss = (
+    <Secao id="h-inss" titulo="INSS" texto="Para o desconto de INSS e Sest/Senat no contrato de frete do autônomo.">
+      <Campo
+        classe="f4"
+        id="nr_inss"
+        name="nr_inss"
+        label={<>Nº do INSS (NIT){opc}</>}
+        maxLength={11}
+        mascara="digitos"
+        className="cod"
+        autoComplete="off"
+        defaultValue={p.nr_inss ?? ""}
+        erro={campos.nr_inss}
+      />
+      <Selecao classe="f4" nome="qualificacao_inss" rotulo="Qualificação" valor={p.qualificacao_inss}>
+        <option value="">—</option>
+        <option value="qualificado">Qualificado</option>
+        <option value="nao_qualificado">Não qualificado</option>
+        <option value="com_pendencia">Com pendência</option>
+      </Selecao>
+      <Campo classe="f4" id="nr_dependentes" name="nr_dependentes" type="number" min={0} max={99} label="Dependentes" className="num" autoComplete="off" defaultValue={p.nr_dependentes ?? 0} erro={campos.nr_dependentes} />
+      <Grupo classe="f12" id="g-desc" rotulo="Autoriza desconto" erro={campos.autoriza_desconto_inss}>
+        <Radio nome="autoriza_desconto_inss" valor="nao" atual={pr.autoriza_desconto_inss || "nao"}>
+          Não
+        </Radio>
+        <Radio nome="autoriza_desconto_inss" valor="inss_sest_senat" atual={pr.autoriza_desconto_inss}>
+          Sim, INSS e Sest/Senat
+        </Radio>
+        <Radio nome="autoriza_desconto_inss" valor="sest_senat" atual={pr.autoriza_desconto_inss}>
+          Sim, só Sest/Senat
+        </Radio>
+      </Grupo>
     </Secao>
   );
 
-  const dados = pj ? (
+  const dados = (
     <>
-      <Secao
-        id="h-emp"
-        titulo="Empresa"
-        texto="Como está na Receita. A consulta pela BrasilAPI atualiza estes campos; o que você corrigir aqui vale até a próxima consulta."
-      >
-        <div className="f12 receita-estado" id="receita-estado">
-          <span className="carimbo" id="carimbo">
-            {carimbo}
-          </span>
-          {podeEditar && (
-            <button className="btn btn-pequeno" type="button" id="btn-receita" onClick={(e) => void atualizarPelaReceita(e.currentTarget.form)} disabled={buscando} aria-busy={buscando || undefined}>
-              {buscando ? <LoaderCircle className="gira" size={16} strokeWidth={1.6} aria-hidden="true" /> : <RefreshCw size={16} strokeWidth={1.6} aria-hidden="true" />}
-              <span>{buscando ? "Consultando…" : "Atualizar pela Receita"}</span>
-            </button>
-          )}
-        </div>
-        <div className="f12" id="receita-msg" aria-live="polite">
-          {msgReceita && (
-            <div className={`aviso ${msgReceita.ok ? "aviso-normal" : "aviso-bloqueado"}`} role={msgReceita.ok ? undefined : "alert"}>
-              {msgReceita.ok ? <Check size={16} strokeWidth={1.6} aria-hidden="true" /> : <CircleAlert size={16} strokeWidth={1.6} aria-hidden="true" />}
-              <span>
-                {msgReceita.texto}
-                {msgReceita.tentarDeNovo && (
-                  <span className="acoes-aviso">
-                    <button className="btn btn-pequeno" type="button" id="receita-denovo" onClick={(e) => void atualizarPelaReceita(e.currentTarget.form)}>
-                      <RefreshCw size={16} strokeWidth={1.6} aria-hidden="true" />
-                      Tentar de novo
-                    </button>
-                  </span>
-                )}
-              </span>
-            </div>
-          )}
-        </div>
-        <input type="hidden" name="receita_consultada" value={consultada ? "1" : ""} />
-        <Campo classe="f8" id="nome" name="nome" label="Razão social" maxLength={110} autoComplete="off" defaultValue={p.nome} erro={campos.nome} />
-        <Campo classe="f4" id="cnpj" name="cnpj" label="CNPJ" mascara="cnpj" valida="cnpj" className="cod" autoComplete="off" defaultValue={p.cnpj ?? ""} erro={campos.cnpj} />
-        <Campo classe="f8" id="nome_fantasia" name="nome_fantasia" label={<>Nome fantasia{opc}</>} autoComplete="off" defaultValue={p.nome_fantasia ?? ""} erro={campos.nome_fantasia} />
-        <Campo classe="f4" id="fundacao" name="fundacao" type="date" label="Fundação" defaultValue={p.fundacao ?? ""} erro={campos.fundacao} />
-        <Campo classe="f12" id="natureza_juridica" name="natureza_juridica" label="Natureza jurídica" autoComplete="off" defaultValue={p.natureza_juridica ?? ""} erro={campos.natureza_juridica} />
-        <Campo classe="f12" id="cnae_principal" name="cnae_principal" label="Atividade econômica principal (CNAE)" autoComplete="off" defaultValue={p.cnae_principal ?? ""} erro={campos.cnae_principal} />
-        <Grupo classe="f4" id="g-simples" rotulo="Optante pelo Simples Nacional">
-          <SimNao nome="optante_simples" atual={simNao(p.optante_simples)} />
-        </Grupo>
-        <Campo classe="f4" id="dt_consulta_simples" name="dt_consulta_simples" type="date" label="Data da consulta do Simples" defaultValue={p.dt_consulta_simples ?? ""} erro={campos.dt_consulta_simples} />
-      </Secao>
-      {inscricoes}
-    </>
-  ) : (
-    <>
-      {tambemMotorista && (
+      {!pj && tambemMotorista && (
         <div className="aviso aviso-info" style={{ marginBottom: 24 }}>
           <CircleAlert size={16} strokeWidth={1.6} aria-hidden="true" />
           <span>
@@ -447,77 +239,7 @@ export function FichaFormulario({ pessoa: p, proprietario: pr, aba, podeEditar, 
           </span>
         </div>
       )}
-      <Secao id="h-pf" titulo="Pessoa física" texto="Como está no CPF. O CPF é conferido pelos dígitos.">
-        <Campo classe="f8" id="nome" name="nome" label="Nome completo" maxLength={110} autoComplete="off" defaultValue={p.nome} erro={campos.nome} />
-        <Campo classe="f4" id="apelido" name="apelido" label={<>Apelido{opc}</>} autoComplete="off" defaultValue={p.apelido ?? ""} erro={campos.apelido} />
-        <Campo classe="f4" id="cpf" name="cpf" label="CPF" mascara="cpf" valida="cpf" className="cod" autoComplete="off" defaultValue={p.cpf ?? ""} erro={campos.cpf} />
-        <Selecao classe="f4" nome="situacao_cpf" rotulo="Situação do CPF" valor={p.situacao_cpf}>
-          <Opcoes mapa={ROT.situacao_cpf} vazio="—" />
-        </Selecao>
-        <Campo classe="f4" id="dt_consulta_cpf" name="dt_consulta_cpf" type="date" label={<>Consulta da situação{opc}</>} defaultValue={p.dt_consulta_cpf ?? ""} />
-        <Campo classe="f3" id="nascimento" name="nascimento" type="date" label="Nascimento" defaultValue={p.nascimento ?? ""} erro={campos.nascimento} />
-        <Selecao classe="f3" nome="sexo" rotulo="Sexo" valor={p.sexo}>
-          <Opcoes mapa={ROT.sexo} vazio="—" />
-        </Selecao>
-        <Selecao classe="f3" nome="raca_cor" rotulo="Raça/cor" valor={p.raca_cor}>
-          <Opcoes mapa={ROT.raca_cor} vazio="—" />
-        </Selecao>
-        <Selecao classe="f3" nome="estado_civil" rotulo="Estado civil" valor={p.estado_civil}>
-          <Opcoes mapa={ROT.estado_civil} vazio="—" />
-        </Selecao>
-        <Campo classe="f5" id="naturalidade" name="naturalidade" label="Naturalidade" autoComplete="off" defaultValue={p.naturalidade ?? ""} />
-        <Selecao classe="f3" nome="naturalidade_uf" rotulo="UF" valor={p.naturalidade_uf}>
-          <OpcoesUfTraco />
-        </Selecao>
-        <Selecao classe="f4" nome="grau_instrucao" rotulo="Grau de instrução" valor={p.grau_instrucao}>
-          <Opcoes mapa={ROT.grau_instrucao} vazio="—" />
-        </Selecao>
-      </Secao>
-      <Secao id="h-rg" titulo="RG" texto="Como está na carteira de identidade.">
-        <Campo classe="f4" id="rg" name="rg" label="Número do RG" maxLength={20} className="cod" autoComplete="off" defaultValue={p.rg ?? ""} erro={campos.rg} />
-        <Campo classe="f3" id="rg_orgao" name="rg_orgao" label="Órgão expedidor" autoComplete="off" defaultValue={p.rg_orgao ?? ""} />
-        <Selecao classe="f2" nome="rg_uf" rotulo="UF" valor={p.rg_uf}>
-          <OpcoesUfTraco />
-        </Selecao>
-        <Campo classe="f3" id="rg_emissao" name="rg_emissao" type="date" label={<>Emissão{opc}</>} defaultValue={p.rg_emissao ?? ""} />
-      </Secao>
-      <Secao id="h-fil" titulo="Filiação">
-        <Campo classe="f6" id="pai" name="pai" label={<>Pai{opc}</>} maxLength={80} autoComplete="off" defaultValue={p.pai ?? ""} />
-        <Campo classe="f6" id="mae" name="mae" label="Mãe" maxLength={80} autoComplete="off" defaultValue={p.mae ?? ""} />
-      </Secao>
-      <Secao id="h-inss" titulo="INSS" texto="Para o desconto de INSS e Sest/Senat no contrato de frete do autônomo.">
-        <Campo
-          classe="f4"
-          id="nr_inss"
-          name="nr_inss"
-          label={<>Nº do INSS (NIT){opc}</>}
-          maxLength={11}
-          mascara="digitos"
-          className="cod"
-          autoComplete="off"
-          defaultValue={p.nr_inss ?? ""}
-          erro={campos.nr_inss}
-        />
-        <Selecao classe="f4" nome="qualificacao_inss" rotulo="Qualificação" valor={p.qualificacao_inss}>
-          <option value="">—</option>
-          <option value="qualificado">Qualificado</option>
-          <option value="nao_qualificado">Não qualificado</option>
-          <option value="com_pendencia">Com pendência</option>
-        </Selecao>
-        <Campo classe="f4" id="nr_dependentes" name="nr_dependentes" type="number" min={0} max={99} label="Dependentes" className="num" autoComplete="off" defaultValue={p.nr_dependentes ?? 0} erro={campos.nr_dependentes} />
-        <Grupo classe="f12" id="g-desc" rotulo="Autoriza desconto" erro={campos.autoriza_desconto_inss}>
-          <Radio nome="autoriza_desconto_inss" valor="nao" atual={pr.autoriza_desconto_inss || "nao"}>
-            Não
-          </Radio>
-          <Radio nome="autoriza_desconto_inss" valor="inss_sest_senat" atual={pr.autoriza_desconto_inss}>
-            Sim, INSS e Sest/Senat
-          </Radio>
-          <Radio nome="autoriza_desconto_inss" valor="sest_senat" atual={pr.autoriza_desconto_inss}>
-            Sim, só Sest/Senat
-          </Radio>
-        </Grupo>
-      </Secao>
-      {inscricoes}
+      <BlocoPessoa pessoa={p} campos={campos} podeEditar={podeEditar} antesDasInscricoes={pj ? undefined : inss} />
     </>
   );
 

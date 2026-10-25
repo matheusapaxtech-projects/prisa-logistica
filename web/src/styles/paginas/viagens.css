@@ -1,0 +1,93 @@
+/* NILT — grupo Viagens (/viagens, /viagens/[id]). Usa a base de proprietarios.css (`.prop`) e de
+   pedidos.css (`.ped`: tabela, resumo em duas colunas); aqui só o que é das viagens, preso a `.via`
+   (a <main> das telas) ou aos diálogos, para não vazar. */
+
+/* ---------- lista ---------- */
+.via .tabela .viagem-cel { display: flex; align-items: center; gap: 8px; }
+.via .filtro-ativo { display: inline-flex; align-items: center; gap: 4px; }
+
+/* ---------- ficha: cabeçalho ---------- */
+.via .sinais .desde { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; align-self: center; }
+.via .aviso-ficha { margin-bottom: 24px; }
+
+/* ---------- ficha: próximo passo (bloco plano com a ação principal) ---------- */
+.via .proximo-passo {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap;
+  padding: 16px 18px; margin-bottom: 24px;
+  border: 1px solid var(--border); border-radius: var(--radius-card);
+}
+.via .proximo-passo .texto { display: grid; gap: 4px; min-width: 0; flex: 1 1 320px; }
+.via .proximo-passo h2 { font-size: var(--fs-section); font-weight: 600; line-height: 24px; margin: 0; }
+.via .proximo-passo p { margin: 0; font-size: 13px; line-height: 18px; color: var(--muted); }
+.via .proximo-passo .acoes { display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+.via .acao-com-explica { display: inline-grid; gap: 4px; justify-items: end; max-width: 280px; }
+.via .acao-com-explica .explica { font-size: 12px; line-height: 16px; color: var(--muted); text-align: right; }
+
+/* ---------- ficha: resumo ---------- */
+.via .kv dd .placas { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.via .kv dd .codigo { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; word-break: break-all; }
+.via .kv dd .com-acao { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+/* ---------- ficha: aptidão ---------- */
+.via .aptidao .explica { margin: 0 0 12px; font-size: 13px; line-height: 18px; color: var(--muted); }
+.via .aptidao .apta { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--muted); }
+.via .lista-aptidao, .dlg-cancelar .lista-aptidao { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.via .lista-aptidao li, .dlg-cancelar .lista-aptidao li { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; align-items: start; line-height: 22px; }
+.via .lista-aptidao li .sinal, .dlg-cancelar .lista-aptidao li .sinal { justify-self: start; }
+
+/* ---------- ficha: frete, piso ANTT e resultado do CT-e ---------- */
+/* Dinheiro tabular, à direita e sem cor (Regra do Dinheiro sem Cor); total em 600 com filete acima. */
+.via .frete-viagem { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 32px; margin-top: 32px; align-items: start; }
+.via .frete-viagem .painel-cab .dir { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.via .frete-viagem .kv dd .linha2, .via .quebra-estadia .kv dd .linha2 { display: block; font-size: 13px; color: var(--muted); line-height: 18px; }
+.via .demonstrativo { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.via .demonstrativo th { text-align: left; font-weight: 400; padding: 8px 0; border-top: 1px solid var(--rule); }
+.via .demonstrativo th .linha2 { display: block; font-size: 12px; line-height: 16px; color: var(--muted); }
+.via .demonstrativo td { text-align: right; padding: 8px 0 8px 16px; border-top: 1px solid var(--rule); white-space: nowrap; vertical-align: top; }
+.via .demonstrativo tr:first-child th, .via .demonstrativo tr:first-child td { border-top: 0; }
+.via .demonstrativo tr.total th, .via .demonstrativo tr.total td { font-weight: 600; border-top-color: var(--control); }
+.via .resultado-cte .nota { margin: 12px 0 0; font-size: 12px; line-height: 16px; color: var(--muted); }
+
+/* ---------- ficha: blocos de baixo ---------- */
+.via .blocos-viagem { display: grid; gap: 32px; margin-top: 32px; }
+
+/* linha do tempo: a `.linha-tempo` de componentes.css (a do Histórico); detalhes quebram em qualquer ponto */
+.via .linha-tempo .detalhe { color: var(--ink); overflow-wrap: anywhere; }
+
+/* canhoto */
+.via .lista-arquivos { list-style: none; margin: 0 0 16px; padding: 0; }
+.via .lista-arquivos li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: var(--row-h); border-bottom: 1px solid var(--rule); }
+.via .lista-arquivos .nome { display: grid; min-width: 0; }
+.via .lista-arquivos .nome b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.via .lista-arquivos .linha2 { font-size: 13px; color: var(--muted); }
+.via .envio-canhoto { display: flex; align-items: flex-end; gap: 12px 16px; flex-wrap: wrap; margin-top: 16px; }
+.via .envio-canhoto .aviso { flex: 1 1 100%; }
+.via .envio-canhoto .campo { flex: 1 1 320px; }
+
+/* ocorrências */
+.via .lista-ocorrencias { list-style: none; margin: 0; padding: 0; }
+.via .lista-ocorrencias > li { display: grid; gap: 6px; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+.via .lista-ocorrencias > li:first-child { padding-top: 0; }
+.via .lista-ocorrencias .cab-ocorrencia { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.via .lista-ocorrencias .tipo { display: inline-flex; align-items: center; gap: 8px; }
+.via .lista-ocorrencias p { margin: 0; }
+.via .lista-ocorrencias .linha2 { font-size: 13px; color: var(--muted); }
+.via .lista-ocorrencias .resolucao { display: grid; gap: 2px; padding: 8px 12px; border-radius: var(--radius-card); background: var(--raised); }
+.via .lista-ocorrencias li.resolvida > .observacao { color: var(--muted); }
+.via .observacao, .dlg-cancelar .observacao { white-space: pre-line; }
+
+/* diálogos da ficha */
+.dlg-cancelar .campos-ocorrencia { display: grid; gap: 16px; }
+.dlg-cancelar .campo select { width: 100%; }
+
+@media (max-width: 640px) {
+  .via .proximo-passo .acoes, .via .proximo-passo .acoes .btn { width: 100%; }
+  .via .acao-com-explica { max-width: none; width: 100%; justify-items: stretch; }
+  .via .acao-com-explica .explica { text-align: left; }
+  .via .lista-aptidao li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}
+.via .quebra-estadia { margin-top: 32px; }
+.via .quebra-estadia .kv dd .sinal { margin-bottom: 2px; }
+.via .retorno-viagem { margin-top: 32px; }
+.via .retorno-viagem .kv dd .linha2 { display: block; font-size: 13px; color: var(--muted); line-height: 18px; }
+.via .retorno-lista { margin: 0; padding-left: 18px; display: grid; gap: 8px; }

@@ -100,9 +100,19 @@ describe("conjunto.validar", () => {
   it("3 carretas com dollies no meio é aceito", () => {
     expect(conjunto.validar(cavalo(), [carreta(), dolly(), carreta(), dolly(), carreta()], [])).toEqual([]);
   });
-  it("a base precisa ser cavalo", () => {
-    const r = conjunto.validar(veiculo("caminhao"), [carreta()], []);
-    expect(r).toEqual([{ posicao: null, mensagem: "o cavalo do conjunto precisa ser da categoria cavalo" }]);
+  it("a base precisa ser cavalo ou truck", () => {
+    const r = conjunto.validar(veiculo("carreta"), [carreta()], []);
+    expect(r).toEqual([{ posicao: null, mensagem: "a base do conjunto precisa ser um cavalo ou um truck" }]);
+  });
+  it("truck roda sozinho: sem peças é válido", () => {
+    expect(conjunto.validar(veiculo("caminhao"), [], [])).toEqual([]);
+  });
+  it("truck não engata peça: aponta cada peça", () => {
+    const r = conjunto.validar(veiculo("caminhao"), [carreta(), carreta()], []);
+    expect(r).toEqual([
+      { posicao: 1, mensagem: "truck não engata carreta nem dolly" },
+      { posicao: 2, mensagem: "truck não engata carreta nem dolly" },
+    ]);
   });
   it("itens só carreta ou dolly, apontando cada item inválido", () => {
     const r = conjunto.validar(cavalo(), [carreta(), veiculo("caminhao"), veiculo("cavalo")], []);
@@ -150,16 +160,16 @@ describe("conjunto.validar", () => {
 
 describe("mensagens do conjunto x banco", () => {
   const sql = readFileSync(
-    resolve(__dirname, "../../../supabase/migrations/20261023000700_conjunto.sql"),
+    resolve(__dirname, "../../../supabase/migrations/20261029000700_conjunto_truck.sql"),
     "utf8",
   );
-  it("são 7 mensagens", () => {
-    expect(Object.keys(MENSAGENS_CONJUNTO)).toHaveLength(7);
+  it("são 8 mensagens", () => {
+    expect(Object.keys(MENSAGENS_CONJUNTO)).toHaveLength(8);
   });
   it.each(Object.entries(MENSAGENS_CONJUNTO))("%s aparece em validar_conjunto", (_nome, texto) => {
     expect(sql).toContain(`raise exception '${texto}'`);
   });
-  it("a migration não tem mensagens além das 7", () => {
+  it("a migration não tem mensagens além das 8", () => {
     const noBanco = [...sql.matchAll(/raise exception '([^']+)'/g)].map((m) => m[1]);
     expect(noBanco.sort()).toEqual(Object.values(MENSAGENS_CONJUNTO).sort());
   });
