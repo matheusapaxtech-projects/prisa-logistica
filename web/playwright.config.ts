@@ -11,18 +11,22 @@ try {
   // arquivo ausente: segue sem credenciais
 }
 
+// Porta do servidor dos testes: 3000, ou E2E_PORTA (ex.: outro projeto já ocupa a 3000).
+const PORTA = process.env.E2E_PORTA ?? "3000";
+const ENDERECO = `http://localhost:${PORTA}`;
+
 // Suíte padrão (`npm run test:e2e`): só os *.spec.ts. Os prints ao lado do protótipo (*.prints.ts, que
 // abrem o protótipo por file:// e dependem do lucide no unpkg) rodam à parte: `npm run test:prints`
 // (playwright.prints.config.ts).
 export default defineConfig({
   testDir: "tests/e2e",
   // Rastro só das falhas (test-results/, fora do git): mostra onde um teste travou.
-  use: { baseURL: "http://localhost:3000", trace: "retain-on-failure" },
+  use: { baseURL: ENDERECO, trace: "retain-on-failure" },
   // Servidor de produção (build + start): o `next dev` compila cada rota na primeira visita e, com os
-  // specs em paralelo, os fluxos longos estouravam o tempo. Um `next dev` já aberto na 3000 é reaproveitado.
+  // specs em paralelo, os fluxos longos estouravam o tempo. Um `next dev` já aberto na mesma porta é reaproveitado.
   webServer: {
-    command: "npm run build && npm run start",
-    url: "http://localhost:3000",
+    command: `npm run build && npm run start -- -p ${PORTA}`,
+    url: ENDERECO,
     reuseExistingServer: true,
     timeout: 300_000,
   },

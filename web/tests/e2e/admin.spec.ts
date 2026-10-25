@@ -109,6 +109,10 @@ test.describe("usuários e auditoria", () => {
 
   test("auditoria: filtro na URL sobrevive ao recarregar, agrupa por dia de São Paulo e destaca visualizações", async ({ page }) => {
     const db = bancoAdmin();
+    // Garante ao menos uma visualização de documento (um banco recém-criado ainda não tem nenhuma).
+    const arquivo = await db.from("arquivo").select("id").limit(1).single();
+    expect(arquivo.error).toBeNull();
+    expect((await db.rpc("registrar_visualizacao", { p_arquivo: arquivo.data!.id })).error).toBeNull();
     const ultimo = await db.from("auditoria").select("em").order("em", { ascending: false }).limit(1);
     expect(ultimo.error).toBeNull();
     const diaEsperado = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(
