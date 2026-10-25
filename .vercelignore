@@ -7,6 +7,8 @@
 /supabase/*
 !/supabase/types
 web/.env*
+!web/.env.example
+!web/.env.test.example
 web/node_modules
 web/.next
 web/tests/e2e/.sessao
