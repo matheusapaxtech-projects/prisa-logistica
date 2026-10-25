@@ -61,3 +61,23 @@
 @media (max-width: 900px) {
   .ped .resumo-pedido { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* despacho do pedido (motor de despacho: ranking e composição do lote) */
+.ped .despacho { margin-top: 32px; }
+.ped .despacho .painel-cab .dir { display: flex; gap: 8px; }
+.ped .despacho .nota { margin: 0 0 14px; font-size: 13px; line-height: 18px; color: var(--muted); max-width: 90ch; }
+.ped .despacho-lote { border: 1px solid var(--border); border-radius: 18px; background: rgba(255, 255, 255, 0.55); padding: 14px 16px; margin-bottom: 18px; display: grid; gap: 10px; }
+.ped .despacho-lote-cab { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+.ped .despacho-lote-cab h3 { font-size: 16px; font-weight: 600; }
+.ped .despacho-lote-cab span { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.ped .despacho-lote-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ped .despacho-lote-lista li { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.ped .despacho-lote-lista .quem { flex: 1 1 220px; min-width: 0; }
+.ped .despacho-lote-lista .linha2, .ped .despacho-ranking .linha2 { display: block; font-size: 12px; color: var(--muted); line-height: 16px; margin-top: 2px; }
+.ped .despacho-lote .nota { margin: 0; font-size: 12px; }
+.ped .despacho-ranking td { vertical-align: top; }
+.ped .despacho-ranking .placa { transform: scale(0.8); transform-origin: left center; vertical-align: middle; }
+.ped .despacho-descartados { margin-top: 12px; color: var(--muted); font-size: 13px; }
+.ped .despacho-descartados summary { cursor: pointer; }
+.ped .despacho-descartados ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+.ped .despacho-vazio { margin: 0; }

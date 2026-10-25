@@ -61,7 +61,7 @@ export function acharMunicipio(m: Municipios, texto: string): Busca {
 }
 
 /** Distância em linha reta (haversine), em km. */
-export function linhaReta(a: Municipio, b: Municipio): number {
+export function linhaReta(a: Pick<Municipio, "lat" | "lon">, b: Pick<Municipio, "lat" | "lon">): number {
   const R = 6371;
   const r = (x: number) => (x * Math.PI) / 180;
   const dla = r(b.lat - a.lat);
@@ -74,13 +74,21 @@ export function linhaReta(a: Municipio, b: Municipio): number {
 const FATOR: Record<string, number> = { PR: 1.25, SP: 1.22, MS: 1.35, MT: 1.3, GO: 1.22, DF: 1.2, MG: 1.17, SC: 1.4, RS: 1.45, RJ: 1.22, ES: 1.22, BA: 1.2 };
 const FATOR_PADRAO = 1.25;
 
-function fatorPara(destino: Municipio): number {
+function fatorPara(destino: Pick<Municipio, "uf" | "lon">): number {
   if (destino.uf === "SC") return destino.lon > -50 ? 1.25 : 1.42; // litoral × oeste
   return FATOR[destino.uf] ?? FATOR_PADRAO;
 }
 
+/** Km por estrada estimado de um ponto a outro (geo.ts do motor): trecho curto (até 50 km de linha reta) usa
+   fator mínimo de 1,35. Serve ao ranking (motorista até o embarque). */
+export function estradaKm(a: Pick<Municipio, "lat" | "lon">, b: Pick<Municipio, "lat" | "lon" | "uf">): number {
+  const lr = linhaReta(a, b);
+  const f = lr < 50 ? Math.max(1.35, fatorPara(b)) : fatorPara(b);
+  return Math.round(lr * f);
+}
+
 /** Pedágio em R$ por eixo/km pela região do destino (calibrado pelos CT-e da Prisa). */
-export function pedagioDaRegiao(destino: Municipio): { valor: number; regiao: string } {
+export function pedagioDaRegiao(destino: Pick<Municipio, "uf" | "lon">): { valor: number; regiao: string } {
   if (destino.uf === "SP") return destino.lon > -49.5 ? { valor: 0.17, regiao: "interior leste de SP" } : { valor: 0.06, regiao: "oeste de SP" };
   const t: Record<string, [number, string]> = {
     PR: [0.15, "PR"],

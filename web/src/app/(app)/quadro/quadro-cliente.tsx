@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
-import { RotateCw, Route } from "lucide-react";
+import Link from "next/link";
+import { RotateCw, Route, UserCheck } from "lucide-react";
 import { AnimatePresence } from "motion/react";
 import { Abas } from "@/components/Abas";
 import { EstadoVazio } from "@/components/EstadoVazio";
@@ -480,6 +481,10 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
             </span>
           </div>
         <div className="acoes quadro-conexao">
+          <Link className="btn" href="/disponiveis">
+            <UserCheck size={16} strokeWidth={1.6} aria-hidden="true" />
+            Motoristas livres
+          </Link>
           {ehAdmin && <TemposLimite limites={dados.limites} aoSalvar={recarregar} />}
           <p role="status">
             <Sinal tipo={SINAL_CONEXAO[conexao.tipo]} texto={textoConexao(conexao)} />
