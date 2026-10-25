@@ -1,0 +1,135 @@
+/* NILT — Calcular frete (/calculadora). Entradas em painéis de vidro à esquerda; à direita, fixa, a decisão
+   num cartão sólido na cor da situação (verde pode contratar, mostarda negociar/ajustar, ferrugem não
+   contratar), com a forma no canto (Regra Forma + Cor). Dinheiro tabular e à direita, saída com "−". */
+
+.calc .titulo .sub a { color: inherit; text-decoration: underline; text-decoration-color: rgba(22, 24, 24, 0.3); }
+
+.calc-grade { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 420px); gap: var(--gap); align-items: start; }
+.calc-entradas, .calc-lateral { display: grid; gap: var(--gap); min-width: 0; }
+.calc-lateral { position: sticky; top: 16px; }
+
+/* cabeçalho dos painéis */
+.calc-cab { margin-bottom: 16px; }
+.calc-cab h2 { font-size: var(--fs-section); line-height: 24px; font-weight: 500; }
+.calc-cab p { color: var(--muted); font-size: 13px; line-height: 18px; margin-top: 2px; max-width: 70ch; }
+.calc-cab-linha { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+/* campos com unidade colada à direita */
+.calc-unidade { position: relative; }
+.calc-unidade input { padding-right: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+.calc-unidade span { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--faint); font-size: 13px; pointer-events: none; }
+.calc .campo .com-acao .btn { padding: 0 12px; }
+.calc-link { border: 0; background: none; padding: 0; color: var(--azul-tinta); font: inherit; text-decoration: underline; text-decoration-color: rgba(29, 63, 94, 0.35); cursor: pointer; }
+.calc-ruim { color: var(--vermelho-tinta); }
+
+/* escolhas curtas em pílulas */
+.calc-opcoes { display: flex; flex-wrap: wrap; gap: 4px; }
+.calc-opcoes button {
+  min-width: 36px; height: 38px; padding: 0 12px; border-radius: 999px;
+  border: 1px solid rgba(22, 24, 24, 0.12); background: #fff; color: var(--ink); font-weight: 500; cursor: pointer;
+  font-variant-numeric: tabular-nums; transition: background-color 150ms ease, border-color 150ms ease, transform 160ms var(--ease-out);
+}
+.calc-opcoes button[aria-pressed="true"] { background: var(--noite); border-color: var(--noite); color: #fff; }
+.calc-opcoes button:active { transform: scale(0.96); }
+.calc-opcoes button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* liga/desliga */
+.calc-chave-campo { align-self: end; padding-bottom: 2px; }
+.calc .chave { display: inline-flex; align-items: center; gap: 10px; font-weight: 500; cursor: pointer; min-height: 38px; }
+.calc .chave input {
+  appearance: none; flex: none; width: 36px; height: 20px; margin: 0; border-radius: 999px; background: var(--control);
+  position: relative; cursor: pointer; transition: background-color 150ms ease;
+}
+.calc .chave input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 150ms var(--ease-out); }
+.calc .chave input:checked { background: var(--verde); }
+.calc .chave input:checked::after { transform: translateX(16px); }
+.calc .chave input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* decisão: cartão sólido */
+.calc-decisao { border-radius: var(--radius-painel); padding: 22px 24px; box-shadow: 0 10px 24px -14px rgba(22, 24, 24, 0.45); transition: background-color 450ms ease, color 450ms ease; }
+.calc-contratar { background: var(--verde); color: #fff; }
+.calc-negociar, .calc-ajustar { background: var(--amarelo); color: #2a2208; }
+.calc-nao_contratar { background: var(--vermelho); color: #fff; }
+.calc-incompleto { background: var(--painel); border: 1px solid var(--painel-borda); color: var(--ink); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 18px 40px -26px rgba(60, 40, 20, 0.28); }
+.calc-decisao-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; font-size: 13px; opacity: 0.88; }
+.calc-decisao-topo svg { flex: none; }
+.calc-decisao h2 { font-size: 30px; line-height: 34px; font-weight: 600; letter-spacing: -0.01em; margin: 2px 0 8px; text-wrap: balance; }
+.calc-decisao > p { font-size: 14px; line-height: 20px; opacity: 0.92; }
+.calc-limites { display: grid; gap: 12px; margin: 18px 0 0; padding-top: 16px; border-top: 1px solid color-mix(in srgb, currentColor 22%, transparent); }
+.calc-limites div { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.calc-limites dt { font-size: 13px; opacity: 0.88; }
+.calc-limites dd { margin: 0; text-align: right; font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.calc-limites .principal dd { font-size: 24px; }
+.calc-limites .linha2 { display: block; font-size: 12px; font-weight: 400; opacity: 0.85; }
+
+/* piso */
+.calc-kv dd { text-align: right; font-weight: 500; }
+.calc-kv .linha2, .calc-checklist .linha2, .calc-demonstrativo .linha2, .calc-apoio .linha2 { display: block; font-size: 12px; line-height: 16px; color: var(--muted); font-weight: 400; }
+.calc-aviso { margin-top: 14px; }
+
+/* checklist do CIOT: só a forma do sinal */
+.calc-checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.calc-checklist li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; }
+.calc-forma.sinal { width: 24px; height: 24px; padding: 0; justify-content: center; margin-top: -2px; }
+
+/* resultado do CT-e */
+.calc-demonstrativo { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.calc-demonstrativo th { text-align: left; font-weight: 400; padding: 8px 0; border-top: 1px solid var(--rule); }
+.calc-demonstrativo td { text-align: right; padding: 8px 0 8px 16px; border-top: 1px solid var(--rule); white-space: nowrap; vertical-align: top; }
+.calc-demonstrativo tr:first-child th, .calc-demonstrativo tr:first-child td { border-top: 0; }
+.calc-demonstrativo tr.total th, .calc-demonstrativo tr.total td { font-weight: 600; border-top-color: var(--control); }
+.calc .nota { margin-top: 12px; line-height: 16px; }
+.calc-duplicata { display: grid; gap: 8px; justify-items: start; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--rule); }
+.calc-duplicata .nota { margin-top: 0; }
+
+/* alíquotas (admin e financeiro) */
+.calc-aliquotas summary { cursor: pointer; font-size: var(--fs-section); font-weight: 500; list-style-position: inside; }
+.calc-aliquotas[open] summary { margin-bottom: 4px; }
+.calc-aliquotas .campos { margin: 16px 0 12px; }
+
+/* apoio da viagem */
+.calc-apoio { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 20px 0 0; padding-top: 16px; border-top: 1px solid var(--rule); }
+.calc-apoio dt { color: var(--muted); font-size: 13px; }
+.calc-apoio dd { margin: 2px 0 0; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 1100px) {
+  .calc-grade { grid-template-columns: minmax(0, 1fr); }
+  .calc-lateral { position: static; }
+}
+@media (max-width: 640px) {
+  .calc .titulo { flex-wrap: wrap; }
+  .calc .titulo .acoes { margin-left: 0; width: 100%; }
+  .calc .titulo .acoes .btn { flex: 1; }
+  .calc-apoio { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .calc-decisao { padding: 18px 16px; }
+  .calc-decisao h2 { font-size: 26px; line-height: 30px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .calc-decisao, .calc-opcoes button, .calc .chave input, .calc .chave input::after { transition: none; }
+}
+
+/* frete contratado: situação frente ao mínimo e ao sugerido + atalhos */
+.calc-contratado { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: -4px; }
+.calc-contratado:empty { display: none; }
+.calc-kv .linha2 .sinal { margin-top: 4px; }
+
+/* selos longos (frete contratado) quebram dentro do painel */
+.calc-kv .sinal, .calc-contratado .sinal { height: auto; min-height: 24px; padding-block: 5px; line-height: 14px; white-space: normal; text-align: left; flex: 0 1 auto; }
+
+/* barra da decisão no rodapé (só celular e tablet) */
+.calc-barra { display: none; }
+@media (max-width: 1100px) {
+  .calc-barra {
+    position: fixed; z-index: 30; left: 50%; transform: translateX(-50%);
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px)); width: min(560px, calc(100% - 24px));
+    display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-radius: 999px;
+    box-shadow: 0 28px 60px -18px rgba(22, 24, 24, 0.45); text-decoration: none; font-size: 13px;
+    transition: background-color 450ms ease, color 450ms ease;
+  }
+  .calc-barra svg { flex: none; }
+  .calc-barra b { font-weight: 600; font-size: 14px; white-space: nowrap; }
+  .calc-barra span { margin-left: auto; text-align: right; opacity: 0.9; font-variant-numeric: tabular-nums; min-width: 0; }
+  .calc-barra.calc-incompleto { background: var(--noite); color: #fff; border: 0; }
+  .calc { padding-bottom: 72px; }
+}
+@media (prefers-reduced-motion: reduce) { .calc-barra { transition: none; } }

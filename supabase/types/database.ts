@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      antt_coeficiente: {
+        Row: {
+          cc: number
+          ccd: number
+          eixos: number
+          portaria: string
+          tipo_carga: Database["public"]["Enums"]["tipo_carga_antt"]
+          vigencia_inicio: string
+        }
+        Insert: {
+          cc: number
+          ccd: number
+          eixos: number
+          portaria: string
+          tipo_carga: Database["public"]["Enums"]["tipo_carga_antt"]
+          vigencia_inicio: string
+        }
+        Update: {
+          cc?: number
+          ccd?: number
+          eixos?: number
+          portaria?: string
+          tipo_carga?: Database["public"]["Enums"]["tipo_carga_antt"]
+          vigencia_inicio?: string
+        }
+        Relationships: []
+      }
       arquivo: {
         Row: {
           created_at: string
@@ -2348,6 +2375,7 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["app_papel"]
       }
+      parametros_calculadora: { Args: { p_dia?: string }; Returns: Json }
       piso_antt: {
         Args: {
           p_dia?: string

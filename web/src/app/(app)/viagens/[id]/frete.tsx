@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { Calculator } from "lucide-react";
 import { Sinal } from "@/components/Sinal";
 import { formato } from "@/lib/formato";
 import { porcento, sinalDaFaixa, situacaoDoPiso, type FreteViagem, type ResultadoCte } from "@/lib/frete";
@@ -10,6 +12,8 @@ import { EditarFrete, type FreteEditavel } from "./editar-frete";
    (Regra do Dinheiro sem Cor); a cor fica no sinal da situação (acima/abaixo do piso, faixa). */
 
 type Props = {
+  /** Para o "Abrir na calculadora" (/calculadora?viagem=<id>). */
+  viagemId: string;
   frete: FreteViagem;
   resultado: ResultadoCte | null;
   verResultado: boolean;
@@ -33,12 +37,18 @@ function LinhaPiso({ f }: { f: FreteViagem }) {
   );
 }
 
-export function BlocoFrete({ frete: f, resultado: r, verResultado, editavel }: Props) {
+export function BlocoFrete({ viagemId, frete: f, resultado: r, verResultado, editavel }: Props) {
   const s = situacaoDoPiso(f);
   return (
     <div className="frete-viagem">
       <section className="subsecao">
-        <CabPainel titulo="Frete e piso ANTT">{editavel && <EditarFrete {...editavel} />}</CabPainel>
+        <CabPainel titulo="Frete e piso ANTT">
+          <Link className="btn" href={`/calculadora?viagem=${viagemId}`}>
+            <Calculator size={16} strokeWidth={1.8} aria-hidden="true" />
+            Abrir na calculadora
+          </Link>
+          {editavel && <EditarFrete {...editavel} />}
+        </CabPainel>
         <dl className="kv">
           <dt>Situação</dt>
           <dd>
