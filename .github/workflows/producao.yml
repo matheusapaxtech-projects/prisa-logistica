@@ -1,0 +1,51 @@
+# Publicação em produção a cada push no main (ou à mão, pela aba Actions):
+# 1. banco: aplica no Supabase de produção as migrations que ainda não estão lá;
+# 2. site: publica o web/ na Vercel (projeto nilt), só depois que o banco passou.
+#
+# Segredos do repositório (Settings > Secrets and variables > Actions), nunca no código:
+#   SUPABASE_DB_URL  string de conexão do banco de produção, modo "Session pooler" (IPv4), com a senha
+#   VERCEL_TOKEN     token da Vercel (vercel.com/account/tokens) com acesso ao time grupo-apax
+name: Produção
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: producao
+  cancel-in-progress: false
+
+jobs:
+  banco:
+    name: Migrations no Supabase
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Aplicar migrations pendentes
+        run: supabase db push --db-url "$SUPABASE_DB_URL" --include-all --yes
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+  site:
+    name: Publicar na Vercel
+    needs: banco
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: team_Kwkzqpzq8IPvNxFWTfaeCHgU
+      VERCEL_PROJECT_ID: prj_AOnVQ2U58womzqWye97MUmSp6L9B
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: npm install --global vercel@latest
+      - run: vercel pull --yes --environment=production --token "${{ secrets.VERCEL_TOKEN }}"
+      - run: vercel build --prod --token "${{ secrets.VERCEL_TOKEN }}"
+      - run: vercel deploy --prebuilt --prod --token "${{ secrets.VERCEL_TOKEN }}"
