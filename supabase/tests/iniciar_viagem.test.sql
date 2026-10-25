@@ -187,8 +187,9 @@ begin
                          where a.codigo = 'motorista_em_viagem' and a.mensagem like format('%%#%s%%Trânsito%%', v_num1)),
     'mensagem do motorista também diz número e coluna');
   -- a primeira viagem finaliza: o cavalo fica livre
-  update public.viagem set status_campo = 'frete_finalizado', finalizada_em = now() where id = r.viagem;
-  return next lives_ok(tests.sql_iniciar(v_op, v_v2), 'com a outra viagem finalizada, inicia');
+  -- a primeira viagem descarregou e só espera o saldo de 30%: o cavalo já está livre
+  update public.viagem set status_campo = 'aguardando_saldo' where id = r.viagem;
+  return next lives_ok(tests.sql_iniciar(v_op, v_v2), 'com a outra viagem esperando o saldo, inicia');
 end $$;
 
 create function tests.test_categoria_b_com_carreta() returns setof text language plpgsql as $$

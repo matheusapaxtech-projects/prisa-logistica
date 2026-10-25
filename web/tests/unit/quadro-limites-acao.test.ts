@@ -55,12 +55,14 @@ beforeEach(() => {
 });
 
 describe("salvarLimites", () => {
-  it("cobre as 8 chaves de quadro_limite", () => {
+  it("cobre as 10 chaves de quadro_limite", () => {
     expect(CHAVES_LIMITE.map((c) => c.chave).sort()).toEqual([
       "aguardando_carregamento",
       "aguardando_contagem",
       "aguardando_descarga",
       "aguardando_nf_pagamento",
+      "aguardando_saldo",
+      "descarregando",
       "em_carregamento",
       "pausa_nao_programada",
       "pausa_programada",
@@ -87,7 +89,7 @@ describe("salvarLimites", () => {
   it("grava âmbar e vermelho de cada chave (só minutos_*)", async () => {
     const r = await salvarLimites(null, form({ ambar_aguardando_carregamento: " 90 ", vermelho_aguardando_carregamento: "180" }));
     expect(r.ok).toBe(true);
-    expect(atualizacoes).toHaveLength(8);
+    expect(atualizacoes).toHaveLength(10);
     const a = atualizacoes.find((x) => x.chave === "aguardando_carregamento");
     expect(a?.valores).toEqual({ minutos_ambar: 90, minutos_vermelho: 180 });
     expect(atualizacoes.find((x) => x.chave === "pausa_nao_programada")?.valores).toEqual({ minutos_ambar: 60, minutos_vermelho: 120 });

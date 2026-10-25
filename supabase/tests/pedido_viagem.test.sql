@@ -504,7 +504,7 @@ begin
     array['aberto', 'cancelado'], 'enum situacao_pedido');
   return next is(array(select e.enumlabel::text from pg_enum e where e.enumtypid = 'public.status_campo'::regtype order by e.enumsortorder),
     array['transito', 'aguardando_carregamento', 'em_carregamento', 'aguardando_nf_pagamento', 'em_rota', 'pausa',
-          'aguardando_descarga', 'aguardando_contagem', 'resolucao_divergencia', 'frete_finalizado'],
+          'aguardando_descarga', 'descarregando', 'aguardando_contagem', 'resolucao_divergencia', 'aguardando_saldo', 'frete_finalizado'],
     'enum status_campo na ordem das colunas do quadro');
   return next is(array(select e.enumlabel::text from pg_enum e where e.enumtypid = 'public.resultado_contagem'::regtype order by e.enumsortorder),
     array['sem_divergencia', 'falta', 'sobra', 'avaria'], 'enum resultado_contagem');

@@ -37,6 +37,8 @@ Fonte: `prisa-motor-despacho.zip` (pasta `motor/`), feito por outra pessoa. É u
 
   As contas já existem em `calcular_cte`, mas a viagem ainda não tem esses dados.
 
+**Kanban com as travas do motor** (branch `feat/kanban-travas`, migrations `20261029000200` e `20261029000300`): o Quadro ganhou "Descarregando" e "Aguardando saldo (30%)" e as travas de checklist do veículo, NF-e, CIOT, averbação do seguro, saldo pago e MDF-e/CIOT encerrados. Decisões em `docs/decisoes-autonomas.md`.
+
 ## Comparação com o nosso sistema hoje
 
 ### Kanban: o nosso Quadro já cobre a maior parte

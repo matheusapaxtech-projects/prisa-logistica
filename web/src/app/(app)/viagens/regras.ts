@@ -23,10 +23,18 @@ export const MSG_SO_ADMIN_EXCECAO = "Só o administrador pode liberar com exceç
 
 /** O que a viagem espera agora (destaque da ficha); `null` = nada a fazer fora do Quadro. Não vale
    para viagem cancelada (status nulo também): a ficha não chama nesse caso. */
-export function proximoPasso(v: { status_campo: StatusCampo | null; pagamento_saida: boolean; tem_canhoto: boolean }): string | null {
+export function proximoPasso(v: {
+  status_campo: StatusCampo | null;
+  pagamento_saida: boolean;
+  tem_canhoto: boolean;
+  saldo_pago?: boolean;
+}): string | null {
   if (v.status_campo === null) return "Iniciar trânsito";
-  if (v.status_campo === "aguardando_nf_pagamento") return v.pagamento_saida ? "Informar chaves do CT-e e MDF-e" : "Confirmar pagamento de saída";
-  if (v.status_campo === "aguardando_descarga" && !v.tem_canhoto) return "Enviar canhoto";
+  if (v.status_campo === "aguardando_carregamento") return "Conferir o checklist do veículo";
+  if (v.status_campo === "aguardando_nf_pagamento")
+    return v.pagamento_saida ? "Informar CT-e, MDF-e, NF-e, CIOT e averbação" : "Confirmar pagamento de saída";
+  if ((v.status_campo === "aguardando_descarga" || v.status_campo === "descarregando") && !v.tem_canhoto) return "Enviar canhoto";
+  if (v.status_campo === "aguardando_saldo") return v.saldo_pago ? "Encerrar MDF-e e CIOT e finalizar" : "Confirmar o pagamento do saldo";
   return null;
 }
 

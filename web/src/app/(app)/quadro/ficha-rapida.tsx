@@ -16,8 +16,8 @@ import { sinaisDoCartao } from "./cartao";
    cartão do quadro, véu desfocado atrás, barra das etapas da viagem e as duas saídas: abrir a viagem
    ou mover (o menu de destinos de sempre, com as regras do banco). */
 
-/** As seis etapas da barra; cada coluna do quadro cai numa delas. */
-const ETAPAS = ["Trânsito", "Carregamento", "NF e pagamento", "Em rota", "Descarga", "Finalizado"] as const;
+/** As sete etapas da barra; cada coluna do quadro cai numa delas. */
+const ETAPAS = ["Trânsito", "Carregamento", "NF e pagamento", "Em rota", "Descarga", "Saldo", "Finalizado"] as const;
 const ETAPA_DE: Record<StatusCampo, number> = {
   transito: 0,
   aguardando_carregamento: 1,
@@ -26,9 +26,11 @@ const ETAPA_DE: Record<StatusCampo, number> = {
   em_rota: 3,
   pausa: 3,
   aguardando_descarga: 4,
+  descarregando: 4,
   aguardando_contagem: 4,
   resolucao_divergencia: 4,
-  frete_finalizado: 5,
+  aguardando_saldo: 5,
+  frete_finalizado: 6,
 };
 
 const SITUACAO: Record<Nivel, string> = { normal: "No prazo", ambar: "Perto do tempo-limite", vermelho: "Passou do tempo-limite" };

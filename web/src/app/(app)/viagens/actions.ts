@@ -54,6 +54,16 @@ export async function cancelarViagem(viagemId: string, motivo: string): Promise<
   });
 }
 
+/** Saldo de 30% pago (`confirmar_saldo`, motor de despacho): admin, operação ou financeiro, em "Aguardando saldo". */
+export async function confirmarSaldo(viagemId: string): Promise<ResultadoAcao> {
+  if (!idValido(viagemId)) return { ok: false, erro: NAO_ACHADA };
+  return comSessao(async ({ supabase }) => {
+    const { error } = await tipado(supabase).rpc("confirmar_saldo", { p_viagem: viagemId });
+    if (error) throw error;
+    revalidarViagem(viagemId);
+  });
+}
+
 /** Adiantamento e vale-pedágio resolvidos (`confirmar_pagamento_saida`): admin, operação ou financeiro. */
 export async function confirmarPagamentoSaida(viagemId: string): Promise<ResultadoAcao> {
   if (!idValido(viagemId)) return { ok: false, erro: NAO_ACHADA };

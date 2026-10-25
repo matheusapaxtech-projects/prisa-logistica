@@ -80,7 +80,8 @@ create function tests.chave(p_modelo text) returns text language sql immutable a
 $$;
 
 create function tests.dados_chaves() returns jsonb language sql immutable as $$
-  select jsonb_build_object('chave_cte', tests.chave('57'), 'chave_mdfe', tests.chave('58'));
+  select jsonb_build_object('chave_cte', tests.chave('57'), 'chave_mdfe', tests.chave('58'), 'chave_nfe', tests.chave('55'),
+                            'ciot', '123456789012', 'averbacao', 'AV-0001');
 $$;
 
 -- SQL que chama a RPC como o usuário (para lives_ok/throws_*).
@@ -126,7 +127,8 @@ begin
     exit when v.status_campo = p_alvo;
     case v.status_campo
       when 'transito' then perform tests.mover(p_uid, p_viagem, 'transito', 'aguardando_carregamento');
-      when 'aguardando_carregamento' then perform tests.mover(p_uid, p_viagem, 'aguardando_carregamento', 'em_carregamento');
+      when 'aguardando_carregamento' then
+        perform tests.mover(p_uid, p_viagem, 'aguardando_carregamento', 'em_carregamento', '{"checklist_veiculo": true}');
       when 'em_carregamento' then
         perform tests.mover(p_uid, p_viagem, 'em_carregamento', 'aguardando_nf_pagamento', '{"peso_saida_kg": 37000}');
       when 'aguardando_nf_pagamento' then
@@ -135,9 +137,12 @@ begin
         end if;
         perform tests.mover(p_uid, p_viagem, 'aguardando_nf_pagamento', 'em_rota', tests.dados_chaves());
       when 'em_rota' then perform tests.mover(p_uid, p_viagem, 'em_rota', 'aguardando_descarga');
-      when 'aguardando_descarga' then
+      when 'aguardando_descarga' then perform tests.mover(p_uid, p_viagem, 'aguardando_descarga', 'descarregando');
+      when 'descarregando' then
         perform tests.canhoto(p_viagem);
-        perform tests.mover(p_uid, p_viagem, 'aguardando_descarga', 'aguardando_contagem', '{"peso_chegada_kg": 36950}');
+        perform tests.mover(p_uid, p_viagem, 'descarregando', 'aguardando_contagem', '{"peso_chegada_kg": 36950}');
+      when 'aguardando_contagem' then
+        perform tests.mover(p_uid, p_viagem, 'aguardando_contagem', 'aguardando_saldo', '{"divergencia": "sem_divergencia"}');
       else raise exception 'levar_ate: não sei sair de %', v.status_campo;
     end case;
   end loop;
@@ -192,13 +197,15 @@ begin
   select * into r from tests.cenario();
   perform tests.iniciar(v_op, r.viagem);
   return next lives_ok(tests.sql_mover(v_op, r.viagem, 'transito', 'aguardando_carregamento'), 'Trânsito → Aguardando carregamento');
-  return next lives_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_carregamento', 'em_carregamento'),
-    'Aguardando carregamento → Em carregamento');
+  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_carregamento', 'em_carregamento'),
+    'P0001', 'confira o checklist do veículo (carroceria limpa, lona, CRLV, CNH e tacógrafo)', 'sem checklist do veículo não carrega');
+  return next lives_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_carregamento', 'em_carregamento', '{"checklist_veiculo": true}'),
+    'Aguardando carregamento → Em carregamento (com checklist)');
   return next lives_ok(tests.sql_mover(v_op, r.viagem, 'em_carregamento', 'aguardando_nf_pagamento', '{"peso_saida_kg": 37020.5}'),
     'Em carregamento → Aguardando NF e pagamento (com peso de saída)');
   return next lives_ok(tests.sql_pagar(v_op, r.viagem), 'operação confirma o pagamento de saída');
   return next lives_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_nf_pagamento', 'em_rota',
-      jsonb_build_object('chave_cte', regexp_replace(tests.chave('57'), '([0-9]{4})', '\1 ', 'g'),
+      tests.dados_chaves() || jsonb_build_object('chave_cte', regexp_replace(tests.chave('57'), '([0-9]{4})', '\1 ', 'g'),
                          'chave_mdfe', regexp_replace(tests.chave('58'), '([0-9]{4})', '\1.', 'g'))),
     'Aguardando NF e pagamento → Em rota (chaves com espaços e pontos)');
   return next lives_ok(tests.sql_mover(v_op, r.viagem, 'em_rota', 'pausa', '{"pausa_tipo": "almoco", "pausa_programada": true}'),
@@ -208,15 +215,28 @@ begin
     'pausa aberta: almoço, programada, origem Em rota');
   return next lives_ok(tests.sql_mover(v_op, r.viagem, 'pausa', 'em_rota'), 'Pausa → Em rota');
   return next lives_ok(tests.sql_mover(v_op, r.viagem, 'em_rota', 'aguardando_descarga'), 'Em rota → Aguardando descarga');
+  return next lives_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_descarga', 'descarregando'), 'Aguardando descarga → Descarregando');
   perform tests.canhoto(r.viagem);
-  return next lives_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_descarga', 'aguardando_contagem', '{"peso_chegada_kg": "36990,4"}'),
-    'Aguardando descarga → Aguardando contagem (peso de chegada com vírgula)');
-  return next lives_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_contagem', 'frete_finalizado', '{"divergencia": "sem_divergencia"}'),
-    'Aguardando contagem → Frete finalizado (sem divergência)');
+  return next lives_ok(tests.sql_mover(v_op, r.viagem, 'descarregando', 'aguardando_contagem', '{"peso_chegada_kg": "36990,4"}'),
+    'Descarregando → Aguardando contagem (peso de chegada com vírgula)');
+  return next lives_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_contagem', 'aguardando_saldo', '{"divergencia": "sem_divergencia"}'),
+    'Aguardando contagem → Aguardando saldo (sem divergência)');
+  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_saldo', 'frete_finalizado', '{"mdfe_encerrado": true, "ciot_encerrado": true}'),
+    'P0001', 'falta confirmar o pagamento do saldo de 30%', 'sem o saldo pago não finaliza');
+  return next lives_ok(format('select tests.executar_como(%L, %L)', v_op, format('select public.confirmar_saldo(%L)', r.viagem)),
+    'operação confirma o saldo');
+  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_saldo', 'frete_finalizado', '{"ciot_encerrado": true}'),
+    'P0001', 'encerre o MDF-e antes de finalizar', 'sem o MDF-e encerrado não finaliza');
+  return next lives_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_saldo', 'frete_finalizado', '{"mdfe_encerrado": true, "ciot_encerrado": true}'),
+    'Aguardando saldo → Frete finalizado');
 
   select * into v from public.viagem where id = r.viagem;
   return next is(v.status_campo::text, 'frete_finalizado', 'status_campo = frete_finalizado');
-  return next is(tests.n_eventos(r.viagem), 11::bigint, '11 eventos: início + pagamento + 9 passagens');
+  return next is(tests.n_eventos(r.viagem), 14::bigint, '14 eventos: início + pagamento + saldo + 11 passagens');
+  return next ok(v.chave_nfe = tests.chave('55') and v.ciot = '123456789012' and v.averbacao_seguro = 'AV-0001',
+    'NF-e, CIOT e averbação gravados');
+  return next ok(v.checklist_veiculo_em is not null and v.saldo_pago_por = v_op and v.mdfe_encerrado_em is not null
+                 and v.ciot_encerrado_em is not null, 'checklist, saldo e encerramentos gravados');
   return next is(v.peso_saida_kg, 37020.5, 'peso_saida_kg gravado');
   return next is(v.chave_cte::text, tests.chave('57'), 'chave_cte só com dígitos');
   return next is(v.chave_mdfe::text, tests.chave('58'), 'chave_mdfe só com dígitos');
@@ -233,8 +253,9 @@ begin
                        where viagem_id = r.viagem and de is distinct from para and de is not null order by id),
     array['transito>aguardando_carregamento', 'aguardando_carregamento>em_carregamento',
           'em_carregamento>aguardando_nf_pagamento', 'aguardando_nf_pagamento>em_rota', 'em_rota>pausa', 'pausa>em_rota',
-          'em_rota>aguardando_descarga', 'aguardando_descarga>aguardando_contagem', 'aguardando_contagem>frete_finalizado'],
-    'eventos das 9 passagens, na ordem');
+          'em_rota>aguardando_descarga', 'aguardando_descarga>descarregando', 'descarregando>aguardando_contagem',
+          'aguardando_contagem>aguardando_saldo', 'aguardando_saldo>frete_finalizado'],
+    'eventos das 11 passagens, na ordem');
   return next ok((select dados = '{"peso_saida_kg": 37020.5}'::jsonb and por = v_op from public.viagem_evento
                   where viagem_id = r.viagem and para = 'aguardando_nf_pagamento' and de = 'em_carregamento'),
     'evento guarda p_dados e quem moveu');
@@ -346,17 +367,17 @@ declare
 begin
   select * into r from tests.cenario();
   perform tests.iniciar(v_op, r.viagem);
-  perform tests.levar_ate(v_op, r.viagem, 'aguardando_descarga');
-  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_descarga', 'aguardando_contagem', '{"peso_chegada_kg": 36950}'),
+  perform tests.levar_ate(v_op, r.viagem, 'descarregando');
+  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'descarregando', 'aguardando_contagem', '{"peso_chegada_kg": 36950}'),
     'P0001', 'falta o canhoto', 'sem canhoto: recusa');
   -- outro arquivo da viagem (tipo 14 OUTROS) não é canhoto
   insert into public.arquivo (tipo_arquivo_id, viagem_id, storage_path) values (14, r.viagem, format('viagem/%s/outro.png', r.viagem));
-  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_descarga', 'aguardando_contagem', '{"peso_chegada_kg": 36950}'),
+  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'descarregando', 'aguardando_contagem', '{"peso_chegada_kg": 36950}'),
     'P0001', 'falta o canhoto', 'arquivo OUTROS não conta como canhoto');
   perform tests.canhoto(r.viagem);
-  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_descarga', 'aguardando_contagem'),
+  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'descarregando', 'aguardando_contagem'),
     'P0001', 'informe o peso de chegada', 'com canhoto e sem peso de chegada: recusa');
-  return next lives_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_descarga', 'aguardando_contagem', '{"peso_chegada_kg": 36950}'),
+  return next lives_ok(tests.sql_mover(v_op, r.viagem, 'descarregando', 'aguardando_contagem', '{"peso_chegada_kg": 36950}'),
     'com canhoto e peso: passa');
 end $$;
 
@@ -369,18 +390,18 @@ declare
 begin
   select * into r from tests.cenario();
   perform tests.iniciar(v_op, r.viagem);
-  perform tests.levar_ate(v_op, r.viagem, 'aguardando_descarga');
+  perform tests.levar_ate(v_op, r.viagem, 'descarregando');
   v_path := format('viagem/%s/%s-canhoto.png', r.viagem, gen_random_uuid());
   insert into public.arquivo (tipo_arquivo_id, viagem_id, storage_path) values (15, r.viagem, v_path);
-  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_descarga', 'aguardando_contagem', '{"peso_chegada_kg": 36950}'),
+  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'descarregando', 'aguardando_contagem', '{"peso_chegada_kg": 36950}'),
     'P0001', 'falta o canhoto', 'linha sem objeto não conta: recusa');
   -- objeto de outro bucket com o mesmo nome também não conta
   insert into storage.buckets (id, name) values ('tst-outro', 'tst-outro') on conflict do nothing;
   insert into storage.objects (bucket_id, name) values ('tst-outro', v_path);
-  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_descarga', 'aguardando_contagem', '{"peso_chegada_kg": 36950}'),
+  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'descarregando', 'aguardando_contagem', '{"peso_chegada_kg": 36950}'),
     'P0001', 'falta o canhoto', 'objeto em outro bucket não conta');
   insert into storage.objects (bucket_id, name) values ('documentos', v_path);
-  return next lives_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_descarga', 'aguardando_contagem', '{"peso_chegada_kg": 36950}'),
+  return next lives_ok(tests.sql_mover(v_op, r.viagem, 'descarregando', 'aguardando_contagem', '{"peso_chegada_kg": 36950}'),
     'com o objeto no bucket documentos: passa');
 end $$;
 
@@ -455,12 +476,14 @@ begin
   select * into r from tests.cenario();
   perform tests.iniciar(v_op, r.viagem);
   perform tests.levar_ate(v_op, r.viagem, 'aguardando_contagem');
-  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_contagem', 'frete_finalizado', '{"divergencia": "falta"}'),
-    'P0001', 'com divergência, a viagem vai para "Resolução de divergência na carga"', 'com falta não finaliza direto');
-  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_contagem', 'frete_finalizado'),
-    'P0001', 'informe o resultado da contagem', 'sem resultado da contagem não finaliza');
+  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_contagem', 'aguardando_saldo', '{"divergencia": "falta"}'),
+    'P0001', 'com divergência, a viagem vai para "Resolução de divergência na carga"', 'com falta não vai direto para o saldo');
+  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_contagem', 'aguardando_saldo'),
+    'P0001', 'informe o resultado da contagem', 'sem resultado da contagem não segue');
+  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_contagem', 'frete_finalizado', '{"divergencia": "sem_divergencia"}'),
+    'P0001', 'não é possível passar de "Aguardando contagem de divergência" para "Frete finalizado"', 'não finaliza sem passar pelo saldo');
   return next throws_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_contagem', 'resolucao_divergencia', '{"divergencia": "sem_divergencia"}'),
-    'P0001', 'sem divergência, a viagem vai para "Frete finalizado"', 'sem divergência não vai para resolução');
+    'P0001', 'sem divergência, a viagem vai para "Aguardando saldo (30%)"', 'sem divergência não vai para resolução');
   return next throws_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_contagem', 'resolucao_divergencia', '{"divergencia": "quebra"}'),
     'P0001', 'informe o resultado da contagem', 'resultado desconhecido: recusa');
   return next throws_ok(tests.sql_mover(v_op, r.viagem, 'aguardando_contagem', 'resolucao_divergencia',
@@ -472,13 +495,13 @@ begin
   select * into v from public.viagem where id = r.viagem;
   return next ok(v.divergencia = 'avaria' and v.divergencia_descricao = '3 sacos rasgados' and v.finalizada_em is null,
     'divergência e descrição gravadas; ainda não finalizada');
-  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'resolucao_divergencia', 'frete_finalizado', '{"resolucao": ""}'),
+  return next throws_ok(tests.sql_mover(v_op, r.viagem, 'resolucao_divergencia', 'aguardando_saldo', '{"resolucao": ""}'),
     'P0001', 'descreva a resolução', 'resolução vazia: recusa');
-  return next lives_ok(tests.sql_mover(v_op, r.viagem, 'resolucao_divergencia', 'frete_finalizado',
-      '{"resolucao": " descontado do saldo "}'), 'Resolução → Frete finalizado');
+  return next lives_ok(tests.sql_mover(v_op, r.viagem, 'resolucao_divergencia', 'aguardando_saldo',
+      '{"resolucao": " descontado do saldo "}'), 'Resolução → Aguardando saldo');
   select * into v from public.viagem where id = r.viagem;
-  return next ok(v.status_campo = 'frete_finalizado' and v.resolucao = 'descontado do saldo' and v.finalizada_em is not null
-                 and v.divergencia = 'avaria', 'resolução e finalizada_em gravadas, divergência mantida');
+  return next ok(v.status_campo = 'aguardando_saldo' and v.resolucao = 'descontado do saldo' and v.finalizada_em is null
+                 and v.divergencia = 'avaria', 'resolução gravada, divergência mantida, ainda não finalizada');
 end $$;
 
 create function tests.test_dados_obrigatorios() returns setof text language plpgsql as $$
