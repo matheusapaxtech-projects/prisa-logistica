@@ -101,21 +101,39 @@ type LinhaBancoLista = {
   pedido: PedidoBanco;
 };
 
-/** Todas as viagens, da mais nova para a mais antiga, com a aptidão resumida das planejadas. */
+const PAGINA_BANCO = 1000;
+const MAX_PAGINAS_BANCO = 50;
+
+/** Todas as linhas da consulta, em páginas de 1000 (o limite de linhas por resposta da API). */
+async function todasAsLinhas<T>(pagina: (de: number, ate: number) => PromiseLike<{ data: unknown; error: unknown }>): Promise<T[]> {
+  const linhas: T[] = [];
+  for (let p = 0; p < MAX_PAGINAS_BANCO; p++) {
+    const r = await pagina(p * PAGINA_BANCO, (p + 1) * PAGINA_BANCO - 1);
+    erroDe(r);
+    const dados = (r.data ?? []) as T[];
+    linhas.push(...dados);
+    if (dados.length < PAGINA_BANCO) break;
+  }
+  return linhas;
+}
+
+/** Todas as viagens, da mais nova para a mais antiga, com a aptidão resumida das planejadas. A lista
+   filtra e pagina na tela (filtros.ts), então aqui vem tudo, em páginas de 1000. */
 export async function listarViagens(db: Banco): Promise<LinhaViagem[]> {
-  const [r, apt] = await Promise.all([
-    db
-      .from("viagem")
-      .select(
-        "id, numero, status_campo, status_desde, created_at, finalizada_em, cancelada_em, motorista_id, " +
-          `cavalo:veiculo!viagem_cavalo_id_fkey(placa), ${PEDIDO_RESUMO}`,
-      )
-      .order("numero", { ascending: false }),
+  const [linhas, apt] = await Promise.all([
+    todasAsLinhas<LinhaBancoLista>((de, ate) =>
+      db
+        .from("viagem")
+        .select(
+          "id, numero, status_campo, status_desde, created_at, finalizada_em, cancelada_em, motorista_id, " +
+            `cavalo:veiculo!viagem_cavalo_id_fkey(placa), ${PEDIDO_RESUMO}`,
+        )
+        .order("numero", { ascending: false })
+        .range(de, ate),
+    ),
     db.from("v_viagem_planejada").select("viagem_id, travas, avisos"),
   ]);
-  erroDe(r);
   erroDe(apt);
-  const linhas = (r.data ?? []) as unknown as LinhaBancoLista[];
   const aptidao = new Map((apt.data ?? []).map((a) => [a.viagem_id ?? "", { travas: a.travas ?? 0, avisos: a.avisos ?? 0 }]));
   const nomes = await nomesDeMotorista(
     db,

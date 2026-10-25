@@ -4,7 +4,29 @@
 
 /* ---------- lista ---------- */
 .via .tabela .viagem-cel { display: flex; align-items: center; gap: 8px; }
-.via .filtro-ativo { display: inline-flex; align-items: center; gap: 4px; }
+/* Barra de filtros (barra-filtros.tsx): seletores em pílula; o ligado fica escuro, como os botões
+   de filtro do Quadro. A ordem e o total ficam à direita. */
+.via .filtros-viagens[aria-busy="true"] + .tabela-wrap { opacity: 0.6; transition: opacity 150ms ease; }
+.via .ferramentas { gap: 8px; }
+.via .ferramentas .busca-lista { width: 280px; margin-right: 4px; }
+.via .filtro-pilula select { field-sizing: content; min-width: 96px; max-width: 220px; text-overflow: ellipsis; cursor: pointer; }
+.via .filtro-pilula select.ligado { background: var(--noite); border-color: var(--noite); color: #fff; }
+.via .filtro-pilula select.ligado option { background: #fff; color: var(--ink); }
+.via .filtro-datas { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
+.via .filtro-datas label { display: inline-flex; align-items: center; gap: 6px; }
+.via .filtro-datas input { height: 40px; border: 1px solid rgba(22, 24, 24, 0.14); border-radius: 999px; padding: 0 12px; background: rgba(255, 255, 255, 0.62); font-variant-numeric: tabular-nums; }
+.via .ferramentas .total { margin-left: auto; }
+.via .filtro-pilula.ordem select { background: transparent; border-color: transparent; color: var(--muted); }
+@media (hover: hover) and (pointer: fine) { .via .filtro-pilula.ordem select:hover { background: rgba(255, 255, 255, 0.62); border-color: rgba(22, 24, 24, 0.14); color: var(--ink); } }
+@media (max-width: 640px) {
+  .via .ferramentas .busca-lista { width: 100%; margin-right: 0; }
+  .via .filtro-pilula, .via .filtro-pilula select { flex: 1 1 calc(50% - 4px); max-width: none; width: 100%; }
+  .via .filtro-pilula select { height: 44px; }
+  .via .filtro-datas { width: 100%; }
+  .via .filtro-datas label { flex: 1; }
+  .via .filtro-datas input { flex: 1; min-width: 0; height: 44px; }
+  .via .ferramentas .total { margin-left: 0; flex: 1 1 100%; }
+}
 
 /* ---------- ficha: cabeçalho ---------- */
 .via .sinais .desde { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; align-self: center; }
