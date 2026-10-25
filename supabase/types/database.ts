@@ -704,6 +704,123 @@ export type Database = {
           },
         ]
       }
+      frete_interesse: {
+        Row: {
+          conjunto_id: string
+          created_at: string
+          desistiu_em: string | null
+          id: string
+          km_ate_embarque: number
+          motorista_id: string
+          oferta_id: string
+        }
+        Insert: {
+          conjunto_id: string
+          created_at?: string
+          desistiu_em?: string | null
+          id?: string
+          km_ate_embarque: number
+          motorista_id: string
+          oferta_id: string
+        }
+        Update: {
+          conjunto_id?: string
+          created_at?: string
+          desistiu_em?: string | null
+          id?: string
+          km_ate_embarque?: number
+          motorista_id?: string
+          oferta_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "frete_interesse_conjunto_id_fkey"
+            columns: ["conjunto_id"]
+            isOneToOne: false
+            referencedRelation: "conjunto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "frete_interesse_motorista_id_fkey"
+            columns: ["motorista_id"]
+            isOneToOne: false
+            referencedRelation: "motorista"
+            referencedColumns: ["pessoa_id"]
+          },
+          {
+            foreignKeyName: "frete_interesse_oferta_id_fkey"
+            columns: ["oferta_id"]
+            isOneToOne: false
+            referencedRelation: "frete_oferta"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      frete_oferta: {
+        Row: {
+          carrocerias: Database["public"]["Enums"]["tipo_carroceria"][] | null
+          coleta_latitude: number
+          coleta_longitude: number
+          coleta_uf: Database["public"]["Enums"]["uf"]
+          created_at: string
+          created_by: string | null
+          eixos_minimos: number | null
+          encerrada_em: string | null
+          frete_motorista_por_t: number
+          id: string
+          observacao: string | null
+          pedido_id: string
+          publicada_em: string
+          raio_km: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          carrocerias?: Database["public"]["Enums"]["tipo_carroceria"][] | null
+          coleta_latitude: number
+          coleta_longitude: number
+          coleta_uf: Database["public"]["Enums"]["uf"]
+          created_at?: string
+          created_by?: string | null
+          eixos_minimos?: number | null
+          encerrada_em?: string | null
+          frete_motorista_por_t: number
+          id?: string
+          observacao?: string | null
+          pedido_id: string
+          publicada_em?: string
+          raio_km?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          carrocerias?: Database["public"]["Enums"]["tipo_carroceria"][] | null
+          coleta_latitude?: number
+          coleta_longitude?: number
+          coleta_uf?: Database["public"]["Enums"]["uf"]
+          created_at?: string
+          created_by?: string | null
+          eixos_minimos?: number | null
+          encerrada_em?: string | null
+          frete_motorista_por_t?: number
+          id?: string
+          observacao?: string | null
+          pedido_id?: string
+          publicada_em?: string
+          raio_km?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "frete_oferta_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedido"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operadora_tag: {
         Row: {
           id: number
@@ -731,6 +848,7 @@ export type Database = {
           longitude: number
           motorista_id: string
           observacao: string | null
+          origem: string
           updated_at: string
           updated_by: string | null
         }
@@ -745,6 +863,7 @@ export type Database = {
           longitude: number
           motorista_id: string
           observacao?: string | null
+          origem?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -759,6 +878,7 @@ export type Database = {
           longitude?: number
           motorista_id?: string
           observacao?: string | null
+          origem?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -876,6 +996,7 @@ export type Database = {
         Row: {
           ativo: boolean
           created_at: string
+          motorista_id: string | null
           nome: string
           papel: Database["public"]["Enums"]["app_papel"]
           updated_at: string
@@ -885,6 +1006,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           created_at?: string
+          motorista_id?: string | null
           nome: string
           papel: Database["public"]["Enums"]["app_papel"]
           updated_at?: string
@@ -894,6 +1016,7 @@ export type Database = {
         Update: {
           ativo?: boolean
           created_at?: string
+          motorista_id?: string | null
           nome?: string
           papel?: Database["public"]["Enums"]["app_papel"]
           updated_at?: string
@@ -1641,6 +1764,7 @@ export type Database = {
           tag_operadora_id: number | null
           tara_t: number | null
           tipo_assoalho: Database["public"]["Enums"]["tipo_assoalho"] | null
+          tipo_carroceria: Database["public"]["Enums"]["tipo_carroceria"] | null
           tipo_veiculo_id: number
           uf_emplacamento: Database["public"]["Enums"]["uf"] | null
           ultimo_motorista_id: string | null
@@ -1709,6 +1833,7 @@ export type Database = {
           tag_operadora_id?: number | null
           tara_t?: number | null
           tipo_assoalho?: Database["public"]["Enums"]["tipo_assoalho"] | null
+          tipo_carroceria?: Database["public"]["Enums"]["tipo_carroceria"] | null
           tipo_veiculo_id: number
           uf_emplacamento?: Database["public"]["Enums"]["uf"] | null
           ultimo_motorista_id?: string | null
@@ -1777,6 +1902,7 @@ export type Database = {
           tag_operadora_id?: number | null
           tara_t?: number | null
           tipo_assoalho?: Database["public"]["Enums"]["tipo_assoalho"] | null
+          tipo_carroceria?: Database["public"]["Enums"]["tipo_carroceria"] | null
           tipo_veiculo_id?: number
           uf_emplacamento?: Database["public"]["Enums"]["uf"] | null
           ultimo_motorista_id?: string | null
@@ -2260,6 +2386,19 @@ export type Database = {
           },
         ]
       }
+      v_frete_interesse: {
+        Row: {
+          conjunto_id: string | null
+          created_at: string | null
+          id: string | null
+          km_ate_embarque: number | null
+          motorista_id: string | null
+          motorista_nome: string | null
+          oferta_id: string | null
+          pedido_id: string | null
+        }
+        Relationships: []
+      }
       v_motorista_livre: {
         Row: {
           cidade: string | null
@@ -2430,6 +2569,58 @@ export type Database = {
         }
         Returns: undefined
       }
+      desistir_interesse: { Args: { p_oferta: string }; Returns: undefined }
+      encerrar_checkin: { Args: never; Returns: undefined }
+      fretes_para_mim: {
+        Args: never
+        Returns: {
+          coleta_cidade: string
+          coleta_prevista: string
+          coleta_uf: Database["public"]["Enums"]["uf"]
+          descarga_cidade: string
+          descarga_uf: Database["public"]["Enums"]["uf"]
+          entrega_prevista: string
+          frete_motorista_por_t: number
+          km_ate_embarque: number
+          observacao: string
+          oferta_id: string
+          pedido_numero: number
+          produto: string
+          saldo_t: number
+          tenho_interesse: boolean
+        }[]
+      }
+      km_estrada_estimado: {
+        Args: {
+          p_lat1: number
+          p_lat2: number
+          p_lon1: number
+          p_lon2: number
+          p_uf_destino: Database["public"]["Enums"]["uf"]
+        }
+        Returns: number
+      }
+      meu_cadastro: { Args: never; Returns: Json }
+      meu_motorista: { Args: never; Returns: string }
+      minhas_pendencias: {
+        Args: never
+        Returns: {
+          codigo: string
+          mensagem: string
+          nivel: string
+        }[]
+      }
+      registrar_checkin: {
+        Args: {
+          p_cidade: string
+          p_latitude: number
+          p_livre_ate?: string
+          p_longitude: number
+          p_observacao?: string
+        }
+        Returns: string
+      }
+      registrar_interesse: { Args: { p_oferta: string }; Returns: string }
       eh_admin: { Args: never; Returns: boolean }
       encerrar_conjunto: { Args: { p_conjunto_id: string }; Returns: undefined }
       existe_arquivo_enviado: {
@@ -2567,7 +2758,7 @@ export type Database = {
       validar_conjunto: { Args: { p_conjunto: string }; Returns: undefined }
     }
     Enums: {
-      app_papel: "admin" | "operacao" | "financeiro" | "leitura"
+      app_papel: "admin" | "operacao" | "financeiro" | "leitura" | "motorista"
       categoria_cnh:
         | "provisoria"
         | "a"
@@ -2692,6 +2883,20 @@ export type Database = {
       tipo_pessoa: "pf" | "pj"
       tipo_rastreamento: "telemonitorado" | "rastreador" | "localizador"
       tipo_referencia: "pessoal" | "comercial"
+      tipo_carroceria:
+        | "graneleiro"
+        | "basculante"
+        | "cacamba"
+        | "bau"
+        | "sider"
+        | "grade_baixa"
+        | "prancha"
+        | "tanque"
+        | "frigorifico"
+        | "porta_container"
+        | "boiadeiro"
+        | "cegonha"
+        | "outro"
       tipo_tarifa: "total" | "por_tonelada"
       tipo_telefone: "residencial" | "comercial" | "celular" | "fax" | "radio"
       uf:
@@ -2849,7 +3054,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_papel: ["admin", "operacao", "financeiro", "leitura"],
+      app_papel: ["admin", "operacao", "financeiro", "leitura", "motorista"],
       categoria_cnh: [
         "provisoria",
         "a",
@@ -2986,6 +3191,21 @@ export const Constants = {
       tipo_pessoa: ["pf", "pj"],
       tipo_rastreamento: ["telemonitorado", "rastreador", "localizador"],
       tipo_referencia: ["pessoal", "comercial"],
+      tipo_carroceria: [
+        "graneleiro",
+        "basculante",
+        "cacamba",
+        "bau",
+        "sider",
+        "grade_baixa",
+        "prancha",
+        "tanque",
+        "frigorifico",
+        "porta_container",
+        "boiadeiro",
+        "cegonha",
+        "outro",
+      ],
       tipo_tarifa: ["total", "por_tonelada"],
       tipo_telefone: ["residencial", "comercial", "celular", "fax", "radio"],
       uf: [
