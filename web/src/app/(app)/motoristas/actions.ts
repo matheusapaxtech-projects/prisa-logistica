@@ -177,6 +177,9 @@ const Ficha = z.object({
   "motorista.cnh_observacao": texto(500).default(""),
   "motorista.situacao_gr": z.enum(chaves(ROT.situacao_gr)).default("sem_consulta"),
   "motorista.gr_validade": data.default(""),
+  "motorista.gr_gerenciadora": texto(80).default(""),
+  "motorista.gr_consulta_em": data.default(""),
+  "motorista.gr_protocolo": texto(40).default(""),
   "motorista.qualificado_gmp": z.enum(["sim", "nao"]).default("nao"),
   "motorista.dt_qualificacao_gmp": data.default(""),
 });
@@ -235,6 +238,9 @@ export async function salvarFicha(pessoaId: string, form: FormData): Promise<Res
         cnh_observacao: n(f["motorista.cnh_observacao"]),
         situacao_gr: f["motorista.situacao_gr"],
         gr_validade: n(f["motorista.gr_validade"]),
+        gr_gerenciadora: n(f["motorista.gr_gerenciadora"]),
+        gr_consulta_em: n(f["motorista.gr_consulta_em"]),
+        gr_protocolo: n(f["motorista.gr_protocolo"]),
         qualificado_gmp: f["motorista.qualificado_gmp"] === "sim",
         dt_qualificacao_gmp: n(f["motorista.dt_qualificacao_gmp"]),
       })

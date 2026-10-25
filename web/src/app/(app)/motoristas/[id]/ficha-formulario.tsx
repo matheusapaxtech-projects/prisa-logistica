@@ -316,7 +316,7 @@ export function FichaFormulario({ pessoa: p, motorista: m, aba, podeEditar, grRo
         <MarcoValidade iso={m.situacao_gr === "sem_consulta" ? null : m.gr_validade} titulo="Consulta de risco" fim={grFim} />
         <Secao
           titulo="Consulta na gerenciadora"
-          texto="A consulta é feita no portal da gerenciadora; aqui fica o resultado e até quando vale. A integração automática chega na fase de gerenciadora de risco."
+          texto="A consulta é feita no portal da gerenciadora; aqui fica o resultado e até quando vale. Sem consulta, vencida ou recusada, o motorista não pode ser contratado no Despacho nem sair de viagem."
         >
           <Campo
             classe="f6"
@@ -329,6 +329,17 @@ export function FichaFormulario({ pessoa: p, motorista: m, aba, podeEditar, grRo
             }
           />
           <Campo classe="f6" id={idDe("motorista.gr_validade")} name="motorista.gr_validade" type="date" label="Validade da consulta" defaultValue={m.gr_validade ?? ""} />
+          <Campo
+            classe="f6"
+            id={idDe("motorista.gr_gerenciadora")}
+            name="motorista.gr_gerenciadora"
+            label="Gerenciadora"
+            opcional
+            placeholder="Ex.: Buonny, Opentech"
+            defaultValue={m.gr_gerenciadora ?? ""}
+          />
+          <Campo classe="f3" id={idDe("motorista.gr_consulta_em")} name="motorista.gr_consulta_em" type="date" label="Data da consulta" opcional defaultValue={m.gr_consulta_em ?? ""} />
+          <Campo classe="f3" id={idDe("motorista.gr_protocolo")} name="motorista.gr_protocolo" label="Protocolo" opcional defaultValue={m.gr_protocolo ?? ""} />
         </Secao>
         <Secao titulo="Qualificação GMP" texto="Motorista qualificado no programa de boas práticas do cliente (GMP), com a data da qualificação.">
           <OpcoesRadio nome="motorista.qualificado_gmp" mapa={{ sim: "Qualificado", nao: "Não qualificado" }} atual={m.qualificado_gmp ? "sim" : "nao"} rotulo="Qualificado GMP" />

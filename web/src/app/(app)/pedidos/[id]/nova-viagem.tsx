@@ -53,8 +53,9 @@ export function NovaViagem(props: Props) {
   );
 }
 
-/** Sugestão do despacho (ranking ou composição do lote): o conjunto já marcado e o peso dele. */
-export type InicialViagem = { conjuntoId: string; pesoKg: number };
+/** Sugestão do despacho (ranking ou composição do lote): o conjunto já marcado, o peso e, quando o despacho
+   calculou, o frete do motorista (total), o km e o pedágio. */
+export type InicialViagem = { conjuntoId: string; pesoKg: number; freteMotorista?: number; km?: number; pedagio?: number };
 
 export function DialogoViagem({
   pedidoId,
@@ -106,6 +107,11 @@ export function DialogoViagem({
 
   useEffect(() => {
     // Veio do despacho: o pedágio da rota salva já sai pelos eixos do conjunto sugerido (o peso vem pronto).
+    if (sugestao?.pedagio && pedagio.current) {
+      pedagioSugerido.current = formato.numeroCampo(Math.round(sugestao.pedagio * 100) / 100, 2);
+      pedagio.current.value = pedagioSugerido.current;
+      return;
+    }
     const c = sugestao && conjuntos.find((x) => x.id === sugestao.conjuntoId);
     const pe = rotaSalva?.pedagioEixoKm;
     if (c && pe && c.eixos && pedagio.current && pedagio.current.value === "") {
@@ -232,6 +238,7 @@ export function DialogoViagem({
                 inputMode="decimal"
                 autoComplete="off"
                 placeholder="0,00"
+                defaultValue={sugestao?.freteMotorista ? formato.numeroCampo(sugestao.freteMotorista, 2) : undefined}
                 aria-describedby={descr("frete_motorista_valor", false)}
                 aria-invalid={campos.frete_motorista_valor ? true : undefined}
               />
@@ -244,7 +251,7 @@ export function DialogoViagem({
           label="O valor é"
           erro={campos.frete_motorista_tipo}
           controle={
-            <select id="frete_motorista_tipo" name="frete_motorista_tipo" defaultValue="por_tonelada">
+            <select id="frete_motorista_tipo" name="frete_motorista_tipo" defaultValue={sugestao?.freteMotorista ? "total" : "por_tonelada"}>
               <Opcoes mapa={TIPOS_TARIFA} />
             </select>
           }
@@ -265,7 +272,7 @@ export function DialogoViagem({
               <input
                 id="km_viagem"
                 name="km_viagem"
-                defaultValue={rotaSalva ? String(rotaSalva.km) : undefined}
+                defaultValue={sugestao?.km ? String(Math.round(sugestao.km)) : rotaSalva ? String(rotaSalva.km) : undefined}
                 className="num"
                 inputMode="numeric"
                 autoComplete="off"

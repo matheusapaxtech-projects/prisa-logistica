@@ -44,13 +44,13 @@ begin
 
   insert into public.pessoa (tipo, nome, cpf, situacao_cadastro)
   values ('pf', 'Motorista Teste', '11144477735', 'normal') returning id into motorista;
-  insert into public.motorista (pessoa_id, cnh_categoria, cnh_validade, situacao_cadastro)
-  values (motorista, 'e', tests.hoje() + 365, 'normal');
+  insert into public.motorista (pessoa_id, cnh_categoria, cnh_validade, situacao_cadastro, situacao_gr, gr_validade)
+  values (motorista, 'e', tests.hoje() + 365, 'normal', 'habilitado', tests.hoje() + 180);
 
   cavalo := tests.novo_veiculo(7, cliente);
   carreta := tests.novo_veiculo(11, cliente);
-  insert into public.conjunto (cavalo_id, motorista_id, inicio)
-  values (cavalo, motorista, now() - interval '1 day') returning id into conjunto;
+  insert into public.conjunto (cavalo_id, motorista_id, inicio, aprovado_em)
+  values (cavalo, motorista, now() - interval '1 day', now()) returning id into conjunto;
   insert into public.conjunto_item (conjunto_id, posicao, veiculo_id) values (conjunto, 1, carreta);
 
   insert into public.pedido (tomador_id, remetente_id, destinatario_id, local_coleta_id, local_descarga_id,

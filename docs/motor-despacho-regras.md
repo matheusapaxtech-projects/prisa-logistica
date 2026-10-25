@@ -79,3 +79,47 @@ Fonte: `prisa-motor-despacho.zip` (pasta `motor/`), feito por outra pessoa. É u
 - **Pela regra do próprio README, quem grava é o servidor.** A tela pode calcular para mostrar, mas a mudança de etapa, o frete e o pagamento devem ser validados no banco (RPC), como já fazemos em `mover_viagem`.
 - **Valores a confirmar** com o contador e com a operação: alíquotas do Lucro Presumido, valor atual da estadia, taxas reais da apólice, percentual de repasse da estadia e os pesos do ranking.
 - **Privacidade:** margem, frete por tonelada e resultado do CT-e nunca aparecem no app do motorista.
+
+## Despacho do sistema do sócio (2026-10-25)
+
+Copiado de prisa-sistema.vercel.app/despacho (branch `feat/despacho-fila`, migrations `20261030000100` e `20261030000200`).
+A tela nova é **Despacho** (pílula no topo), com duas abas.
+
+**Fila de fretes** (`/despacho`): os pedidos abertos com peso sem caminhão, com a barra "X de Y t programadas".
+O pedido escolhido mostra o mesmo painel da ficha do pedido:
+
+- **Simulação:** peso do lote, frete da empresa (R$/t), tipo de carga e frete do motorista acima do piso (padrão 5%).
+  O ranking e o lote recalculam na tela (`comporLote` ganhou `acimaDoPiso`).
+- **Lote sugerido:** o mais barato, só com motoristas aptos. Por caminhão: frete, piso e, para admin e financeiro,
+  resultado do CT-e e faixa. "Contratar o lote" chama `contratar_lote`, que cria as viagens planejadas (vão para o
+  Quadro) e recusa conjunto com trava ou peso acima do saldo.
+- **Ranking em cartões:** apto ou pendente. A lista de pendências vem de `aptidao_conjuntos`, as mesmas regras que
+  travam o início da viagem. Tem o filtro "só aptos" e o botão do WhatsApp. Motorista com viagem planejada ou em
+  andamento sai do ranking ("Fora da lista").
+
+**Calculadora e negociações** (`/despacho/negociacoes`): é a calculadora de frete, com estes acréscimos:
+
+- frete da fila e motorista do acervo;
+- "Pago nesta rota", com a mediana em R$/km e os botões "usar o piso" e "usar o histórico" (`v_frete_pago_rota`);
+- a lista de negociações.
+
+O resultado do CT-e da proposta é calculado no servidor e fica em `negociacao_resultado`, que só admin e financeiro
+leem. Aceitou com frete e conjunto: vira viagem planejada. Recusou: guarda quanto o motorista pediu e o motivo.
+Com o número do CT-e, o registro fica congelado.
+
+**Regras novas na aptidão** (travam o Despacho e o início da viagem):
+
+| Código | Nível | Quando |
+|---|---|---|
+| `gr_recusado` | trava legal | motorista recusado pela gerenciadora de risco |
+| `gr_sem_consulta` | trava | sem consulta na gerenciadora (digitada à mão na ficha do motorista) |
+| `gr_vencida` | trava | consulta vencida |
+| `conjunto_nao_aprovado` | trava | conjunto ainda não aprovado pela Prisa |
+| `gr_vencendo` | aviso | consulta vence em até 7 dias |
+
+Toda edição de conjunto cria um registro novo, que nasce pendente. Os conjuntos que já existiam foram aprovados na
+migration.
+
+**Fica de fora:** check-in e cadastro do motorista pelo app (precisam do app do motorista).
+
+Para ver localmente: `supabase/seed/dev_despacho_ficticio.sql`, com dois pedidos e oito motoristas fictícios.

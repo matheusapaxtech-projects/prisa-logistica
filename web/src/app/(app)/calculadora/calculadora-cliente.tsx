@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { Plus, RotateCcw, Save } from "lucide-react";
 import { Sinal } from "@/components/Sinal";
@@ -37,6 +37,9 @@ import type { DaViagem } from "./consultas";
 import { RotasSalvas } from "./rotas-salvas";
 import { avaliar, LOTE_VAZIO, LoteLateral, LotePaineis, resumoLote, type LoteTela } from "./lote-cliente";
 import { CabSecao, campo, CampoCidade, CampoNumero, Escolha, FORMA, num } from "./partes";
+import type { DadosNegociacao } from "../despacho/actions";
+import type { FreteDaFila, MotoristaDoAcervo } from "../despacho/negociacoes/consultas";
+import { EscolhaFreteMotorista, PagoNestaRota, SalvarNegociacao, type DadosNegociacaoTela } from "../despacho/negociacoes/partes";
 
 /* Tela da calculadora: entradas à esquerda; à direita, fixa, a decisão de contratação com os limites em
    reais, o piso, o checklist do CIOT e (admin e financeiro) o resultado do CT-e e as alíquotas. Tudo
@@ -55,6 +58,12 @@ type Props = {
   /** Admin e operação salvam rotas; só o admin apaga. */
   podeSalvar: boolean;
   podeApagar: boolean;
+  /** Aba "Calculadora e negociações" do Despacho: frete da fila, motorista do acervo, pago na rota e salvar. */
+  negociacao?: DadosNegociacaoTela;
+  /** Troca o título e a descrição do topo (a aba do Despacho usa o cabeçalho dela). */
+  cabecalho?: ReactNode;
+  /** Logo abaixo do topo (as abas do Despacho). */
+  antes?: ReactNode;
 };
 
 type Modo = "por_tonelada" | "total";
@@ -147,13 +156,15 @@ const CAMPOS_FISCAIS: CampoFiscal[] = [
 const textoFiscal = (p: ParamFiscais) =>
   Object.fromEntries(CAMPOS_FISCAIS.map((c) => [c.chave, campo(c.pct ? p[c.chave] * 100 : p[c.chave], c.casas)])) as Record<keyof ParamFiscais, string>;
 
-export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga, verTudo, viagem, rotas, podeSalvar, podeApagar }: Props) {
+export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga, verTudo, viagem, rotas, podeSalvar, podeApagar, negociacao, cabecalho, antes }: Props) {
   const [e, setE] = useState<Estado>(() => inicial(viagem));
   const [fiscalTxt, setFiscalTxt] = useState(() => textoFiscal(fiscal));
   const [mun, setMun] = useState<Municipios | null>(null);
   const [modoCalc, setModoCalc] = useState<"unica" | "lote">("unica");
   const [lote, setLote] = useState<LoteTela>(LOTE_VAZIO);
   const muda = <K extends keyof Estado>(k: K, v: Estado[K]) => setE((s) => ({ ...s, [k]: v }));
+  // Negociação: o frete da fila e o conjunto (motorista) escolhidos.
+  const [neg, setNeg] = useState<{ frete: FreteDaFila | null; motorista: MotoristaDoAcervo | null }>({ frete: null, motorista: null });
 
   // 5.570 municípios: carregados depois que a tela abre, num pedaço separado do pacote.
   useEffect(() => {
@@ -247,6 +258,77 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  /* ---------- negociação (aba do Despacho) ---------- */
+  /** Peso do caminhão: o que falta do pedido, limitado à capacidade do conjunto. */
+  const pesoDoCaminhao = (f: FreteDaFila | null, m: MotoristaDoAcervo | null) =>
+    f ? (m?.capacidadeT ? Math.min(f.saldoT, m.capacidadeT) : f.saldoT) : (m?.capacidadeT ?? null);
+
+  function escolherFrete(f: FreteDaFila | null) {
+    setNeg((n) => ({ ...n, frete: f }));
+    if (!f) return;
+    const pesoT = pesoDoCaminhao(f, neg.motorista);
+    setE((s) => ({
+      ...s,
+      origem: f.origem,
+      destino: f.destino,
+      vias: [],
+      km: null,
+      pedagio: null,
+      tipo: f.tipo,
+      modo: "por_tonelada",
+      freteCliente: f.freteClienteT ? campo(f.freteClienteT) : s.freteCliente,
+      ...(pesoT ? { peso: campo(pesoT, 3), capacidade: campo(neg.motorista?.capacidadeT ?? pesoT, 3) } : {}),
+    }));
+  }
+
+  function escolherMotorista(m: MotoristaDoAcervo | null) {
+    setNeg((n) => ({ ...n, motorista: m }));
+    if (!m) return;
+    const pesoT = pesoDoCaminhao(neg.frete, m);
+    setE((s) => ({
+      ...s,
+      ...(m.eixos ? { eixos: m.eixos } : {}),
+      pf: m.pf,
+      pedagio: null,
+      ...(pesoT ? { peso: campo(pesoT, 3) } : {}),
+      ...(m.capacidadeT ? { capacidade: campo(m.capacidadeT, 3) } : {}),
+    }));
+  }
+
+  const origemNome = buscas?.origem.municipio?.nome ?? e.origem.trim();
+  const destinoNome = buscas?.destino.municipio?.nome ?? e.destino.trim();
+  const faltaNeg = !podeSalvar
+    ? "Só administrador e operação salvam negociação."
+    : !neg.motorista
+      ? "Escolha o motorista do acervo para salvar."
+      : !(km > 0)
+        ? "Informe o km do trecho."
+        : !(peso > 0)
+          ? "Informe o peso."
+          : !(freteMotorista > 0)
+            ? "Informe o frete do motorista."
+            : null;
+  const dadosNeg: DadosNegociacao | null =
+    negociacao && neg.motorista && !faltaNeg
+      ? {
+          motoristaId: neg.motorista.motoristaId,
+          conjuntoId: neg.motorista.conjuntoId,
+          pedidoId: neg.frete?.id ?? null,
+          origem: origemNome,
+          destino: destinoNome,
+          km,
+          eixos: e.eixos,
+          pedagio,
+          tipoCarga: e.tipo,
+          pesoKg: Math.round(peso * 1000),
+          valorMercadoriaT: num(e.valorMercadoria) > 0 ? num(e.valorMercadoria) / peso : null,
+          freteClienteT: freteCliente > 0 ? freteCliente / peso : null,
+          piso,
+          freteMotorista,
+          motoristaPF: e.pf,
+        }
+      : null;
+
   /* ---------- rotas salvas ---------- */
   const [salvando, iniciarSalvar] = useTransition();
   // Rota salva em uso e nada digitado por cima: não há o que gravar.
@@ -335,6 +417,7 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
   return (
     <>
       <div className="titulo">
+        {cabecalho ?? (
         <div>
           <h1>Calcular frete</h1>
           <p className="sub">
@@ -347,6 +430,7 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
             )}
           </p>
         </div>
+        )}
         <div className="acoes">
           <button type="button" className="btn" onClick={limpar}>
             Limpar
@@ -357,6 +441,7 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
         </div>
       </div>
       {datalist}
+      {antes}
       <div className="calc-modo segmentado" role="group" aria-label="Modo da calculadora">
         {(
           [
@@ -372,6 +457,15 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
 
       <div className="calc-grade">
         <div className="calc-entradas">
+          {negociacao && modoCalc === "unica" && (
+            <EscolhaFreteMotorista
+              dados={negociacao}
+              freteId={neg.frete?.id ?? ""}
+              conjuntoId={neg.motorista?.conjuntoId ?? ""}
+              aoFrete={escolherFrete}
+              aoMotorista={escolherMotorista}
+            />
+          )}
           <section className="painel" aria-labelledby="calc-rota">
             <CabSecao id="calc-rota" titulo="Rota">
               O km sai da rota já medida pela Prisa ou da distância entre as cidades. Se você mediu no Qualp, digite por cima.
@@ -662,6 +756,20 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
             <>
               <BarraDecisao d={decisao} />
               <CartaoDecisao d={decisao} porTonelada={e.modo === "por_tonelada" ? peso : 0} margem={verTudo && freteCliente && freteMotorista ? resultado : null} />
+              {negociacao && (
+                <>
+                  <SalvarNegociacao dados={dadosNeg} falta={faltaNeg} />
+                  <PagoNestaRota
+                    pagos={negociacao.pagos}
+                    origem={origemNome}
+                    destino={destinoNome}
+                    eixos={e.eixos}
+                    km={km}
+                    piso={piso}
+                    aoUsar={(v) => muda("freteMotorista", campo(v))}
+                  />
+                </>
+              )}
 
               <section className="painel" aria-labelledby="calc-piso">
                 <CabSecao id="calc-piso" titulo="Piso ANTT">
