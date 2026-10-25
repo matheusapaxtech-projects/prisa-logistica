@@ -871,7 +871,7 @@ dialog.dialogo[open]::backdrop { animation: veu 220ms ease-out; }
 .fr-sub { margin-top: 4px; font-size: 15px; opacity: 0.8; }
 .fr-tempo { font-size: 46px; line-height: 1; font-weight: 600; letter-spacing: -0.02em; margin-top: 20px; }
 .fr-situacao { margin-top: 6px; font-size: 13.5px; opacity: 0.8; }
-.fr-etapas { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin: 18px 0 0; padding: 0; list-style: none; }
+.fr-etapas { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin: 18px 0 0; padding: 0; list-style: none; }
 .fr-trilho { display: block; height: 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.22); overflow: hidden; }
 .nivel-ambar .fr-trilho { background: rgba(22, 24, 24, 0.12); }
 .fr-trilho i { display: block; height: 100%; border-radius: 6px; background: currentColor; transform-origin: left; }

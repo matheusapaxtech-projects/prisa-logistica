@@ -57,22 +57,24 @@ function cartao(extra: Partial<Cartao> = {}): Cartao {
     tem_canhoto: false,
     divergencia: null,
     ocorrencias_abertas: 0,
+    saldo_pago: false,
+    tem_documentos_saida: false,
     ...extra,
   };
 }
 
 describe("colunas", () => {
-  it("tem as 10 colunas, na ordem, com os rótulos do usuário", () => {
+  it("tem as 12 colunas, na ordem, com os rótulos do usuário", () => {
     expect(COLUNAS.map((c) => c.rotulo)).toEqual([
       "Trânsito", "Aguardando carregamento", "Em carregamento", "Aguardando NF e pagamento", "Em rota",
-      "Pausa", "Aguardando descarga", "Aguardando contagem de divergência",
-      "Resolução de divergência na carga", "Frete finalizado",
+      "Pausa", "Aguardando descarga", "Descarregando", "Aguardando contagem de divergência",
+      "Resolução de divergência na carga", "Aguardando saldo (30%)", "Frete finalizado",
     ]);
   });
 
-  it("marca como estreitáveis só as quatro colunas de espera", () => {
+  it("marca como estreitáveis só as cinco colunas de espera", () => {
     expect(COLUNAS.filter((c) => c.espera).map((c) => c.status)).toEqual([
-      "aguardando_carregamento", "aguardando_nf_pagamento", "aguardando_descarga", "aguardando_contagem",
+      "aguardando_carregamento", "aguardando_nf_pagamento", "aguardando_descarga", "aguardando_contagem", "aguardando_saldo",
     ]);
   });
 
@@ -89,9 +91,11 @@ describe("passagens", () => {
     expect(destinosPermitidos("em_carregamento")).toEqual(["aguardando_nf_pagamento"]);
     expect(destinosPermitidos("aguardando_nf_pagamento")).toEqual(["em_rota"]);
     expect(destinosPermitidos("em_rota")).toEqual(["pausa", "aguardando_descarga"]);
-    expect(destinosPermitidos("aguardando_descarga")).toEqual(["aguardando_contagem"]);
-    expect(destinosPermitidos("aguardando_contagem")).toEqual(["resolucao_divergencia", "frete_finalizado"]);
-    expect(destinosPermitidos("resolucao_divergencia")).toEqual(["frete_finalizado"]);
+    expect(destinosPermitidos("aguardando_descarga")).toEqual(["descarregando"]);
+    expect(destinosPermitidos("descarregando")).toEqual(["aguardando_contagem"]);
+    expect(destinosPermitidos("aguardando_contagem")).toEqual(["resolucao_divergencia", "aguardando_saldo"]);
+    expect(destinosPermitidos("resolucao_divergencia")).toEqual(["aguardando_saldo"]);
+    expect(destinosPermitidos("aguardando_saldo")).toEqual(["frete_finalizado"]);
     expect(destinosPermitidos("frete_finalizado")).toEqual([]);
   });
 
@@ -101,7 +105,9 @@ describe("passagens", () => {
     expect(destinosPermitidos("pausa")).toEqual([]);
   });
 
-  it("colunaAnterior só existe para as três voltas permitidas", () => {
+  it("colunaAnterior só existe para as voltas permitidas", () => {
+    expect(colunaAnterior("descarregando")).toBe("aguardando_descarga");
+    expect(colunaAnterior("aguardando_saldo")).toBeNull();
     expect(colunaAnterior("aguardando_carregamento")).toBe("transito");
     expect(colunaAnterior("em_carregamento")).toBe("aguardando_carregamento");
     expect(colunaAnterior("aguardando_nf_pagamento")).toBe("em_carregamento");
@@ -114,22 +120,25 @@ describe("passagens", () => {
   it("formularioDaPassagem diz que dado a passagem pede", () => {
     expect(formularioDaPassagem("aguardando_nf_pagamento", "em_rota")).toBe("documentos");
     expect(formularioDaPassagem("transito", "aguardando_carregamento")).toBeNull();
-    expect(formularioDaPassagem("aguardando_carregamento", "em_carregamento")).toBeNull();
+    expect(formularioDaPassagem("aguardando_carregamento", "em_carregamento")).toBe("checklist");
     expect(formularioDaPassagem("em_carregamento", "aguardando_nf_pagamento")).toBe("peso_saida");
     expect(formularioDaPassagem("transito", "pausa")).toBe("pausa");
     expect(formularioDaPassagem("em_rota", "pausa")).toBe("pausa");
     expect(formularioDaPassagem("pausa", "em_rota")).toBeNull();
     expect(formularioDaPassagem("em_rota", "aguardando_descarga")).toBeNull();
-    expect(formularioDaPassagem("aguardando_descarga", "aguardando_contagem")).toBe("chegada");
-    expect(formularioDaPassagem("aguardando_contagem", "frete_finalizado")).toBe("contagem");
+    expect(formularioDaPassagem("aguardando_descarga", "descarregando")).toBeNull();
+    expect(formularioDaPassagem("descarregando", "aguardando_contagem")).toBe("chegada");
+    expect(formularioDaPassagem("aguardando_contagem", "aguardando_saldo")).toBe("contagem");
     expect(formularioDaPassagem("aguardando_contagem", "resolucao_divergencia")).toBe("contagem");
-    expect(formularioDaPassagem("resolucao_divergencia", "frete_finalizado")).toBe("resolucao");
+    expect(formularioDaPassagem("resolucao_divergencia", "aguardando_saldo")).toBe("resolucao");
+    expect(formularioDaPassagem("aguardando_saldo", "frete_finalizado")).toBe("encerramento");
   });
 
   it("voltar uma coluna pede o motivo", () => {
     expect(formularioDaPassagem("aguardando_carregamento", "transito")).toBe("motivo");
     expect(formularioDaPassagem("em_carregamento", "aguardando_carregamento")).toBe("motivo");
     expect(formularioDaPassagem("aguardando_nf_pagamento", "em_carregamento")).toBe("motivo");
+    expect(formularioDaPassagem("descarregando", "aguardando_descarga")).toBe("motivo");
   });
 });
 
@@ -216,14 +225,14 @@ describe("filtrarCartoes", () => {
 });
 
 describe("agruparPorColuna", () => {
-  it("devolve as 10 colunas, cada uma com o mais antigo primeiro", () => {
+  it("devolve as 12 colunas, cada uma com o mais antigo primeiro", () => {
     const novo = cartao({ status_campo: "em_rota", status_desde: "2026-10-23T15:00:00Z" });
     const antigo = cartao({ status_campo: "em_rota", status_desde: "2026-10-23T09:00:00Z" });
     const meio = cartao({ status_campo: "em_rota", status_desde: "2026-10-23T12:00:00Z" });
     const outro = cartao({ status_campo: "transito" });
     const planejada = cartao({ status_campo: null });
     const g = agruparPorColuna([novo, antigo, meio, outro, planejada]);
-    expect(Object.keys(g)).toHaveLength(10);
+    expect(Object.keys(g)).toHaveLength(12);
     expect(g.em_rota).toEqual([antigo, meio, novo]);
     expect(g.transito).toEqual([outro]);
     expect(g.pausa).toEqual([]);

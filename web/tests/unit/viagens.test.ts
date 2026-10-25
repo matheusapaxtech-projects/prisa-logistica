@@ -90,8 +90,16 @@ describe("proximoPasso", () => {
   it('Aguardando NF e pagamento sem pagamento → "Confirmar pagamento de saída"', () => {
     expect(proximoPasso(v("aguardando_nf_pagamento"))).toBe("Confirmar pagamento de saída");
   });
-  it('Aguardando NF e pagamento com pagamento → "Informar chaves do CT-e e MDF-e"', () => {
-    expect(proximoPasso(v("aguardando_nf_pagamento", true))).toBe("Informar chaves do CT-e e MDF-e");
+  it('Aguardando NF e pagamento com pagamento → "Informar CT-e, MDF-e, NF-e, CIOT e averbação"', () => {
+    expect(proximoPasso(v("aguardando_nf_pagamento", true))).toBe("Informar CT-e, MDF-e, NF-e, CIOT e averbação");
+  });
+  it("Aguardando carregamento → checklist do veículo; Descarregando sem canhoto → enviar canhoto", () => {
+    expect(proximoPasso(v("aguardando_carregamento"))).toBe("Conferir o checklist do veículo");
+    expect(proximoPasso(v("descarregando", true))).toBe("Enviar canhoto");
+  });
+  it("Aguardando saldo: confirmar o saldo; com o saldo pago, encerrar e finalizar", () => {
+    expect(proximoPasso({ ...v("aguardando_saldo", true, true), saldo_pago: false })).toBe("Confirmar o pagamento do saldo");
+    expect(proximoPasso({ ...v("aguardando_saldo", true, true), saldo_pago: true })).toBe("Encerrar MDF-e e CIOT e finalizar");
   });
   it('Aguardando descarga sem canhoto → "Enviar canhoto"; com canhoto → nada', () => {
     expect(proximoPasso(v("aguardando_descarga"))).toBe("Enviar canhoto");

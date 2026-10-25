@@ -122,7 +122,7 @@ export function ehArquivoDeViagem(evento: { new?: unknown; old?: unknown }): boo
 
 /* ---------- tempos-limite (diálogo do admin) ---------- */
 
-/** As 8 linhas de `quadro_limite`, na ordem das colunas; a Pausa tem uma linha por tipo. */
+/** As 10 linhas de `quadro_limite`, na ordem das colunas; a Pausa tem uma linha por tipo. */
 export const CHAVES_LIMITE: readonly { chave: string; rotulo: string }[] = [
   { chave: "aguardando_carregamento", rotulo: rotuloDe("aguardando_carregamento") },
   { chave: "em_carregamento", rotulo: rotuloDe("em_carregamento") },
@@ -130,8 +130,10 @@ export const CHAVES_LIMITE: readonly { chave: string; rotulo: string }[] = [
   { chave: "pausa_programada", rotulo: "Pausa programada" },
   { chave: "pausa_nao_programada", rotulo: "Pausa não programada" },
   { chave: "aguardando_descarga", rotulo: rotuloDe("aguardando_descarga") },
+  { chave: "descarregando", rotulo: rotuloDe("descarregando") },
   { chave: "aguardando_contagem", rotulo: rotuloDe("aguardando_contagem") },
   { chave: "resolucao_divergencia", rotulo: rotuloDe("resolucao_divergencia") },
+  { chave: "aguardando_saldo", rotulo: rotuloDe("aguardando_saldo") },
 ];
 
 export const MSG_VERMELHO_MAIOR = "O vermelho precisa ser maior que o âmbar.";

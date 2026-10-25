@@ -23,10 +23,18 @@ export const MSG_SO_ADMIN_EXCECAO = "Só o administrador pode liberar com exceç
 
 /** O que a viagem espera agora (destaque da ficha); `null` = nada a fazer fora do Quadro. Não vale
    para viagem cancelada (status nulo também): a ficha não chama nesse caso. */
-export function proximoPasso(v: { status_campo: StatusCampo | null; pagamento_saida: boolean; tem_canhoto: boolean }): string | null {
+export function proximoPasso(v: {
+  status_campo: StatusCampo | null;
+  pagamento_saida: boolean;
+  tem_canhoto: boolean;
+  saldo_pago?: boolean;
+}): string | null {
   if (v.status_campo === null) return "Iniciar trânsito";
-  if (v.status_campo === "aguardando_nf_pagamento") return v.pagamento_saida ? "Informar chaves do CT-e e MDF-e" : "Confirmar pagamento de saída";
-  if (v.status_campo === "aguardando_descarga" && !v.tem_canhoto) return "Enviar canhoto";
+  if (v.status_campo === "aguardando_carregamento") return "Conferir o checklist do veículo";
+  if (v.status_campo === "aguardando_nf_pagamento")
+    return v.pagamento_saida ? "Informar CT-e, MDF-e, NF-e, CIOT e averbação" : "Confirmar pagamento de saída";
+  if ((v.status_campo === "aguardando_descarga" || v.status_campo === "descarregando") && !v.tem_canhoto) return "Enviar canhoto";
+  if (v.status_campo === "aguardando_saldo") return v.saldo_pago ? "Encerrar MDF-e e CIOT e finalizar" : "Confirmar o pagamento do saldo";
   return null;
 }
 
@@ -181,6 +189,7 @@ export function descreverEvento(e: EventoBanco): { titulo: string; detalhes: str
   const detalhes: string[] = [];
 
   if (d.tipo === "pagamento_saida") return { titulo: "Adiantamento e vale-pedágio confirmados", detalhes };
+  if (d.tipo === "saldo_pago") return { titulo: "Saldo de 30% confirmado", detalhes };
 
   if (e.de === null && e.para !== null) {
     const travas = lerAptidao(d.aptidao).filter((a) => a.nivel === "trava");
@@ -199,6 +208,11 @@ export function descreverEvento(e: EventoBanco): { titulo: string; detalhes: str
   if (d.peso_chegada_kg != null) detalhes.push(`Peso de chegada: ${kgDe(d.peso_chegada_kg)}`);
   if (typeof d.chave_cte === "string") detalhes.push(`CT-e: ${d.chave_cte.replace(/\D/g, "")}`);
   if (typeof d.chave_mdfe === "string") detalhes.push(`MDF-e: ${d.chave_mdfe.replace(/\D/g, "")}`);
+  if (typeof d.chave_nfe === "string") detalhes.push(`NF-e: ${d.chave_nfe.replace(/\D/g, "")}`);
+  if (typeof d.ciot === "string") detalhes.push(`CIOT: ${d.ciot.replace(/\D/g, "")}`);
+  if (typeof d.averbacao === "string" && d.averbacao.trim()) detalhes.push(`Averbação: ${d.averbacao.trim()}`);
+  if (d.checklist_veiculo === true) detalhes.push("Checklist do veículo conferido");
+  if (d.mdfe_encerrado === true && d.ciot_encerrado === true) detalhes.push("MDF-e e CIOT encerrados");
   if (typeof d.pausa_tipo === "string") {
     const tipo = TIPOS_PAUSA[d.pausa_tipo as TipoPausa] ?? d.pausa_tipo;
     detalhes.push(d.pausa_programada === true ? `${tipo}, programada` : d.pausa_programada === false ? `${tipo}, não programada` : tipo);

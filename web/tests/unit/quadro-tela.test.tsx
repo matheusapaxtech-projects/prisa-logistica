@@ -89,6 +89,8 @@ function cartao(extra: Partial<Cartao> = {}): Cartao {
     tem_canhoto: false,
     divergencia: null,
     ocorrencias_abertas: 0,
+    saldo_pago: false,
+    tem_documentos_saida: false,
     ...extra,
   };
 }
@@ -141,13 +143,15 @@ const ROTULOS = [
   "Em rota",
   "Pausa",
   "Aguardando descarga",
+  "Descarregando",
   "Aguardando contagem de divergência",
   "Resolução de divergência na carga",
+  "Aguardando saldo (30%)",
   "Frete finalizado",
 ];
 
 describe("Quadro da operação: tela", () => {
-  it("renderiza as 10 colunas com os rótulos exatos, na ordem, e o contador de cada uma", () => {
+  it("renderiza as 12 colunas com os rótulos exatos, na ordem, e o contador de cada uma", () => {
     montar([cartao({ status_campo: "em_rota" }), cartao({ status_campo: "em_rota" }), cartao({ status_campo: "transito" })]);
     const colunas = screen.getAllByRole("region");
     expect(colunas.map((c) => within(c).getByRole("heading", { level: 2 }).textContent)).toEqual(ROTULOS);
@@ -295,7 +299,7 @@ describe("Quadro da operação: tela", () => {
       ordem.push("mover");
       return { ok: true, dados: undefined };
     });
-    montar([cartao({ numero: 85, status_campo: "aguardando_descarga" })]);
+    montar([cartao({ numero: 85, status_campo: "descarregando" })]);
     fireEvent.click(screen.getByRole("button", { name: "Mover a viagem #85" }));
     fireEvent.click(screen.getByRole("button", { name: "Aguardando contagem de divergência" }));
     const dlg = screen.getByRole("dialog", { name: /Chegada/ });
@@ -309,11 +313,51 @@ describe("Quadro da operação: tela", () => {
     expect(moverViagem.mock.calls[0][3]).toEqual({ peso_chegada_kg: 36950 });
   });
 
+  it("checklist do veículo: sem todos os itens não carrega; com eles manda checklist_veiculo", async () => {
+    moverViagem.mockResolvedValue({ ok: true, dados: undefined });
+    montar([cartao({ numero: 90, status_campo: "aguardando_carregamento" })]);
+    fireEvent.click(screen.getByRole("button", { name: "Mover a viagem #90" }));
+    fireEvent.click(screen.getByRole("button", { name: "Em carregamento" }));
+    const dlg = screen.getByRole("dialog", { name: /Checklist do veículo/ });
+    fireEvent.click(within(dlg).getByLabelText("Carroceria limpa e sem avaria"));
+    fireEvent.click(within(dlg).getByRole("button", { name: "Mover" }));
+    expect((await within(dlg).findAllByText("Confira todos os itens do checklist antes de carregar.")).length).toBeGreaterThan(0);
+    expect(moverViagem).not.toHaveBeenCalled();
+    fireEvent.click(within(dlg).getByLabelText("Lona e amarração em ordem"));
+    fireEvent.click(within(dlg).getByLabelText("CRLV, CNH e tacógrafo conferidos (fotos)"));
+    fireEvent.click(within(dlg).getByRole("button", { name: "Mover" }));
+    await waitFor(() => expect(moverViagem).toHaveBeenCalledTimes(1));
+    expect(moverViagem.mock.calls[0].slice(1)).toEqual(["aguardando_carregamento", "em_carregamento", { checklist_veiculo: true }]);
+  });
+
+  it("encerramento: sem o saldo pago o botão fica desligado; com ele, MDF-e e CIOT encerrados finalizam", async () => {
+    moverViagem.mockResolvedValue({ ok: true, dados: undefined });
+    const { unmount } = montar([cartao({ numero: 91, status_campo: "aguardando_saldo", saldo_pago: false })]);
+    expect(screen.getByRole("button", { name: "Confirmar pagamento do saldo da viagem #91" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Mover a viagem #91" }));
+    fireEvent.click(screen.getByRole("button", { name: "Frete finalizado" }));
+    let dlg = screen.getByRole("dialog", { name: /Encerramento/ });
+    expect(within(dlg).getByRole("button", { name: "Mover" })).toBeDisabled();
+    unmount();
+
+    montar([cartao({ numero: 92, status_campo: "aguardando_saldo", saldo_pago: true })]);
+    fireEvent.click(screen.getByRole("button", { name: "Mover a viagem #92" }));
+    fireEvent.click(screen.getByRole("button", { name: "Frete finalizado" }));
+    dlg = screen.getByRole("dialog", { name: /Encerramento/ });
+    fireEvent.click(within(dlg).getByLabelText("MDF-e encerrado"));
+    fireEvent.click(within(dlg).getByRole("button", { name: "Mover" }));
+    expect((await within(dlg).findAllByText("Encerre o CIOT antes de finalizar.")).length).toBeGreaterThan(0);
+    fireEvent.click(within(dlg).getByLabelText("CIOT encerrado"));
+    fireEvent.click(within(dlg).getByRole("button", { name: "Mover" }));
+    await waitFor(() => expect(moverViagem).toHaveBeenCalledTimes(1));
+    expect(moverViagem.mock.calls[0].slice(1)).toEqual(["aguardando_saldo", "frete_finalizado", { mdfe_encerrado: true, ciot_encerrado: true }]);
+  });
+
   it("chaves erradas não chegam ao banco: o diálogo diz qual chave", async () => {
     montar([cartao({ numero: 86, status_campo: "aguardando_nf_pagamento", pagamento_saida: true })]);
     fireEvent.click(screen.getByRole("button", { name: "Mover a viagem #86" }));
     fireEvent.click(screen.getByRole("button", { name: "Em rota" }));
-    const dlg = screen.getByRole("dialog", { name: /CT-e e MDF-e/ });
+    const dlg = screen.getByRole("dialog", { name: /Documentos de saída/ });
     fireEvent.change(within(dlg).getByLabelText("Chave do CT-e"), { target: { value: "1234" } });
     fireEvent.change(within(dlg).getByLabelText("Chave do MDF-e"), { target: { value: "5678" } });
     fireEvent.click(within(dlg).getByRole("button", { name: "Mover" }));
@@ -338,8 +382,10 @@ describe("Quadro da operação: tela", () => {
       { chave: "em_carregamento", minutos_ambar: 60, minutos_vermelho: 120 },
       { chave: "aguardando_nf_pagamento", minutos_ambar: 60, minutos_vermelho: 120 },
       { chave: "aguardando_descarga", minutos_ambar: 120, minutos_vermelho: 240 },
+      { chave: "descarregando", minutos_ambar: 120, minutos_vermelho: 180 },
       { chave: "aguardando_contagem", minutos_ambar: 60, minutos_vermelho: 120 },
       { chave: "resolucao_divergencia", minutos_ambar: 240, minutos_vermelho: 480 },
+      { chave: "aguardando_saldo", minutos_ambar: 2880, minutos_vermelho: 4320 },
       { chave: "pausa_programada", minutos_ambar: 480, minutos_vermelho: 720 },
       { chave: "pausa_nao_programada", minutos_ambar: 30, minutos_vermelho: 60 },
     ];
@@ -364,8 +410,10 @@ describe("Quadro da operação: tela", () => {
         "Pausa programada",
         "Pausa não programada",
         "Aguardando descarga",
+        "Descarregando",
         "Aguardando contagem de divergência",
         "Resolução de divergência na carga",
+        "Aguardando saldo (30%)",
       ]);
       expect(within(dlg).getByLabelText("Aguardando carregamento: âmbar")).toHaveValue("120");
       expect(within(dlg).getByLabelText("Pausa não programada: vermelho")).toHaveValue("60");

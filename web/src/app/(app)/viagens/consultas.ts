@@ -194,6 +194,12 @@ export type FichaViagem = {
   pedagioValor: number | null;
   chaveCte: string | null;
   chaveMdfe: string | null;
+  /** Documentos de saída do motor de despacho (migration 20261029000300). */
+  chaveNfe: string | null;
+  ciot: string | null;
+  averbacaoSeguro: string | null;
+  saldoPagoEm: string | null;
+  saldoPagoPor: string | null;
   pagamentoSaidaEm: string | null;
   pagamentoSaidaPor: string | null;
   divergencia: Enums["resultado_contagem"] | null;
@@ -217,7 +223,8 @@ export type FichaViagem = {
 const COLUNAS_FICHA =
   "id, numero, status_campo, status_desde, created_at, iniciada_em, iniciada_por, liberacao_justificativa, liberacao_aptidao, " +
   "conjunto_id, motorista_id, peso_previsto_kg, peso_saida_kg, peso_chegada_kg, frete_motorista_valor, frete_motorista_tipo, km_viagem, pedagio_valor, " +
-  "chave_cte, chave_mdfe, pagamento_saida_em, pagamento_saida_por, divergencia, divergencia_descricao, resolucao, finalizada_em, " +
+  "chave_cte, chave_mdfe, chave_nfe, ciot, averbacao_seguro, saldo_pago_em, saldo_pago_por, " +
+  "pagamento_saida_em, pagamento_saida_por, divergencia, divergencia_descricao, resolucao, finalizada_em, " +
   "cancelada_em, cancelada_por, cancelamento_motivo, observacao, " +
   "cavalo:veiculo!viagem_cavalo_id_fkey(placa), " +
   "conjunto:conjunto!viagem_conjunto_id_fkey(conjunto_item(posicao, veiculo:veiculo!conjunto_item_veiculo_id_fkey(placa))), " +
@@ -244,6 +251,11 @@ type LinhaBancoFicha = {
   pedagio_valor: number | string | null;
   chave_cte: string | null;
   chave_mdfe: string | null;
+  chave_nfe: string | null;
+  ciot: string | null;
+  averbacao_seguro: string | null;
+  saldo_pago_em: string | null;
+  saldo_pago_por: string | null;
   pagamento_saida_em: string | null;
   pagamento_saida_por: string | null;
   divergencia: Enums["resultado_contagem"] | null;
@@ -326,6 +338,11 @@ export async function carregarViagem(db: Banco, id: string): Promise<FichaViagem
     pedagioValor: num(v.pedagio_valor),
     chaveCte: v.chave_cte,
     chaveMdfe: v.chave_mdfe,
+    chaveNfe: v.chave_nfe,
+    ciot: v.ciot,
+    averbacaoSeguro: v.averbacao_seguro,
+    saldoPagoEm: v.saldo_pago_em,
+    saldoPagoPor: nome(v.saldo_pago_por),
     pagamentoSaidaEm: v.pagamento_saida_em,
     pagamentoSaidaPor: nome(v.pagamento_saida_por),
     divergencia: v.divergencia,

@@ -78,7 +78,8 @@ create function tests.chave(p_modelo text) returns text language sql immutable a
 $$;
 
 create function tests.dados_chaves() returns jsonb language sql immutable as $$
-  select jsonb_build_object('chave_cte', tests.chave('57'), 'chave_mdfe', tests.chave('58'));
+  select jsonb_build_object('chave_cte', tests.chave('57'), 'chave_mdfe', tests.chave('58'), 'chave_nfe', tests.chave('55'),
+                            'ciot', '123456789012', 'averbacao', 'AV-0001');
 $$;
 
 create function tests.mover(p_uid uuid, p_viagem uuid, p_de text, p_para text, p_dados jsonb default '{}')
@@ -103,7 +104,8 @@ begin
     exit when v.status_campo = p_alvo;
     case v.status_campo
       when 'transito' then perform tests.mover(p_uid, p_viagem, 'transito', 'aguardando_carregamento');
-      when 'aguardando_carregamento' then perform tests.mover(p_uid, p_viagem, 'aguardando_carregamento', 'em_carregamento');
+      when 'aguardando_carregamento' then
+        perform tests.mover(p_uid, p_viagem, 'aguardando_carregamento', 'em_carregamento', '{"checklist_veiculo": true}');
       when 'em_carregamento' then
         perform tests.mover(p_uid, p_viagem, 'em_carregamento', 'aguardando_nf_pagamento', '{"peso_saida_kg": 37000}');
       when 'aguardando_nf_pagamento' then
@@ -428,9 +430,9 @@ create function tests.test_carga_dos_limites() returns setof text language plpgs
 begin
   return next is(array(select chave || '=' || minutos_ambar || '/' || minutos_vermelho from public.quadro_limite order by chave),
     array['aguardando_carregamento=120/240', 'aguardando_contagem=240/1440', 'aguardando_descarga=120/240',
-          'aguardando_nf_pagamento=120/240', 'em_carregamento=120/240', 'pausa_nao_programada=30/60',
-          'pausa_programada=60/120', 'resolucao_divergencia=1440/2880'],
-    'carga dos 8 tempos-limite');
+          'aguardando_nf_pagamento=120/240', 'aguardando_saldo=2880/4320', 'descarregando=120/180', 'em_carregamento=120/240',
+          'pausa_nao_programada=30/60', 'pausa_programada=60/120', 'resolucao_divergencia=1440/2880'],
+    'carga dos 10 tempos-limite');
 end $$;
 
 -- Fix round 1: a aptidão (com pedido cancelado) vem de um lugar só, usado pela view e por iniciar_viagem.

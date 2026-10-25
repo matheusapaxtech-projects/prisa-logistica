@@ -23,7 +23,7 @@ import {
   type StatusCampo,
 } from "@/lib/quadro";
 import { createBrowserClient } from "@/lib/supabase/client";
-import { confirmarPagamentoSaida } from "../viagens/actions";
+import { confirmarPagamentoSaida, confirmarSaldo } from "../viagens/actions";
 import { enviarCanhotoDoNavegador } from "../viagens/envio";
 import { moverViagem } from "./actions";
 import { CartaoQuadro } from "./cartao";
@@ -417,13 +417,14 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
   };
 
   async function confirmarPagamento(c: Cartao): Promise<string | null> {
-    const r = await confirmarPagamentoSaida(c.viagem_id ?? "").catch(() => ({ ok: false as const, erro: MSG_SEM_REDE }));
+    const saldo = c.status_campo === "aguardando_saldo";
+    const r = await (saldo ? confirmarSaldo : confirmarPagamentoSaida)(c.viagem_id ?? "").catch(() => ({ ok: false as const, erro: MSG_SEM_REDE }));
     if (!r.ok) {
       void recarregar();
       return r.erro;
     }
     setPagando(null);
-    toast("Adiantamento e vale-pedágio confirmados.", "check");
+    toast(saldo ? "Saldo de 30% confirmado." : "Adiantamento e vale-pedágio confirmados.", "check");
     await recarregar();
     return null;
   }
@@ -550,7 +551,10 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
                       nivel={nivelDe(c)}
                       agora={agora}
                       podeMover={podeMover && temPassagem}
-                      podePagar={podePagar && c.status_campo === "aguardando_nf_pagamento" && !c.pagamento_saida}
+                      podePagar={
+                        podePagar &&
+                        ((c.status_campo === "aguardando_nf_pagamento" && !c.pagamento_saida) || (c.status_campo === "aguardando_saldo" && !c.saldo_pago))
+                      }
                       movendo={Boolean(c.viagem_id && pendentes[c.viagem_id])}
                       aoMover={() => setMenu(c)}
                       aoPagar={() => setPagando(c)}

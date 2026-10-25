@@ -1807,6 +1807,14 @@ export type Database = {
       }
       viagem: {
         Row: {
+          averbacao_seguro: string | null
+          chave_nfe: string | null
+          checklist_veiculo_em: string | null
+          ciot: string | null
+          ciot_encerrado_em: string | null
+          mdfe_encerrado_em: string | null
+          saldo_pago_em: string | null
+          saldo_pago_por: string | null
           cancelada_em: string | null
           cancelada_por: string | null
           cancelamento_motivo: string | null
@@ -1846,6 +1854,14 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          averbacao_seguro?: string | null
+          chave_nfe?: string | null
+          checklist_veiculo_em?: string | null
+          ciot?: string | null
+          ciot_encerrado_em?: string | null
+          mdfe_encerrado_em?: string | null
+          saldo_pago_em?: string | null
+          saldo_pago_por?: string | null
           cancelada_em?: string | null
           cancelada_por?: string | null
           cancelamento_motivo?: string | null
@@ -1885,6 +1901,14 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          averbacao_seguro?: string | null
+          chave_nfe?: string | null
+          checklist_veiculo_em?: string | null
+          ciot?: string | null
+          ciot_encerrado_em?: string | null
+          mdfe_encerrado_em?: string | null
+          saldo_pago_em?: string | null
+          saldo_pago_por?: string | null
           cancelada_em?: string | null
           cancelada_por?: string | null
           cancelamento_motivo?: string | null
@@ -2230,6 +2254,7 @@ export type Database = {
           motorista_nome: string | null
           numero: number | null
           ocorrencias_abertas: number | null
+          saldo_pago: boolean | null
           origem_cidade: string | null
           origem_uf: Database["public"]["Enums"]["uf"] | null
           pagamento_saida: boolean | null
@@ -2239,6 +2264,7 @@ export type Database = {
           status_campo: Database["public"]["Enums"]["status_campo"] | null
           status_desde: string | null
           tem_canhoto: boolean | null
+          tem_documentos_saida: boolean | null
           tem_chaves: boolean | null
           unidade_operacional_id: number | null
           viagem_id: string | null
@@ -2326,6 +2352,7 @@ export type Database = {
         Args: { p_viagem: string }
         Returns: undefined
       }
+      confirmar_saldo: { Args: { p_viagem: string }; Returns: undefined }
       cpf_valido: { Args: { p: string }; Returns: boolean }
       definir_perfil: {
         Args: {
@@ -2552,8 +2579,10 @@ export type Database = {
         | "em_rota"
         | "pausa"
         | "aguardando_descarga"
+        | "descarregando"
         | "aguardando_contagem"
         | "resolucao_divergencia"
+        | "aguardando_saldo"
         | "frete_finalizado"
       tipo_assoalho: "madeira" | "ferro" | "misto"
       tipo_chave_pix: "cpf" | "cnpj" | "celular" | "email" | "aleatoria"
@@ -2839,8 +2868,10 @@ export const Constants = {
         "em_rota",
         "pausa",
         "aguardando_descarga",
+        "descarregando",
         "aguardando_contagem",
         "resolucao_divergencia",
+        "aguardando_saldo",
         "frete_finalizado",
       ],
       tipo_assoalho: ["madeira", "ferro", "misto"],

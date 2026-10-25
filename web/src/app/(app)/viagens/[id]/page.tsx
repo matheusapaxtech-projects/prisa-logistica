@@ -94,7 +94,10 @@ export default async function FichaViagemPage({ params }: Params) {
   const planejada = !cancelada && f.status_campo === null;
   const pagamento = Boolean(f.pagamentoSaidaEm);
   const temCanhoto = temCanhotoEnviado(f.canhotos);
-  const passo = cancelada ? null : proximoPasso({ status_campo: f.status_campo, pagamento_saida: pagamento, tem_canhoto: temCanhoto });
+  const saldoPago = Boolean(f.saldoPagoEm);
+  const passo = cancelada
+    ? null
+    : proximoPasso({ status_campo: f.status_campo, pagamento_saida: pagamento, tem_canhoto: temCanhoto, saldo_pago: saldoPago });
   // Cancelar e confirmar o pagamento valem na mesma janela (antes de "Em rota").
   const antesDeEmRota = !cancelada && podeCancelar(f.status_campo, f.origemDaPausa);
   const podePagar = antesDeEmRota && !pagamento && podeFinanceiro;
@@ -161,7 +164,16 @@ export default async function FichaViagemPage({ params }: Params) {
             {f.status_campo === "aguardando_nf_pagamento" && pagamento && (
               <p>As chaves do CT-e e do MDF-e são pedidas no Quadro, ao passar a viagem para “Em rota”.</p>
             )}
-            {f.status_campo === "aguardando_descarga" && <p>O canhoto assinado é pedido para passar a viagem para a contagem de divergência.</p>}
+            {(f.status_campo === "aguardando_descarga" || f.status_campo === "descarregando") && (
+              <p>O canhoto assinado é pedido para passar a viagem de “Descarregando” para a contagem de divergência.</p>
+            )}
+            {f.status_campo === "aguardando_saldo" && (
+              <p>
+                {saldoPago
+                  ? "Com o saldo pago, encerre o MDF-e e o CIOT e finalize a viagem no Quadro."
+                  : "O saldo de 30% ao motorista vence em até 30 dias úteis da entrega (Lei 15.485/2026)."}
+              </p>
+            )}
           </div>
           <div className="acoes">
             {planejada && podeEditar && <IniciarViagem viagemId={f.id} numero={f.numero} modo={modo} travas={travas} />}
@@ -172,7 +184,16 @@ export default async function FichaViagemPage({ params }: Params) {
                 Informar chaves no Quadro
               </Link>
             )}
-            {f.status_campo === "aguardando_descarga" && podeEditar && (
+            {f.status_campo === "aguardando_saldo" && !saldoPago && podeFinanceiro && (
+              <ConfirmarPagamento viagemId={f.id} numero={f.numero} primario saldo />
+            )}
+            {f.status_campo === "aguardando_saldo" && saldoPago && (
+              <Link className="btn btn-primario" href="/quadro">
+                <Columns3 size={16} strokeWidth={1.6} aria-hidden="true" />
+                Finalizar no Quadro
+              </Link>
+            )}
+            {(f.status_campo === "aguardando_descarga" || f.status_campo === "descarregando") && podeEditar && !temCanhoto && (
               <a className="btn btn-primario" href="#arquivo-canhoto">
                 <Upload size={16} strokeWidth={1.6} aria-hidden="true" />
                 Enviar canhoto
@@ -276,11 +297,41 @@ export default async function FichaViagemPage({ params }: Params) {
                 <>
                   <span className="codigo">CT-e {f.chaveCte ?? "—"}</span>
                   <span className="linha2 codigo">MDF-e {f.chaveMdfe ?? "—"}</span>
+                  {f.chaveNfe && <span className="linha2 codigo">NF-e {f.chaveNfe}</span>}
                 </>
               ) : (
                 <Dash>não informadas</Dash>
               )}
             </dd>
+            <dt>CIOT e seguro</dt>
+            <dd>
+              {f.ciot || f.averbacaoSeguro ? (
+                <>
+                  <span className="codigo">CIOT {f.ciot ?? "—"}</span>
+                  <span className="linha2">Averbação {f.averbacaoSeguro ?? "—"}</span>
+                </>
+              ) : (
+                <Dash>informados ao passar para “Em rota”</Dash>
+              )}
+            </dd>
+            {(f.status_campo === "aguardando_saldo" || f.status_campo === "frete_finalizado") && (
+              <>
+                <dt>Saldo (30%)</dt>
+                <dd>
+                  {saldoPago ? (
+                    <>
+                      Pago
+                      <span className="linha2">
+                        confirmado em {formato.dataHora(f.saldoPagoEm!)}
+                        {f.saldoPagoPor && <> por {f.saldoPagoPor}</>}
+                      </span>
+                    </>
+                  ) : (
+                    <Dash>não confirmado</Dash>
+                  )}
+                </dd>
+              </>
+            )}
             {f.divergencia && (
               <>
                 <dt>Contagem</dt>

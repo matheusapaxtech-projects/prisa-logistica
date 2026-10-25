@@ -6,7 +6,7 @@ import { Ban, CircleAlert, Play, ShieldAlert, Wallet } from "lucide-react";
 import { Dialogo } from "@/components/Dialogo";
 import { Sinal } from "@/components/Sinal";
 import { toast } from "@/components/Toast";
-import { cancelarViagem, confirmarPagamentoSaida, iniciarViagem } from "../actions";
+import { cancelarViagem, confirmarPagamentoSaida, confirmarSaldo, iniciarViagem } from "../actions";
 import { MSG_SO_ADMIN_EXCECAO, type ItemAptidao, type ModoInicio } from "../regras";
 
 /* Ações da ficha da viagem que chamam as RPCs do banco. A recusa do banco aparece como está e a
@@ -195,8 +195,19 @@ export function CancelarViagem({ viagemId, numero }: { viagemId: string; numero:
   );
 }
 
-/** "Confirmar pagamento de saída" (adiantamento e vale-pedágio): admin, operação ou financeiro. */
-export function ConfirmarPagamento({ viagemId, numero, primario = false }: { viagemId: string; numero: number; primario?: boolean }) {
+/** "Confirmar pagamento de saída" (adiantamento e vale-pedágio) ou, com `saldo`, "Confirmar pagamento do saldo" (30%, motor
+   de despacho): admin, operação ou financeiro. */
+export function ConfirmarPagamento({
+  viagemId,
+  numero,
+  primario = false,
+  saldo = false,
+}: {
+  viagemId: string;
+  numero: number;
+  primario?: boolean;
+  saldo?: boolean;
+}) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -213,25 +224,25 @@ export function ConfirmarPagamento({ viagemId, numero, primario = false }: { via
         }}
       >
         <Wallet size={16} strokeWidth={1.6} aria-hidden="true" />
-        Confirmar pagamento de saída
+        {saldo ? "Confirmar pagamento do saldo" : "Confirmar pagamento de saída"}
       </button>
       <Dialogo
         aberto={aberto}
         aoFechar={() => setAberto(false)}
-        titulo={`Pagamento de saída da viagem #${numero}`}
+        titulo={`${saldo ? "Saldo" : "Pagamento de saída"} da viagem #${numero}`}
         onSubmit={(e) => {
           e.preventDefault();
           if (gravando) return;
           setErro(null);
           iniciar(async () => {
-            const r = await confirmarPagamentoSaida(viagemId);
+            const r = await (saldo ? confirmarSaldo : confirmarPagamentoSaida)(viagemId);
             if (!r.ok) {
               setErro(r.erro);
               router.refresh();
               return;
             }
             setAberto(false);
-            toast("Adiantamento e vale-pedágio confirmados.", "check");
+            toast(saldo ? "Saldo de 30% confirmado." : "Adiantamento e vale-pedágio confirmados.", "check");
             router.refresh();
           });
         }}
@@ -247,7 +258,12 @@ export function ConfirmarPagamento({ viagemId, numero, primario = false }: { via
         }
       >
         <ErroDialogo erro={erro} />
-        <p>Confirme só depois que o adiantamento e o vale-pedágio estiverem resolvidos. Fica gravado quem confirmou e quando; não dá para desfazer.</p>
+        <p>
+          {saldo
+            ? "Confirme só depois que o saldo de 30% estiver pago ao motorista (até 30 dias úteis da entrega, Lei 15.485/2026)."
+            : "Confirme só depois que o adiantamento e o vale-pedágio estiverem resolvidos."}{" "}
+          Fica gravado quem confirmou e quando; não dá para desfazer.
+        </p>
       </Dialogo>
     </>
   );

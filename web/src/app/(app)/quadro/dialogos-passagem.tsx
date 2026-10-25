@@ -126,14 +126,23 @@ const RESULTADOS = [
 ] as const;
 
 const TITULOS: Record<Passagem["formulario"], string> = {
+  checklist: "Checklist do veículo",
   peso_saida: "Peso de saída",
-  documentos: "CT-e e MDF-e",
+  documentos: "Documentos de saída",
   pausa: "Pausa",
   chegada: "Chegada",
   contagem: "Contagem",
   resolucao: "Resolução da divergência",
+  encerramento: "Encerramento",
   motivo: "Voltar",
 };
+
+/** O que o motor de despacho confere antes de carregar (kanban.ts: "Checklist do veículo"). */
+const CHECKLIST = [
+  { nome: "carroceria", rotulo: "Carroceria limpa e sem avaria" },
+  { nome: "lona", rotulo: "Lona e amarração em ordem" },
+  { nome: "documentos", rotulo: "CRLV, CNH e tacógrafo conferidos (fotos)" },
+] as const;
 
 type DialogoProps = {
   passagem: Passagem;
@@ -151,7 +160,7 @@ export function DialogoPassagem({ passagem, executar, enviarCanhoto, aoFechar }:
   const [gravando, iniciar] = useTransition();
   const n = numeroDe(cartao);
   const voltar = formulario === "motivo";
-  const semPagamento = formulario === "documentos" && !cartao.pagamento_saida;
+  const semPagamento = (formulario === "documentos" && !cartao.pagamento_saida) || (formulario === "encerramento" && !cartao.saldo_pago);
 
   function gravar(paraFinal: StatusCampo, dados: Record<string, unknown>, arquivo?: File | null) {
     iniciar(async () => {
@@ -176,6 +185,18 @@ export function DialogoPassagem({ passagem, executar, enviarCanhoto, aoFechar }:
     let arquivo: File | null = null;
 
     switch (formulario) {
+      case "checklist": {
+        const faltam = CHECKLIST.filter((c) => fd.get(c.nome) !== "sim");
+        if (faltam.length) erros[faltam[0].nome] = "Confira todos os itens do checklist antes de carregar.";
+        dados = { checklist_veiculo: true };
+        break;
+      }
+      case "encerramento": {
+        if (fd.get("mdfe_encerrado") !== "sim") erros.mdfe_encerrado = "Encerre o MDF-e antes de finalizar.";
+        if (fd.get("ciot_encerrado") !== "sim") erros.ciot_encerrado = "Encerre o CIOT antes de finalizar.";
+        dados = { mdfe_encerrado: true, ciot_encerrado: true };
+        break;
+      }
       case "peso_saida": {
         const p = lerPeso(texto(fd, "peso"), "saída");
         if (typeof p === "string") erros.peso = p;
@@ -187,7 +208,13 @@ export function DialogoPassagem({ passagem, executar, enviarCanhoto, aoFechar }:
         const mdfe = texto(fd, "chave_mdfe");
         if (!chaveDfeValida(cte, "57")) erros.chave_cte = "Chave do CT-e inválida: confira os 44 dígitos (modelo 57).";
         if (!chaveDfeValida(mdfe, "58")) erros.chave_mdfe = "Chave do MDF-e inválida: confira os 44 dígitos (modelo 58).";
-        dados = { chave_cte: cte, chave_mdfe: mdfe };
+        const nfe = texto(fd, "chave_nfe");
+        const ciot = texto(fd, "ciot").replace(/\D/g, "");
+        const averbacao = texto(fd, "averbacao");
+        if (!chaveDfeValida(nfe, "55")) erros.chave_nfe = "Chave da NF-e do cliente inválida: confira os 44 dígitos (modelo 55).";
+        if (!/^\d{12,16}$/.test(ciot)) erros.ciot = "Informe o número do CIOT (12 a 16 dígitos).";
+        if (!averbacao) erros.averbacao = "Informe o número da averbação do seguro.";
+        dados = { chave_cte: cte, chave_mdfe: mdfe, chave_nfe: nfe, ciot, averbacao };
         break;
       }
       case "pausa": {
@@ -213,7 +240,7 @@ export function DialogoPassagem({ passagem, executar, enviarCanhoto, aoFechar }:
         const desc = texto(fd, "divergencia_descricao");
         if (!r) erros.divergencia = "Escolha o resultado da contagem.";
         else if (r === "sem_divergencia") {
-          paraFinal = "frete_finalizado";
+          paraFinal = "aguardando_saldo";
           dados = { divergencia: r };
         } else {
           paraFinal = "resolucao_divergencia";
@@ -353,6 +380,82 @@ export function DialogoPassagem({ passagem, executar, enviarCanhoto, aoFechar }:
               aria-describedby={desc("chave_mdfe")}
             />
           </Campo>
+          <Campo id="passagem-nfe" rotulo="Chave da NF-e do cliente" erro={campos.chave_nfe} ajuda="44 dígitos da nota fiscal da carga (modelo 55).">
+            <input
+              id="passagem-nfe"
+              name="chave_nfe"
+              inputMode="numeric"
+              autoComplete="off"
+              className="mono"
+              aria-invalid={campos.chave_nfe ? true : undefined}
+              aria-describedby={desc("chave_nfe")}
+            />
+          </Campo>
+          <Campo id="passagem-ciot" rotulo="Número do CIOT" erro={campos.ciot} ajuda="O código do CIOT emitido para esta viagem.">
+            <input
+              id="passagem-ciot"
+              name="ciot"
+              inputMode="numeric"
+              autoComplete="off"
+              className="mono"
+              aria-invalid={campos.ciot ? true : undefined}
+              aria-describedby={desc("ciot")}
+            />
+          </Campo>
+          <Campo id="passagem-averbacao" rotulo="Averbação do seguro" erro={campos.averbacao} ajuda="Número da averbação da carga na apólice.">
+            <input
+              id="passagem-averbacao"
+              name="averbacao"
+              autoComplete="off"
+              maxLength={60}
+              aria-invalid={campos.averbacao ? true : undefined}
+              aria-describedby={desc("averbacao")}
+            />
+          </Campo>
+        </>
+      )}
+
+      {formulario === "checklist" && (
+        <fieldset className="campo" data-invalido={CHECKLIST.some((c) => campos[c.nome]) ? "" : undefined}>
+          <legend className="rotulo">Antes de entrar para carregar</legend>
+          <div className="checklist-passagem">
+            {CHECKLIST.map((c) => (
+              <label key={c.nome} className="marcar">
+                <input type="checkbox" name={c.nome} value="sim" />
+                <span>{c.rotulo}</span>
+              </label>
+            ))}
+          </div>
+          {CHECKLIST.some((c) => campos[c.nome]) && <span className="erro">Confira todos os itens do checklist antes de carregar.</span>}
+        </fieldset>
+      )}
+
+      {formulario === "encerramento" && (
+        <>
+          {cartao.saldo_pago ? (
+            <p>
+              <Sinal tipo="normal" texto="Saldo de 30% pago" />
+            </p>
+          ) : (
+            <div className="aviso aviso-pendente">
+              <CircleAlert size={16} strokeWidth={1.6} aria-hidden="true" />
+              <span>Falta confirmar o pagamento do saldo. Use “Confirmar pagamento do saldo” no cartão; sem isso a viagem não finaliza.</span>
+            </div>
+          )}
+          <fieldset className="campo" data-invalido={campos.mdfe_encerrado || campos.ciot_encerrado ? "" : undefined}>
+            <legend className="rotulo">Encerramentos</legend>
+            <div className="checklist-passagem">
+              <label className="marcar">
+                <input type="checkbox" name="mdfe_encerrado" value="sim" />
+                <span>MDF-e encerrado</span>
+              </label>
+              <label className="marcar">
+                <input type="checkbox" name="ciot_encerrado" value="sim" />
+                <span>CIOT encerrado</span>
+              </label>
+            </div>
+            {(campos.mdfe_encerrado || campos.ciot_encerrado) && <span className="erro">{campos.mdfe_encerrado ?? campos.ciot_encerrado}</span>}
+          </fieldset>
         </>
       )}
 
@@ -396,7 +499,8 @@ export function DialogoPassagem({ passagem, executar, enviarCanhoto, aoFechar }:
       {formulario === "contagem" && (
         <>
           <p>
-            Sem divergência, a viagem vai para “Frete finalizado”. Com falta, sobra ou avaria, vai para “Resolução de divergência na carga”.
+            Sem divergência, a viagem vai para “Aguardando saldo (30%)”. Com falta, sobra ou avaria, vai para “Resolução de divergência na
+            carga”.
           </p>
           <fieldset className="campo" data-invalido={campos.divergencia ? "" : undefined}>
             <legend className="rotulo">Resultado da contagem</legend>
@@ -407,7 +511,7 @@ export function DialogoPassagem({ passagem, executar, enviarCanhoto, aoFechar }:
                     type="radio"
                     name="divergencia"
                     value={r.valor}
-                    defaultChecked={para === "frete_finalizado" ? r.valor === "sem_divergencia" : false}
+                    defaultChecked={para === "aguardando_saldo" ? r.valor === "sem_divergencia" : false}
                   />
                   <span>{r.rotulo}</span>
                 </label>
@@ -471,9 +575,9 @@ export function DialogoPassagem({ passagem, executar, enviarCanhoto, aoFechar }:
   );
 }
 
-/* ---------- pagamento de saída ---------- */
+/* ---------- pagamento de saída e saldo ---------- */
 
-/** Confirma o adiantamento e o vale-pedágio (financeiro, operação ou admin). */
+/** Confirma o adiantamento e o vale-pedágio ou, em "Aguardando saldo", o saldo de 30% (financeiro, operação ou admin). */
 export function DialogoPagamento({
   cartao,
   confirmar,
@@ -489,7 +593,7 @@ export function DialogoPagamento({
     <Dialogo
       aberto
       aoFechar={aoFechar}
-      titulo={`Pagamento de saída da viagem #${numeroDe(cartao)}`}
+      titulo={`${cartao.status_campo === "aguardando_saldo" ? "Saldo" : "Pagamento de saída"} da viagem #${numeroDe(cartao)}`}
       onSubmit={(e) => {
         e.preventDefault();
         if (gravando) return;
@@ -512,8 +616,10 @@ export function DialogoPagamento({
     >
       <ErroDialogo erro={erro} />
       <p>
-        Confirme só depois que o adiantamento e o vale-pedágio estiverem resolvidos. Fica gravado quem confirmou e quando; não dá para
-        desfazer.
+        {cartao.status_campo === "aguardando_saldo"
+          ? "Confirme só depois que o saldo de 30% estiver pago ao motorista (até 30 dias úteis da entrega, Lei 15.485/2026)."
+          : "Confirme só depois que o adiantamento e o vale-pedágio estiverem resolvidos."}{" "}
+        Fica gravado quem confirmou e quando; não dá para desfazer.
       </p>
     </Dialogo>
   );

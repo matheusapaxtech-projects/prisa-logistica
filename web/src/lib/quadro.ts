@@ -7,7 +7,8 @@ import type { Database } from "./banco";
 
 export type StatusCampo = Database["public"]["Enums"]["status_campo"];
 
-/** As 10 colunas, na ordem e com os nomes do usuário. `espera` = coluna de espera (pode estreitar). */
+/** As 12 colunas, na ordem e com os nomes do usuário. `espera` = coluna de espera (pode estreitar). Descarregando e
+   Aguardando saldo vêm do motor de despacho (migration 20261029000300). */
 export const COLUNAS: readonly { status: StatusCampo; rotulo: string; espera: boolean }[] = [
   { status: "transito", rotulo: "Trânsito", espera: false },
   { status: "aguardando_carregamento", rotulo: "Aguardando carregamento", espera: true },
@@ -16,8 +17,10 @@ export const COLUNAS: readonly { status: StatusCampo; rotulo: string; espera: bo
   { status: "em_rota", rotulo: "Em rota", espera: false },
   { status: "pausa", rotulo: "Pausa", espera: false },
   { status: "aguardando_descarga", rotulo: "Aguardando descarga", espera: true },
+  { status: "descarregando", rotulo: "Descarregando", espera: false },
   { status: "aguardando_contagem", rotulo: "Aguardando contagem de divergência", espera: true },
   { status: "resolucao_divergencia", rotulo: "Resolução de divergência na carga", espera: false },
+  { status: "aguardando_saldo", rotulo: "Aguardando saldo (30%)", espera: true },
   { status: "frete_finalizado", rotulo: "Frete finalizado", espera: false },
 ];
 
@@ -43,10 +46,14 @@ export function destinosPermitidos(de: StatusCampo, origemDaPausa?: StatusCampo)
     case "pausa":
       return origemDaPausa ? [origemDaPausa] : [];
     case "aguardando_descarga":
+      return ["descarregando"];
+    case "descarregando":
       return ["aguardando_contagem"];
     case "aguardando_contagem":
-      return ["resolucao_divergencia", "frete_finalizado"];
+      return ["resolucao_divergencia", "aguardando_saldo"];
     case "resolucao_divergencia":
+      return ["aguardando_saldo"];
+    case "aguardando_saldo":
       return ["frete_finalizado"];
     case "frete_finalizado":
       return [];
@@ -57,20 +64,23 @@ const VOLTAS: Partial<Record<StatusCampo, StatusCampo>> = {
   aguardando_carregamento: "transito",
   em_carregamento: "aguardando_carregamento",
   aguardando_nf_pagamento: "em_carregamento",
+  descarregando: "aguardando_descarga",
 };
 
-/** Coluna para onde "voltar" leva; só as três voltas que o banco permite (sempre com motivo). */
+/** Coluna para onde "voltar" leva; só as voltas que o banco permite (sempre com motivo). */
 export function colunaAnterior(de: StatusCampo): StatusCampo | null {
   return VOLTAS[de] ?? null;
 }
 
 export type Formulario =
+  | "checklist"
   | "peso_saida"
   | "documentos"
   | "pausa"
   | "chegada"
   | "contagem"
   | "resolucao"
+  | "encerramento"
   | "motivo"
   | null;
 
@@ -78,13 +88,15 @@ export type Formulario =
 export function formularioDaPassagem(de: StatusCampo, para: StatusCampo): Formulario {
   if (VOLTAS[de] === para) return "motivo";
   if ((de === "transito" || de === "em_rota") && para === "pausa") return "pausa";
+  if (de === "aguardando_carregamento" && para === "em_carregamento") return "checklist";
   if (de === "em_carregamento" && para === "aguardando_nf_pagamento") return "peso_saida";
   if (de === "aguardando_nf_pagamento" && para === "em_rota") return "documentos";
-  if (de === "aguardando_descarga" && para === "aguardando_contagem") return "chegada";
-  if (de === "aguardando_contagem" && (para === "frete_finalizado" || para === "resolucao_divergencia")) {
+  if (de === "descarregando" && para === "aguardando_contagem") return "chegada";
+  if (de === "aguardando_contagem" && (para === "aguardando_saldo" || para === "resolucao_divergencia")) {
     return "contagem";
   }
-  if (de === "resolucao_divergencia" && para === "frete_finalizado") return "resolucao";
+  if (de === "resolucao_divergencia" && para === "aguardando_saldo") return "resolucao";
+  if (de === "aguardando_saldo" && para === "frete_finalizado") return "encerramento";
   return null;
 }
 
@@ -113,7 +125,7 @@ export function somenteDigitos(s: string): string {
 }
 
 /** Mesma regra de `chave_dfe_valida`: 44 dígitos, modelo nas posições 21-22 e dígito verificador módulo 11. */
-export function chaveDfeValida(chave: string, modelo: "57" | "58"): boolean {
+export function chaveDfeValida(chave: string, modelo: "55" | "57" | "58"): boolean {
   const d = somenteDigitos(chave);
   if (d.length !== 44 || d.slice(20, 22) !== modelo) return false;
   let soma = 0;

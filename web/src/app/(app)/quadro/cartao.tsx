@@ -21,7 +21,7 @@ type Sinalizado = { tipo: TipoSinal; texto: string };
 
 const RESULTADO: Record<string, string> = { falta: "Falta", sobra: "Sobra", avaria: "Avaria" };
 const ANTES_DE_EM_ROTA = ["transito", "aguardando_carregamento", "em_carregamento"];
-const DEPOIS_DA_DESCARGA = ["aguardando_contagem", "resolucao_divergencia", "frete_finalizado"];
+const DEPOIS_DA_DESCARGA = ["aguardando_contagem", "resolucao_divergencia", "aguardando_saldo", "frete_finalizado"];
 
 /** Sinais do cartão (forma + cor, nunca só cor), só os que importam na coluna em que ele está. */
 export function sinaisDoCartao(c: DadosCartao): Sinalizado[] {
@@ -37,10 +37,13 @@ export function sinaisDoCartao(c: DadosCartao): Sinalizado[] {
   } else if (st && ANTES_DE_EM_ROTA.includes(st) && c.pagamento_saida) {
     s.push({ tipo: "normal", texto: "Pagamento de saída" });
   }
-  if (st === "aguardando_descarga") {
+  if (st === "aguardando_descarga" || st === "descarregando") {
     s.push(c.tem_canhoto ? { tipo: "normal", texto: "Canhoto" } : { tipo: "pendente", texto: "Falta canhoto" });
   } else if (st && DEPOIS_DA_DESCARGA.includes(st) && c.tem_canhoto) {
     s.push({ tipo: "normal", texto: "Canhoto" });
+  }
+  if (st === "aguardando_saldo") {
+    s.push(c.saldo_pago ? { tipo: "normal", texto: "Saldo pago" } : { tipo: "pendente", texto: "Falta pagar o saldo" });
   }
   if (c.divergencia && RESULTADO[c.divergencia]) s.push({ tipo: "bloqueado", texto: `Divergência: ${RESULTADO[c.divergencia]}` });
   const oc = c.ocorrencias_abertas ?? 0;
@@ -57,7 +60,7 @@ type Props = {
   agora: number;
   /** Operação e admin (pode_editar): arrasta e vê "Mover" (só se houver para onde ir). */
   podeMover: boolean;
-  /** Financeiro, operação e admin, em "Aguardando NF e pagamento" sem o pagamento confirmado. */
+  /** Financeiro, operação e admin: "Aguardando NF e pagamento" sem o pagamento de saída, ou "Aguardando saldo" sem o saldo. */
   podePagar: boolean;
   /** O cartão está indo para outra coluna (gravando). */
   movendo: boolean;
@@ -141,9 +144,14 @@ export function CartaoQuadro({ cartao: c, nivel, agora, podeMover, podePagar, mo
       )}
       {podePagar && (
         <div className="quadro-cartao-acoes">
-          <button className="btn btn-texto" type="button" onClick={aoPagar} aria-label={`Confirmar pagamento de saída da viagem #${n}`}>
+          <button
+            className="btn btn-texto"
+            type="button"
+            onClick={aoPagar}
+            aria-label={`Confirmar ${c.status_campo === "aguardando_saldo" ? "pagamento do saldo" : "pagamento de saída"} da viagem #${n}`}
+          >
             <Wallet size={16} strokeWidth={1.6} aria-hidden="true" />
-            Confirmar pagamento de saída
+            {c.status_campo === "aguardando_saldo" ? "Confirmar pagamento do saldo" : "Confirmar pagamento de saída"}
           </button>
         </div>
       )}
