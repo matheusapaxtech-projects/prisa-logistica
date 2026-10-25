@@ -1,9 +1,9 @@
 import { Fragment } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Search, X } from "lucide-react";
 import { Abas } from "@/components/Abas";
 import { EstadoVazio } from "@/components/EstadoVazio";
+import { Paginacao } from "@/components/Paginacao";
 import { Placa } from "@/components/Placa";
 import { Ponto } from "@/components/Ponto";
 import { Sinal } from "@/components/Sinal";
@@ -13,6 +13,8 @@ import { rotuloDe } from "@/lib/quadro";
 import { createClient } from "@/lib/supabase/server";
 import { Dash } from "../_pessoa/partes";
 import { listarViagens, type LinhaViagem } from "./consultas";
+import { BarraFiltros } from "./barra-filtros";
+import { filtrarViagens, filtrosLigados, hrefDaAba, hrefDe, hrefSemFiltros, lerFiltros, numerosDePagina, opcoesDaAba, paginar, POR_PAGINA } from "./filtros";
 import { ABAS, abaDaViagem, duracao, seloAptidao, type AbaViagens } from "./regras";
 import "@/styles/paginas/proprietarios.css";
 import "@/styles/paginas/pedidos.css";
@@ -20,23 +22,7 @@ import "@/styles/paginas/viagens.css";
 
 export const metadata: Metadata = { title: "Viagens" };
 
-const um = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 const plural = (n: number, a: string, b: string) => (n === 1 ? a : b);
-
-function passa(v: LinhaViagem, termo: string): boolean {
-  if (!termo) return true;
-  const t = termo.toLowerCase().replace(/^#/, "");
-  const placa = t.replace(/[^a-z0-9]/g, "");
-  return (
-    String(v.numero) === t ||
-    String(v.pedido?.numero ?? "") === t ||
-    (v.pedido?.cliente ?? "").toLowerCase().includes(t) ||
-    (v.motorista ?? "").toLowerCase().includes(t) ||
-    (placa.length >= 3 && (v.placa ?? "").toLowerCase().includes(placa)) ||
-    (v.pedido?.origem ?? "").toLowerCase().includes(t) ||
-    (v.pedido?.destino ?? "").toLowerCase().includes(t)
-  );
-}
 
 const VAZIO: Record<AbaViagens, string> = {
   planejadas: "Nenhuma viagem planejada. Crie viagens na ficha do pedido (“Nova viagem”).",
@@ -76,22 +62,20 @@ function Data({ v, aba }: { v: LinhaViagem; aba: AbaViagens }) {
   );
 }
 
-/* Lista de viagens: abas "Planejadas" (com o selo de aptidão; `?trava=1` mostra só as com trava),
-   "No quadro" (em andamento), "Finalizadas" e "Canceladas"; busca pela URL (?q=) por número da viagem
-   ou do pedido, cliente, motorista, placa ou cidade. */
+/* Lista de viagens: abas "Planejadas" (com o selo de aptidão), "No quadro" (em andamento),
+   "Finalizadas" e "Canceladas"; filtros, ordem e página na URL (filtros.ts): busca por número da
+   viagem ou do pedido, cliente, motorista, placa ou cidade; cliente, motorista, origem, destino,
+   situação e período. 25, 50 ou 100 por página. */
 export default async function ViagensPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const sp = await searchParams;
+  const f = lerFiltros(await searchParams);
+  const { aba } = f;
   const linhas = await listarViagens(tipado(await createClient()));
-  const pedida = um(sp.aba) as AbaViagens;
-  const aba: AbaViagens = ABAS.includes(pedida) ? pedida : "planejadas";
-  const busca = um(sp.q).trim();
-  const soTrava = aba === "planejadas" && um(sp.trava) === "1";
 
   const porAba = Object.fromEntries(ABAS.map((a) => [a, linhas.filter((l) => abaDaViagem(l) === a)])) as Record<AbaViagens, LinhaViagem[]>;
-  let vis = porAba[aba].filter((l) => passa(l, busca));
-  if (soTrava) vis = vis.filter((l) => (l.travas ?? 0) > 0);
-  // Na coluna há mais tempo primeiro (como o Quadro); nas outras abas, a mais nova primeiro.
-  if (aba === "no_quadro") vis = [...vis].sort((a, b) => (a.statusDesde ?? "").localeCompare(b.statusDesde ?? ""));
+  const achadas = filtrarViagens(linhas, f);
+  const pag = paginar(achadas, f.pagina, f.porPagina);
+  const vis = pag.itens;
+  const comFiltro = filtrosLigados(f) > 0 || Boolean(f.q);
 
   const comTrava = porAba.planejadas.filter((l) => (l.travas ?? 0) > 0).length;
   const aptas = porAba.planejadas.length - comTrava;
@@ -126,38 +110,14 @@ export default async function ViagensPage({ searchParams }: { searchParams: Prom
         rotulo="Situação das viagens"
         ativa={aba}
         abas={[
-          { id: "planejadas", rotulo: "Planejadas", n: porAba.planejadas.length },
-          { id: "no_quadro", rotulo: "No quadro", n: porAba.no_quadro.length },
-          { id: "finalizadas", rotulo: "Finalizadas", n: porAba.finalizadas.length },
-          { id: "canceladas", rotulo: "Canceladas", n: porAba.canceladas.length },
+          { id: "planejadas", rotulo: "Planejadas", n: porAba.planejadas.length, href: hrefDaAba(f, "planejadas") },
+          { id: "no_quadro", rotulo: "No quadro", n: porAba.no_quadro.length, href: hrefDaAba(f, "no_quadro") },
+          { id: "finalizadas", rotulo: "Finalizadas", n: porAba.finalizadas.length, href: hrefDaAba(f, "finalizadas") },
+          { id: "canceladas", rotulo: "Canceladas", n: porAba.canceladas.length, href: hrefDaAba(f, "canceladas") },
         ]}
       />
 
-      <form className="ferramentas" role="search" method="get">
-        <input type="hidden" name="aba" value={aba} />
-        {soTrava && <input type="hidden" name="trava" value="1" />}
-        <label className="busca-lista">
-          <span className="sr-only">Buscar por número, pedido, cliente, motorista, placa ou cidade</span>
-          <Search size={16} strokeWidth={1.6} aria-hidden="true" />
-          <input id="busca" name="q" type="search" autoComplete="off" placeholder="Número, cliente, motorista, placa ou cidade" defaultValue={busca} />
-        </label>
-        {aba === "planejadas" &&
-          (soTrava ? (
-            <Link className="btn btn-texto filtro-ativo" href={`?aba=planejadas${busca ? `&q=${encodeURIComponent(busca)}` : ""}`}>
-              Só com trava
-              <X size={14} strokeWidth={1.6} aria-label="tirar o filtro" />
-            </Link>
-          ) : (
-            comTrava > 0 && (
-              <Link className="btn btn-texto" href={`?aba=planejadas&trava=1${busca ? `&q=${encodeURIComponent(busca)}` : ""}`}>
-                Ver só as com trava
-              </Link>
-            )
-          ))}
-        <span className="total" id="total" aria-live="polite">
-          {vis.length} {plural(vis.length, "viagem", "viagens")}
-        </span>
-      </form>
+      <BarraFiltros filtros={f} opcoes={opcoesDaAba(linhas, f)} rotuloData={ROTULO_DATA[aba]} achadas={achadas.length} daAba={porAba[aba].length} />
 
       <div className="tabela-wrap">
         <table className="tabela tabela-prop" id="tabela" aria-describedby="total">
@@ -182,11 +142,18 @@ export default async function ViagensPage({ searchParams }: { searchParams: Prom
               <tr className="vazio-linha">
                 <td colSpan={6}>
                   <EstadoVazio>
-                    {busca
-                      ? `Nenhuma viagem com “${busca}” nesta aba. Confira o número, o cliente ou a placa.`
-                      : soTrava
-                        ? "Nenhuma viagem planejada com trava."
-                        : VAZIO[aba]}
+                    {comFiltro ? (
+                      <>
+                        {f.q
+                          ? `Nenhuma viagem com “${f.q}” e esses filtros nesta aba. Confira o número, o cliente ou a placa.`
+                          : "Nenhuma viagem com esses filtros nesta aba."}{" "}
+                        <Link href={hrefSemFiltros(f)} scroll={false}>
+                          Limpar filtros
+                        </Link>
+                      </>
+                    ) : (
+                      VAZIO[aba]
+                    )}
                   </EstadoVazio>
                 </td>
               </tr>
@@ -243,6 +210,19 @@ export default async function ViagensPage({ searchParams }: { searchParams: Prom
           </tbody>
         </table>
       </div>
+
+      <Paginacao
+        pagina={pag.pagina}
+        paginas={pag.paginas}
+        inicio={pag.inicio}
+        fim={pag.fim}
+        total={pag.total}
+        plural="viagens"
+        numeros={numerosDePagina(pag.pagina, pag.paginas)}
+        href={(p) => hrefDe(f, { pagina: p })}
+        porPagina={f.porPagina}
+        porPaginaHrefs={Object.fromEntries(POR_PAGINA.map((n) => [n, `/viagens${hrefDe(f, { porPagina: n })}`]))}
+      />
     </main>
   );
 }
