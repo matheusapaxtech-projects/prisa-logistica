@@ -104,6 +104,16 @@ export function FormularioImportar() {
           </span>
         </div>
       )}
+      {r && !erro && r.manuais > 0 && (
+        <div className="aviso aviso-pendente" role="status">
+          <CircleAlert size={18} strokeWidth={1.6} aria-hidden="true" />
+          <span className="txt">
+            {r.manuais}{" "}
+            {plural(r.manuais, "lançamento do extrato bate com um feito", "lançamentos do extrato batem com lançamentos feitos")} à mão (mesma data
+            e valor). Se for o mesmo dinheiro, exclua o feito à mão em Lançamentos para não contar duas vezes.
+          </span>
+        </div>
+      )}
       <div className="campo">
         <label htmlFor="arquivo-ofx">Arquivo do extrato (OFX)</label>
         <input

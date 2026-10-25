@@ -125,3 +125,14 @@
 /* A coluna fixa da tabela do ano precisa de fundo opaco: o do painel, não o branco dos campos. */
 .fin .tabela-ano th[scope="row"], .fin .tabela-ano thead .col-rotulo { background: var(--raised); }
 .fin .tabela-ano .atual { background: rgba(22, 24, 24, 0.035); }
+
+/* ---------- lançamento à mão ---------- */
+dialog.dlg-lancamento { width: min(600px, calc(100vw - 32px)); }
+.dlg-lancamento fieldset.campo { border: 0; margin: 0; padding: 0; min-width: 0; }
+.dlg-lancamento .opcoes .opcao { flex: 1 1 0; }
+.dlg-lancamento .opcoes .opcao span { width: 100%; justify-content: center; }
+.dlg-lancamento .opcao input:disabled + span { opacity: 0.4; cursor: not-allowed; }
+.dlg-lancamento .dialogo-pe .espaco { flex: 1 1 auto; }
+/* Marca do lançamento feito à mão, ao lado do histórico, e o botão de editar. */
+.fin .selo-manual { background: rgba(22, 24, 24, 0.07); color: var(--muted); margin-left: 8px; vertical-align: 1px; }
+.fin .tabela-lanc .editar-manual { margin-left: 4px; vertical-align: -3px; }

@@ -7,7 +7,7 @@ import { chaveDaDescricao, ehCategoria, type Categoria } from "@/lib/financeiro"
 import { formato } from "@/lib/formato";
 import { decodificarOfx, ErroOfx, lerOfx } from "@/lib/ofx";
 import { RE_ID } from "../_pessoa/formulario";
-import { TAMANHO_MAXIMO, type Classificado, type Importado } from "./regras";
+import { lerLancamentoManual, TAMANHO_MAXIMO, type Classificado, type Importado } from "./regras";
 
 /* Gravações do Financeiro. Toda escrita passa por `comSessao` (a sessão é conferida antes de qualquer
    trabalho); quem pode é o RLS (pode_financeiro(): admin e financeiro). A importação e a classificação
@@ -55,7 +55,7 @@ export async function importarExtrato(_antes: ResultadoAcao<Importado> | null, f
       } as Json,
     });
     if (r.error) throw r.error;
-    const d = r.data as { total: number; novos: number; classificados: number; suspeitos?: number };
+    const d = r.data as { total: number; novos: number; classificados: number; suspeitos?: number; manuais?: number };
     revalidar();
     const meses = extrato.lancamentos.map((l) => l.data.slice(0, 7)).sort();
     return {
@@ -64,6 +64,7 @@ export async function importarExtrato(_antes: ResultadoAcao<Importado> | null, f
       repetidos: d.total - d.novos,
       classificados: d.classificados,
       suspeitos: d.suspeitos ?? 0,
+      manuais: d.manuais ?? 0,
       banco: extrato.banco,
       agencia: extrato.agencia,
       numero: extrato.numero,
@@ -135,5 +136,64 @@ export async function desfazerImportacao(id: string): Promise<ResultadoAcao<numb
     if (!r.data?.length) throw SEM_PERMISSAO;
     revalidar();
     return n.count ?? 0;
+  });
+}
+
+/** Hoje em Brasília, "aaaa-mm-dd" (en-CA escreve a data assim). */
+const hojeBrasilia = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+
+/** Grava um lançamento à mão: novo (`id` vazio) ou alteração de um feito à mão. O do extrato não passa
+   por aqui (o banco recusa mudar data, valor, histórico e conta dele). Devolve o mês ("aaaa-mm") do
+   lançamento, para a tela ir até ele. */
+export async function salvarLancamentoManual(id: string, form: FormData): Promise<ResultadoAcao<string>> {
+  if (id && !RE_ID.test(id)) return { ok: false, erro: NAO_ACHADO };
+  const lido = lerLancamentoManual(form, hojeBrasilia());
+  if (!lido.ok) return { ok: false, erro: Object.values(lido.erros)[0] ?? "Confira os campos." };
+  const l = lido.dados;
+  return comSessao(async ({ supabase, userId }) => {
+    const db = tipado(supabase);
+    const campos = {
+      data: l.data,
+      valor: l.valor,
+      descricao: l.descricao,
+      chave: chaveDaDescricao(l.descricao),
+      categoria: l.categoria,
+      conta_id: l.contaId,
+      observacao: l.observacao,
+    };
+    if (id) {
+      const atual = await db.from("fin_lancamento").select("categoria, importacao_id").eq("id", id).maybeSingle();
+      if (atual.error) throw atual.error;
+      if (!atual.data) throw recusa(NAO_ACHADO);
+      if (atual.data.importacao_id) throw recusa("Este lançamento veio do extrato: só a categoria muda, na própria linha.");
+      const mudouCategoria = atual.data.categoria !== l.categoria;
+      const r = await db
+        .from("fin_lancamento")
+        .update({ ...campos, ...(mudouCategoria ? { classificado_em: new Date().toISOString(), classificado_por: userId } : {}) })
+        .eq("id", id)
+        .select("id");
+      if (r.error) throw r.error;
+      if (!r.data?.length) throw SEM_PERMISSAO;
+    } else {
+      const r = await db
+        .from("fin_lancamento")
+        .insert({ ...campos, classificado_em: new Date().toISOString(), classificado_por: userId })
+        .select("id")
+        .single();
+      if (r.error) throw r.error;
+    }
+    revalidar();
+    return l.data.slice(0, 7);
+  });
+}
+
+/** Exclui um lançamento feito à mão. O do extrato sai só desfazendo a importação (o RLS recusa). */
+export async function excluirLancamentoManual(id: string): Promise<ResultadoAcao> {
+  if (!RE_ID.test(id)) return { ok: false, erro: NAO_ACHADO };
+  return comSessao(async ({ supabase }) => {
+    const r = await tipado(supabase).from("fin_lancamento").delete().eq("id", id).is("importacao_id", null).select("id");
+    if (r.error) throw r.error;
+    if (!r.data?.length) throw recusa("Só o lançamento feito à mão pode ser excluído. O do extrato sai desfazendo a importação.");
+    revalidar();
   });
 }

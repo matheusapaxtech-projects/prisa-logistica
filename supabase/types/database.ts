@@ -456,13 +456,13 @@ export type Database = {
           chave: string
           classificado_em: string | null
           classificado_por: string | null
-          conta_id: string
+          conta_id: string | null
           created_at: string
           data: string
           descricao: string
-          fitid: string
+          fitid: string | null
           id: string
-          importacao_id: string
+          importacao_id: string | null
           observacao: string | null
           updated_at: string
           updated_by: string | null
@@ -473,13 +473,13 @@ export type Database = {
           chave: string
           classificado_em?: string | null
           classificado_por?: string | null
-          conta_id: string
+          conta_id?: string | null
           created_at?: string
           data: string
           descricao: string
-          fitid: string
+          fitid?: string | null
           id?: string
-          importacao_id: string
+          importacao_id?: string | null
           observacao?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -490,13 +490,13 @@ export type Database = {
           chave?: string
           classificado_em?: string | null
           classificado_por?: string | null
-          conta_id?: string
+          conta_id?: string | null
           created_at?: string
           data?: string
           descricao?: string
-          fitid?: string
+          fitid?: string | null
           id?: string
-          importacao_id?: string
+          importacao_id?: string | null
           observacao?: string | null
           updated_at?: string
           updated_by?: string | null

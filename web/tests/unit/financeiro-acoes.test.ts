@@ -6,14 +6,30 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // manda à função do banco os lançamentos com a chave das regras e devolve o resumo; a classificação
 // valida id e categoria e manda null para tirar a categoria.
 const rpc = vi.fn();
+// Consulta encadeada do supabase-js: cada método devolve a própria consulta; o `await` (then) entrega
+// a próxima resposta de `respostas` e as chamadas ficam em `chamadas` (tabela, método, argumentos).
+const respostas: unknown[] = [];
+const chamadas: [string, string, unknown[]][] = [];
+function consulta(tabela: string) {
+  const q: Record<string, unknown> = {};
+  for (const m of ["select", "insert", "update", "delete", "eq", "is", "single", "maybeSingle"]) {
+    q[m] = (...a: unknown[]) => {
+      chamadas.push([tabela, m, a]);
+      return q;
+    };
+  }
+  q.then = (ok: (v: unknown) => void) => ok(respostas.shift() ?? { data: null, error: null });
+  return q;
+}
 const clienteFalso = {
   auth: { getClaims: vi.fn(async () => ({ data: { claims: { sub: "u-fin" } }, error: null })) },
   rpc,
+  from: vi.fn(consulta),
 };
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn(async () => clienteFalso) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
-import { classificarLancamento, importarExtrato } from "@/app/(app)/financeiro/actions";
+import { classificarLancamento, excluirLancamentoManual, importarExtrato, salvarLancamentoManual } from "@/app/(app)/financeiro/actions";
 
 const ID = "00000000-0000-4000-8000-000000000901";
 const FICTICIO = fs.readFileSync(path.join(__dirname, "..", "fixtures", "extrato-ficticio.ofx"));
@@ -25,15 +41,17 @@ const form = (arquivo?: File) => {
 
 beforeEach(() => {
   rpc.mockReset();
+  respostas.length = 0;
+  chamadas.length = 0;
 });
 
 describe("importarExtrato", () => {
   it("lê o OFX e manda conta, saldo e lançamentos com chave à função do banco", async () => {
-    rpc.mockResolvedValueOnce({ data: { total: 17, novos: 15, classificados: 4, suspeitos: 1 }, error: null });
+    rpc.mockResolvedValueOnce({ data: { total: 17, novos: 15, classificados: 4, suspeitos: 1, manuais: 2 }, error: null });
     const r = await importarExtrato(null, form(new File([FICTICIO], "setembro.ofx")));
     expect(r).toEqual({
       ok: true,
-      dados: { total: 17, novos: 15, repetidos: 2, classificados: 4, suspeitos: 1, banco: "999", agencia: "1", numero: "123456", primeiroMes: "2026-09", ultimoMes: "2026-10" },
+      dados: { total: 17, novos: 15, repetidos: 2, classificados: 4, suspeitos: 1, manuais: 2, banco: "999", agencia: "1", numero: "123456", primeiroMes: "2026-09", ultimoMes: "2026-10" },
     });
     const [nome, args] = rpc.mock.calls[0];
     expect(nome).toBe("fin_importar_extrato");
@@ -103,5 +121,68 @@ describe("classificarLancamento", () => {
     expect(await classificarLancamento("x", "despesa", false)).toEqual({ ok: false, erro: "Lançamento não encontrado. Atualize a página." });
     expect(await classificarLancamento(ID, "pix" as never, false)).toEqual({ ok: false, erro: "Escolha uma categoria da lista." });
     expect(rpc).not.toHaveBeenCalled();
+  });
+});
+
+const manual = (campos: Record<string, string>) => {
+  const f = new FormData();
+  const base = { data: "2026-10-05", sentido: "saida", valor: "1.234,56", descricao: "  Frete pago em  dinheiro ", categoria: "pagamento_frete", conta: "", observacao: "" };
+  for (const [k, v] of Object.entries({ ...base, ...campos })) f.set(k, v);
+  return f;
+};
+
+describe("salvarLancamentoManual", () => {
+  it("novo: grava com sinal de saída, chave da descrição, sem conta, e devolve o mês", async () => {
+    respostas.push({ data: { id: ID }, error: null });
+    expect(await salvarLancamentoManual("", manual({}))).toEqual({ ok: true, dados: "2026-10" });
+    const ins = chamadas.find(([, m]) => m === "insert")!;
+    expect(ins[0]).toBe("fin_lancamento");
+    expect(ins[2][0]).toMatchObject({
+      data: "2026-10-05",
+      valor: -1234.56,
+      descricao: "Frete pago em dinheiro",
+      chave: "FRETE PAGO EM DINHEIRO",
+      categoria: "pagamento_frete",
+      conta_id: null,
+      observacao: null,
+      classificado_por: "u-fin",
+    });
+  });
+
+  it("formulário inválido volta com a primeira frase e não chama o banco", async () => {
+    const r = await salvarLancamentoManual("", manual({ valor: "1,234.56" }));
+    expect(r).toEqual({ ok: false, erro: "Valor inválido. Use vírgula para os centavos: 1.234,56." });
+    expect(clienteFalso.from).not.toHaveBeenCalledWith("fin_lancamento");
+  });
+
+  it("editar um lançamento do extrato é recusado", async () => {
+    respostas.push({ data: { categoria: "despesa", importacao_id: "imp-1" }, error: null });
+    const r = await salvarLancamentoManual(ID, manual({}));
+    expect(r).toEqual({ ok: false, erro: "Este lançamento veio do extrato: só a categoria muda, na própria linha." });
+    expect(chamadas.some(([, m]) => m === "update")).toBe(false);
+  });
+
+  it("editar o feito à mão grava os campos novos", async () => {
+    respostas.push({ data: { categoria: "pagamento_frete", importacao_id: null }, error: null }, { data: [{ id: ID }], error: null });
+    expect(await salvarLancamentoManual(ID, manual({ data: "2026-11-02", sentido: "entrada", categoria: "receita_frete" }))).toEqual({
+      ok: true,
+      dados: "2026-11",
+    });
+    const up = chamadas.find(([, m]) => m === "update")!;
+    expect(up[2][0]).toMatchObject({ data: "2026-11-02", valor: 1234.56, categoria: "receita_frete", classificado_por: "u-fin" });
+  });
+});
+
+describe("excluirLancamentoManual", () => {
+  it("só apaga o feito à mão (filtro importacao_id nulo)", async () => {
+    respostas.push({ data: [{ id: ID }], error: null });
+    expect(await excluirLancamentoManual(ID)).toEqual({ ok: true, dados: undefined });
+    expect(chamadas).toContainEqual(["fin_lancamento", "is", ["importacao_id", null]]);
+  });
+
+  it("nada apagado (era do extrato) vira a frase do desfazer", async () => {
+    respostas.push({ data: [], error: null });
+    const r = await excluirLancamentoManual(ID);
+    expect(!r.ok && r.erro).toMatch(/desfazendo a importação/);
   });
 });
