@@ -1,5 +1,18 @@
 # Testes do banco (pgTAP)
 
+### Rodando no banco local (o jeito do dia a dia)
+
+Com o Supabase local no ar (`npx supabase start`, na raiz do repositório):
+
+```bash
+node supabase/tests/rodar-local.mjs           # todos os arquivos
+node supabase/tests/rodar-local.mjs quadro    # só os que têm "quadro" no nome
+```
+
+O script faz o mesmo que o executor descrito abaixo (`_helpers.sql` + arquivo, terminando em `rollback;`), mas
+fala só com o container local `supabase_db_nilt`. É o que o CI roda em todo PR. O resto deste documento
+descreve como a suíte foi escrita e o cuidado para rodá-la na nuvem.
+
 ### Como os testes rodam (vale para todas as tasks)
 
 Cada arquivo de teste é executado com **uma** chamada `execute_sql` do `supabase-nilt`, cujo `query` é o conteúdo de `_helpers.sql` seguido do conteúdo do arquivo. Formato de todo arquivo de teste:
@@ -41,7 +54,7 @@ Assim tudo (schema `tests`, usuários de teste, dados) é desfeito pelo `rollbac
 - Os testes rodam **no projeto vivo** (`supabase-nilt`), dentro de uma transação que termina em `rollback;`: nada do que criam persiste. Mesmo assim eles escrevem de verdade na transação, usam constantes fixas e disparam gatilhos/auditoria.
 - Os dados de teste são fictícios e **fixos** (CPF 52998224725 e 11144477735, CNPJ 11222333000181, placas `TST…`). Como CPF, CNPJ e placa são colunas únicas, **se algum registro real (ou de homologação) usar esses valores, o teste falha por chave duplicada**.
 - As asserções filtram pelos ids/documentos criados no próprio teste e as cargas de catálogo são conferidas por id (ex.: `tipo_veiculo` ids 1..38, `marca_veiculo` 1..42), então linhas novas de usuários reais não quebram a contagem. As asserções de segurança do tipo "sem perfil enxerga 0" continuam sem filtro de propósito (devem valer para a tabela inteira).
-- Depois que existirem dados reais, prefira rodar a suíte numa **branch do Supabase** (`create_branch`) ou numa pilha local (`supabase start`), nunca no projeto de produção com dados que possam colidir.
+- Depois que existirem dados reais, rode a suíte no **banco local** (`node supabase/tests/rodar-local.mjs`) ou numa branch do Supabase (`create_branch`), nunca no projeto de produção com dados que possam colidir.
 
 ### Fluxo canônico de upload de documentos
 
