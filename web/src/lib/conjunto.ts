@@ -1,5 +1,5 @@
 /* Regras do conjunto (cavalo + carretas/dollies na ordem de engate), espelhando o banco:
-   - `validar` espelha `public.validar_conjunto` (supabase/migrations/20261023000700_conjunto.sql);
+   - `validar` espelha `public.validar_conjunto` (supabase/migrations/20261029000700_conjunto_truck.sql);
    - `capacidade` espelha `public.v_conjunto_capacidade` e `public.capacidade_carga`
      (…000700_conjunto.sql e …000600_veiculo.sql).
    O banco é a autoridade: as mensagens abaixo são idênticas às dos `raise exception` e um teste
@@ -45,9 +45,10 @@ export type Capacidade = {
   excede_cmt: boolean;
 };
 
-/** As 7 mensagens de `validar_conjunto`, na ordem das regras do banco. */
+/** As 8 mensagens de `validar_conjunto`, na ordem das regras do banco. */
 export const MENSAGENS_CONJUNTO = {
-  cavaloInvalido: "o cavalo do conjunto precisa ser da categoria cavalo",
+  cavaloInvalido: "a base do conjunto precisa ser um cavalo ou um truck",
+  truckComPecas: "truck não engata carreta nem dolly",
   itemInvalido: "itens do conjunto precisam ser carreta ou dolly",
   posicoes: "posições do conjunto precisam começar em 1 e não ter buracos",
   dollyNaPonta: "dolly não pode ser a primeira nem a última peça",
@@ -57,6 +58,9 @@ export const MENSAGENS_CONJUNTO = {
 } as const;
 
 const MAX_CARRETAS = 3;
+
+/** Base do conjunto: cavalo (puxa carretas) ou truck (caminhão, roda sozinho). */
+export const podeSerBase = (c: CategoriaVeiculo) => c === "cavalo" || c === "caminhao";
 
 /** As colunas são numeric(6,2): arredondar em 2 casas tira o ruído do ponto flutuante (91 - 28,6). */
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -79,8 +83,12 @@ export function validar(cavalo: Veiculo, itens: Veiculo[], abertos: ConjuntoAber
   const violacoes: Violacao[] = [];
   const M = MENSAGENS_CONJUNTO;
 
-  // 1. a base é um cavalo
-  if (cavalo.categoria !== "cavalo") violacoes.push({ posicao: null, mensagem: M.cavaloInvalido });
+  // 1. a base é um cavalo ou um truck
+  if (!podeSerBase(cavalo.categoria)) violacoes.push({ posicao: null, mensagem: M.cavaloInvalido });
+
+  // 1b. truck roda sozinho: cada peça engatada nele é recusada
+  if (cavalo.categoria === "caminhao")
+    itens.forEach((_, i) => violacoes.push({ posicao: i + 1, mensagem: M.truckComPecas }));
 
   // 2. itens só carreta ou dolly
   itens.forEach((v, i) => {

@@ -108,7 +108,27 @@ declare
 begin
   v_conj := tests.novo_conjunto(tests.novo_veiculo(11, v_p));
   return next throws_ok('set constraints all immediate', 'P0001',
-    'o cavalo do conjunto precisa ser da categoria cavalo', 'base do tipo carreta é recusada');
+    'a base do conjunto precisa ser um cavalo ou um truck', 'base do tipo carreta é recusada');
+end $$;
+
+create function tests.test_truck_sozinho_ok() returns setof text language plpgsql as $$
+declare
+  v_p uuid := tests.prop_teste('52998224725');
+  v_conj uuid;
+begin
+  -- tipo 4 = TRUCK CARROCERIA (caminhão): roda sem peças
+  v_conj := tests.novo_conjunto(tests.novo_veiculo(4, v_p));
+  return next lives_ok('set constraints all immediate', 'truck sem peças é um conjunto válido');
+end $$;
+
+create function tests.test_truck_com_carreta_recusado() returns setof text language plpgsql as $$
+declare
+  v_p uuid := tests.prop_teste('52998224725');
+  v_conj uuid;
+begin
+  v_conj := tests.novo_conjunto(tests.novo_veiculo(4, v_p), array[tests.novo_veiculo(11, v_p)]);
+  return next throws_ok('set constraints all immediate', 'P0001',
+    'truck não engata carreta nem dolly', 'truck com carreta é recusado');
 end $$;
 
 create function tests.test_veiculo_em_dois_conjuntos() returns setof text language plpgsql as $$
@@ -212,7 +232,7 @@ begin
   -- cavalo errado + caminhão como item + buraco: vale a primeira regra da lista (cavalo).
   v_conj := tests.novo_conjunto(tests.novo_veiculo(11, v_p), array[tests.novo_veiculo(4, v_p)], array[2]);
   return next throws_ok('set constraints all immediate', 'P0001',
-    'o cavalo do conjunto precisa ser da categoria cavalo', 'categoria do cavalo vem antes das demais regras');
+    'a base do conjunto precisa ser um cavalo ou um truck', 'categoria do cavalo vem antes das demais regras');
 end $$;
 
 create function tests.test_conjunto_fechado_nao_conflita() returns setof text language plpgsql as $$

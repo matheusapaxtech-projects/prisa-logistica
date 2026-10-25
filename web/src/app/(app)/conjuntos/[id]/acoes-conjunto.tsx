@@ -18,6 +18,8 @@ const EVENTO_ESCOLHER = "nilt:escolher-motorista";
 export type DadosAcoes = {
   id: string;
   nome: string;
+  /** Base é truck (caminhão): roda sozinho, sem "Trocar peças". */
+  truck: boolean;
   motoristaId: string | null;
   motoristaNome: string | null;
   motoristas: MotoristaOpcao[];
@@ -45,10 +47,13 @@ export function AcoesConjunto({ d }: { d: DadosAcoes }) {
           <UserRoundPen size={16} strokeWidth={1.6} aria-hidden="true" />
           Trocar motorista
         </button>
-        <Link className="btn" href={`/conjuntos/${d.id}?editar=1`} id="btn-trocar-pecas">
-          <ArrowLeftRight size={16} strokeWidth={1.6} aria-hidden="true" />
-          Trocar peças
-        </Link>
+        {/* truck roda sozinho: não tem peças para trocar */}
+        {!d.truck && (
+          <Link className="btn" href={`/conjuntos/${d.id}?editar=1`} id="btn-trocar-pecas">
+            <ArrowLeftRight size={16} strokeWidth={1.6} aria-hidden="true" />
+            Trocar peças
+          </Link>
+        )}
         <button
           className="btn btn-perigo"
           type="button"

@@ -41,8 +41,9 @@ export async function generateMetadata({ params, searchParams }: Params): Promis
 
 const data = (iso: string) => formato.data(diaSP(iso));
 
-function LinhaPeca({ v, pos }: { v: VeiculoConjunto; pos: "Cavalo" | number }) {
-  const carreta = v.categoria === "carreta";
+/** `pos`: "Cavalo" ou "Truck" (a base do conjunto) ou a posição da peça. Truck mostra a carga dele. */
+function LinhaPeca({ v, pos }: { v: VeiculoConjunto; pos: "Cavalo" | "Truck" | number }) {
+  const carreta = v.categoria === "carreta" || v.categoria === "caminhao";
   return (
     <LinhaClicavel href={`/veiculos/${v.id}`}>
       <td className="some-celular">{pos}</td>
@@ -51,7 +52,7 @@ function LinhaPeca({ v, pos }: { v: VeiculoConjunto; pos: "Cavalo" | number }) {
         <span className="linha2 so-celular">
           <Partes
             itens={[
-              pos === "Cavalo" ? "Cavalo" : `Posição ${pos}`,
+              typeof pos === "number" ? `Posição ${pos}` : pos,
               tipoTxt(v.tipo),
               `tara ${formato.t(v.tara_t)}`,
               carreta && `carga ${formato.t(cargaEfetiva(v))}`,
@@ -118,6 +119,7 @@ export default async function ConjuntoFicha({ params, searchParams }: Params) {
   const cap = capacidade(f.cavalo, f.itens);
   const eixos = f.cavalo.eixos + f.itens.reduce((s, v) => s + v.eixos, 0);
   const k = f.itens.length;
+  const truck = f.cavalo.categoria === "caminhao";
 
   // botões e diálogos só para quem grava, e só no conjunto aberto
   let acoes: DadosAcoes | null = null;
@@ -130,7 +132,7 @@ export default async function ConjuntoFicha({ params, searchParams }: Params) {
         .filter((c) => c.id !== f.id && c.motorista_id)
         .map((c) => [c.motorista_id!, { id: c.id, nome: nomeConjunto([c.cavalo_id, ...c.item_ids].map((x) => placa.get(x) ?? "—")) }]),
     );
-    acoes = { id: f.id, nome, motoristaId: f.motorista_id, motoristaNome: f.motorista?.nome ?? null, motoristas: base.motoristas, dirige };
+    acoes = { id: f.id, nome, truck, motoristaId: f.motorista_id, motoristaNome: f.motorista?.nome ?? null, motoristas: base.motoristas, dirige };
   }
 
   const mot = f.motorista;
@@ -151,7 +153,13 @@ export default async function ConjuntoFicha({ params, searchParams }: Params) {
           </div>
           <p className="sub">
             {aberto ? (
-              <Partes itens={[`${eixos} eixos`, `${k} ${k === 1 ? "peça" : "peças"} atrás do cavalo`, `aberto em ${data(f.inicio)}, ${haDias(f.inicio)}`]} />
+              <Partes
+                itens={[
+                  `${eixos} eixos`,
+                  truck ? "truck, sem carreta" : `${k} ${k === 1 ? "peça" : "peças"} atrás do cavalo`,
+                  `aberto em ${data(f.inicio)}, ${haDias(f.inicio)}`,
+                ]}
+              />
             ) : (
               <Partes itens={[`${eixos} eixos`, `rodou de ${data(f.inicio)} a ${data(f.fim!)}, ${diasEntre(f.inicio, f.fim!)} dias`]} />
             )}
@@ -163,7 +171,8 @@ export default async function ConjuntoFicha({ params, searchParams }: Params) {
       {!aberto && (
         <div className="avisos" style={{ marginBottom: 24 }}>
           <Aviso tipo="info" icone={Info}>
-            <b>Conjunto encerrado em {data(f.fim!)}.</b> O cavalo e as peças ficaram livres para outros conjuntos.
+            <b>Conjunto encerrado em {data(f.fim!)}.</b>{" "}
+            {truck ? "O truck ficou livre para outros conjuntos." : "O cavalo e as peças ficaram livres para outros conjuntos."}
           </Aviso>
         </div>
       )}
@@ -172,7 +181,7 @@ export default async function ConjuntoFicha({ params, searchParams }: Params) {
         <section className="bloco c12" aria-labelledby="h-engate">
           <div className="bloco-cab">
             <h2 id="h-engate">Engate</h2>
-            <span className="dir">posição 1 engata no cavalo</span>
+            <span className="dir">{truck ? "truck roda sozinho" : "posição 1 engata no cavalo"}</span>
           </div>
           <div className="bloco-corpo">
             <div className="previa engate-grande">
@@ -193,7 +202,7 @@ export default async function ConjuntoFicha({ params, searchParams }: Params) {
                   </tr>
                 </thead>
                 <tbody>
-                  <LinhaPeca v={f.cavalo} pos="Cavalo" />
+                  <LinhaPeca v={f.cavalo} pos={truck ? "Truck" : "Cavalo"} />
                   {f.itens.map((v, i) => (
                     <LinhaPeca key={v.id} v={v} pos={i + 1} />
                   ))}
@@ -206,10 +215,17 @@ export default async function ConjuntoFicha({ params, searchParams }: Params) {
         <section className="bloco c7" aria-labelledby="h-cap">
           <div className="bloco-cab">
             <h2 id="h-cap">Capacidade</h2>
-            <span className="dir">limite = CMT − taras</span>
+            <span className="dir">{truck ? "carga do próprio truck" : "limite = CMT − taras"}</span>
           </div>
           <div className="bloco-corpo">
-            <ContaCapacidade cavalo={f.cavalo} itens={f.itens} />
+            {truck ? (
+              <dl className="kv">
+                <dt>Carga do truck {f.cavalo.placa}</dt>
+                <dd>{formato.t(cargaEfetiva(f.cavalo))}</dd>
+              </dl>
+            ) : (
+              <ContaCapacidade cavalo={f.cavalo} itens={f.itens} />
+            )}
           </div>
         </section>
 

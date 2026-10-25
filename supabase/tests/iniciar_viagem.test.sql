@@ -452,7 +452,8 @@ begin
   return next is(
     array(select public.rotulo_status_campo(s) from unnest(enum_range(null::public.status_campo)) s),
     array['Trânsito', 'Aguardando carregamento', 'Em carregamento', 'Aguardando NF e pagamento', 'Em rota', 'Pausa',
-          'Aguardando descarga', 'Aguardando contagem de divergência', 'Resolução de divergência na carga', 'Frete finalizado'],
+          'Aguardando descarga', 'Descarregando', 'Aguardando contagem de divergência', 'Resolução de divergência na carga',
+          'Aguardando saldo (30%)', 'Frete finalizado'],
     'rótulos exatos das colunas, na ordem');
   return next is(public.rotulo_status_campo(null), 'Planejada', 'null = Planejada');
 end $$;

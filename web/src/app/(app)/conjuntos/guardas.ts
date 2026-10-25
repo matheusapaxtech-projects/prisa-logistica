@@ -7,6 +7,7 @@ import type { LocalErro } from "./regras";
 
 export const MSG_ENCERRADO = "Este conjunto já foi encerrado. Atualize a página.";
 export const MSG_MOTORISTA = "Escolha um motorista com cadastro normal.";
+export const MSG_SEM_PECAS = "Para salvar, adicione pelo menos uma carreta.";
 
 /** Por que a gravação foi recusada antes de chegar ao banco, e onde a mensagem aparece. */
 export type Recusa = { erro: string; local: LocalErro | null };
@@ -28,13 +29,21 @@ export async function conferirMotorista(db: Banco, motoristaId: string | null, a
  *   enquanto a tela estava aberta) → a mensagem do banco, junto do cavalo;
  * - trocar peças: o conjunto informado tem de existir, estar aberto e ser do mesmo cavalo;
  *   senão (encerrado nesse meio-tempo, ou ids que não combinam) → "Este conjunto já foi encerrado…";
+ * - sem peças: só truck roda sozinho; cavalo sem carreta → "Para salvar, adicione pelo menos uma carreta.";
  * - motorista: `conferirMotorista`.
  * `null` = pode gravar.
  */
 export async function conferirMontagem(
   db: Banco,
-  m: { conjuntoId: string | null; cavaloId: string; motoristaId: string | null },
+  m: { conjuntoId: string | null; cavaloId: string; motoristaId: string | null; itens: string[] },
 ): Promise<Recusa | null> {
+  if (!m.itens.length) {
+    const r = await db.from("veiculo").select("tipo_veiculo(categoria)").eq("id", m.cavaloId).maybeSingle();
+    if (r.error) throw r.error;
+    const tipo = r.data?.tipo_veiculo as { categoria: string } | { categoria: string }[] | null | undefined;
+    const categoria = Array.isArray(tipo) ? tipo[0]?.categoria : tipo?.categoria;
+    if (categoria !== "caminhao") return { erro: MSG_SEM_PECAS, local: null };
+  }
   let atual: string | null = null;
   if (m.conjuntoId) {
     const r = await db.from("conjunto").select("id, cavalo_id, motorista_id, fim").eq("id", m.conjuntoId).maybeSingle();
