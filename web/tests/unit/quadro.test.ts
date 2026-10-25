@@ -59,6 +59,9 @@ function cartao(extra: Partial<Cartao> = {}): Cartao {
     ocorrencias_abertas: 0,
     saldo_pago: false,
     tem_documentos_saida: false,
+    peso_saida_kg: null,
+    peso_chegada_kg: null,
+    tolerancia_quebra_pct: null,
     ...extra,
   };
 }

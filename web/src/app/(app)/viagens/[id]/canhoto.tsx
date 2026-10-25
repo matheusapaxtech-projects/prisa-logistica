@@ -106,7 +106,7 @@ export function Canhoto({ viagemId, canhotos, podeEnviar }: Props) {
           ))}
         </ul>
       ) : (
-        <EstadoVazio>Nenhum canhoto ainda. Ele é pedido para passar de “Aguardando descarga” para a contagem.</EstadoVazio>
+        <EstadoVazio>Nenhum canhoto ainda. Ele é pedido para passar de “Descarregando” para a contagem.</EstadoVazio>
       )}
 
       {podeEnviar && (

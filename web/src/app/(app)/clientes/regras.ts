@@ -2,6 +2,7 @@
    faturamento e de local de coleta/descarga. Fora de actions.ts porque um arquivo "use server" só
    exporta funções assíncronas (e os testes usam os esquemas direto). */
 import { z } from "zod";
+import { lerNumeroBr } from "@/lib/formato";
 import { validacao } from "@/lib/validacao";
 import { RE_ID } from "../_pessoa/formulario";
 import { UFS } from "../_pessoa/rotulos";
@@ -19,6 +20,7 @@ export const CONDICOES = {
 export const NAO_ACHADO = "Cliente não encontrado. Atualize a página.";
 export const MSG_EMAIL = "E-mail inválido";
 export const MSG_GERENCIADORA = "Informe a gerenciadora";
+export const MSG_TOLERANCIA = "Tolerância de 0 a 5%, com vírgula: 0,30.";
 
 const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const marcado = (v: string | undefined) => v === "on" || v === "true";
@@ -40,9 +42,12 @@ export const esquemaFaturamento = z
     gerenciadora: texto(110),
     exige_sm: z.string().optional(),
     exigencias: texto(2000),
+    tolerancia_quebra_pct: z.string().default(""),
   })
   .superRefine((v, ctx) => {
     if (marcado(v.exige_gr) && !v.gerenciadora) ctx.addIssue({ code: "custom", path: ["gerenciadora"], message: MSG_GERENCIADORA });
+    const t = lerNumeroBr(v.tolerancia_quebra_pct);
+    if (t !== null && !(t >= 0 && t <= 5)) ctx.addIssue({ code: "custom", path: ["tolerancia_quebra_pct"], message: MSG_TOLERANCIA });
   })
   .transform((v) => {
     const gr = marcado(v.exige_gr);
@@ -56,6 +61,8 @@ export const esquemaFaturamento = z
       gerenciadora: gr ? v.gerenciadora.replace(/\s+/g, " ") : null,
       exige_sm: marcado(v.exige_sm),
       exigencias: nulo(v.exigencias),
+      // Vazio = a tolerância de partida (0,30%), como no banco.
+      tolerancia_quebra_pct: lerNumeroBr(v.tolerancia_quebra_pct) ?? 0.3,
     };
   });
 

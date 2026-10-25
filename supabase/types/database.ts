@@ -212,6 +212,7 @@ export type Database = {
       }
       cliente: {
         Row: {
+          tolerancia_quebra_pct: number
           condicao_faturamento: Database["public"]["Enums"]["condicao_faturamento"]
           created_at: string
           created_by: string | null
@@ -226,6 +227,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          tolerancia_quebra_pct?: number
           condicao_faturamento?: Database["public"]["Enums"]["condicao_faturamento"]
           created_at?: string
           created_by?: string | null
@@ -240,6 +242,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          tolerancia_quebra_pct?: number
           condicao_faturamento?: Database["public"]["Enums"]["condicao_faturamento"]
           created_at?: string
           created_by?: string | null
@@ -2245,6 +2248,9 @@ export type Database = {
       }
       v_quadro: {
         Row: {
+          peso_chegada_kg: number | null
+          peso_saida_kg: number | null
+          tolerancia_quebra_pct: number | null
           cavalo_placa: string | null
           cliente_nome: string | null
           destino_cidade: string | null
@@ -2467,6 +2473,7 @@ export type Database = {
         Returns: undefined
       }
       resultado_cte_da_viagem: { Args: { p_viagem: string }; Returns: Json }
+      quebra_e_estadia: { Args: { p_viagem: string }; Returns: Json }
       rotulo_status_campo: {
         Args: { p: Database["public"]["Enums"]["status_campo"] }
         Returns: string

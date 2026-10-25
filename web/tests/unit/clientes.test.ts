@@ -24,6 +24,14 @@ describe("esquemaFaturamento (salvarFaturamento)", () => {
     });
   });
 
+  it("tolerância de quebra: vazia vale 0,30%; com vírgula vira número; fora de 0 a 5% é recusada", () => {
+    expect(esquemaFaturamento.safeParse(base).data?.tolerancia_quebra_pct).toBe(0.3);
+    expect(esquemaFaturamento.safeParse({ ...base, tolerancia_quebra_pct: "0,25" }).data?.tolerancia_quebra_pct).toBe(0.25);
+    const r = esquemaFaturamento.safeParse({ ...base, tolerancia_quebra_pct: "7" });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0]).toMatchObject({ path: ["tolerancia_quebra_pct"], message: "Tolerância de 0 a 5%, com vírgula: 0,30." });
+  });
+
   it('e-mail do XML inválido → "E-mail inválido"', () => {
     const r = esquemaFaturamento.safeParse({ ...base, email_xml: "xml@semdominio" });
     expect(r.success).toBe(false);

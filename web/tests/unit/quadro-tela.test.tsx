@@ -91,6 +91,9 @@ function cartao(extra: Partial<Cartao> = {}): Cartao {
     ocorrencias_abertas: 0,
     saldo_pago: false,
     tem_documentos_saida: false,
+    peso_saida_kg: null,
+    peso_chegada_kg: null,
+    tolerancia_quebra_pct: null,
     ...extra,
   };
 }
@@ -351,6 +354,17 @@ describe("Quadro da operação: tela", () => {
     fireEvent.click(within(dlg).getByRole("button", { name: "Mover" }));
     await waitFor(() => expect(moverViagem).toHaveBeenCalledTimes(1));
     expect(moverViagem.mock.calls[0].slice(1)).toEqual(["aguardando_saldo", "frete_finalizado", { mdfe_encerrado: true, ciot_encerrado: true }]);
+  });
+
+  it("contagem mostra a quebra de peso e sugere falta quando passa da tolerância do cliente", () => {
+    montar([
+      cartao({ numero: 93, status_campo: "aguardando_contagem", peso_saida_kg: 32000, peso_chegada_kg: 31740, tolerancia_quebra_pct: 0.3 }),
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Mover a viagem #93" }));
+    fireEvent.click(screen.getByRole("button", { name: "Aguardando saldo (30%)" }));
+    const dlg = screen.getByRole("dialog", { name: /Contagem/ });
+    expect(within(dlg).getByRole("status")).toHaveTextContent("Quebra de 0,260 t (0,81%), acima da tolerância de 0,30%. Registre como divergência.");
+    expect(within(dlg).getByLabelText("Falta")).toBeChecked();
   });
 
   it("chaves erradas não chegam ao banco: o diálogo diz qual chave", async () => {
