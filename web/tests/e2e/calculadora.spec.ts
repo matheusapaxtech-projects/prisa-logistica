@@ -68,3 +68,36 @@ test("abre preenchida pela ficha da viagem", async ({ page }) => {
   await prepararPrint(page);
   await page.screenshot({ path: path.join(PRINTS, "5-da-viagem.png"), fullPage: true });
 });
+
+test("lote de carga: composição, preço mínimo e abrir um caminhão na carga única", async ({ page }) => {
+  await page.goto("/calculadora");
+  await page.getByLabel("Descarga em", { exact: true }).fill("Maracaju/MS");
+  await expect(page.getByLabel("Km da rota", { exact: true })).toHaveValue("583", { timeout: 20_000 });
+  await page.getByRole("button", { name: "Lote de carga" }).click();
+
+  await page.getByLabel("Peso total do lote", { exact: true }).fill("128");
+  await page.getByLabel("Frete contratado por tonelada", { exact: true }).fill("205");
+  for (const e of [5, 6, 6, 7]) await page.getByRole("button", { name: `+ ${e} eixos` }).click();
+  await page.getByRole("button", { name: "Distribuir o peso" }).click();
+
+  await expect(page.locator("#calc-veredito")).toHaveText("Negociar");
+  const decisao = page.locator("#calc-decisao");
+  await expect(decisao.getByText("R$ 209,52/t")).toBeVisible();
+  await expect(decisao.getByText("128,00 de 128,00 t")).toBeVisible();
+  await expect(decisao.getByText("R$ 20.462,00")).toBeVisible();
+  await expect(page.getByText("50 t · o mais barato")).toBeVisible();
+  await prepararPrint(page);
+  await page.screenshot({ path: path.join(PRINTS, "6-lote-negociar.png"), fullPage: true });
+
+  await page.getByLabel("Frete contratado por tonelada", { exact: true }).fill("210");
+  await expect(page.locator("#calc-veredito")).toHaveText("Pode contratar");
+
+  await page.getByLabel("Frete do motorista").first().fill("4.000");
+  await expect(page.locator("#calc-veredito")).toHaveText("Não contratar");
+  await page.getByLabel("Frete do motorista").first().fill("");
+
+  await page.getByRole("button", { name: "Abrir na carga única" }).last().click();
+  await expect(page.getByRole("button", { name: "Carga única" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Frete do motorista", { exact: true })).toHaveValue("5.620,00");
+  await expect(page.getByLabel("Peso da carga", { exact: true })).toHaveValue("38,00");
+});

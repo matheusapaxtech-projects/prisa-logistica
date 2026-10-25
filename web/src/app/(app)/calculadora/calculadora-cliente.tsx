@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, RotateCcw, X } from "lucide-react";
+import { Plus, RotateCcw } from "lucide-react";
 import { Sinal } from "@/components/Sinal";
 import { toast } from "@/components/Toast";
-import { formato, lerNumeroBr } from "@/lib/formato";
+import { formato } from "@/lib/formato";
 import {
   ACRESCIMO_SUGERIDO,
   calcularCTe,
@@ -31,7 +31,10 @@ import {
 import { acharMunicipio, estimarRota, lerMunicipios, pedagioEstimado, type Municipio, type Municipios } from "@/lib/calculadora/rota";
 import { porcento, sinalDaFaixa } from "@/lib/frete";
 import { dinheiro } from "../financeiro/regras";
+import { pisoDoCaminhao, type Caminhao, type Rota } from "@/lib/calculadora/lote";
 import type { DaViagem } from "./consultas";
+import { avaliar, LOTE_VAZIO, LoteLateral, LotePaineis, resumoLote, type LoteTela } from "./lote-cliente";
+import { CabSecao, campo, CampoCidade, CampoNumero, Escolha, FORMA, num } from "./partes";
 
 /* Tela da calculadora: entradas à esquerda; à direita, fixa, a decisão de contratação com os limites em
    reais, o piso, o checklist do CIOT e (admin e financeiro) o resultado do CT-e e as alíquotas. Tudo
@@ -79,13 +82,6 @@ const EIXOS = [2, 3, 4, 5, 6, 7, 8, 9];
 const ORIGEM_PADRAO = "Mandaguari/PR";
 const PEDAGIO_PADRAO = 0.08; // R$ por eixo/km sem histórico
 
-const campo = (n: number | null | undefined, casas = 2) => formato.numeroCampo(n, casas);
-/** Texto pt-BR → número; vazio ou inválido = 0 (o campo mostra o erro). */
-const num = (s: string | null | undefined) => {
-  const v = lerNumeroBr(s);
-  return v === null || Number.isNaN(v) ? 0 : v;
-};
-const invalido = (s: string | null | undefined) => Number.isNaN(lerNumeroBr(s) ?? 0);
 
 function inicial(v: DaViagem | null): Estado {
   const base: Estado = {
@@ -148,6 +144,8 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
   const [e, setE] = useState<Estado>(() => inicial(viagem));
   const [fiscalTxt, setFiscalTxt] = useState(() => textoFiscal(fiscal));
   const [mun, setMun] = useState<Municipios | null>(null);
+  const [modoCalc, setModoCalc] = useState<"unica" | "lote">("unica");
+  const [lote, setLote] = useState<LoteTela>(LOTE_VAZIO);
   const muda = <K extends keyof Estado>(k: K, v: Estado[K]) => setE((s) => ({ ...s, [k]: v }));
 
   // 5.570 municípios: carregados depois que a tela abre, num pedaço separado do pacote.
@@ -219,6 +217,28 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
   // Frete contratado que fecha a margem mínima com o motorista pelo menos no piso ("Usar o da margem mínima").
   const contratadoMinimo = piso > 0 ? freteEmpresaMinimo({ ...cte, freteMotorista: Math.max(freteMotorista, piso) }, p) : null;
 
+  const rotaLote: Rota = { km, pedagioEixoKm: pedEixoKm, origemUF: ufOrigem, destinoUF: ufDestino, tipo: e.tipo, retornoVazio: e.retornoVazio };
+  const avLote = modoCalc === "lote" ? avaliar(lote, rotaLote, tabela, p) : null;
+
+  /** "Abrir na carga única" de um caminhão do lote. */
+  function abrirCaminhao(c: Caminhao) {
+    const piso = pisoDoCaminhao(rotaLote, tabela, c.eixos);
+    setE((s) => ({
+      ...s,
+      eixos: c.eixos,
+      peso: campo(c.peso),
+      capacidade: campo(c.capacidade),
+      modo: "por_tonelada",
+      freteCliente: lote.preco,
+      freteMotorista: campo(c.freteMotorista ?? Math.ceil(piso)),
+      pf: c.pf,
+      pedagio: null,
+      valorMercadoria: num(lote.valorMercadoria) && c.peso ? campo(num(lote.valorMercadoria) * c.peso) : s.valorMercadoria,
+    }));
+    setModoCalc("unica");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   /* ---------- ações ---------- */
   /** Põe um frete contratado total no campo, no modo da tela (por tonelada divide pelo peso). */
   function usarContratado(total: number) {
@@ -237,6 +257,7 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
   }
 
   function limpar() {
+    if (modoCalc === "lote") return setLote(LOTE_VAZIO);
     setE(inicial(null));
     setFiscalTxt(textoFiscal(fiscal));
   }
@@ -252,8 +273,12 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
       ...decisao.limites.map((l) => `${l.rotulo}: ${l.valor !== null ? formato.reais(l.valor) : "—"}`),
       ...(verTudo && freteCliente && freteMotorista ? [`Margem líquida: ${porcento(resultado.margemLiquida)} (${resultado.faixa})`] : []),
     ];
+    const texto =
+      avLote !== null
+        ? resumoLote(avLote, lote, [`${linhas[1]}`, `${tiposCarga[e.tipo]}`], verTudo)
+        : linhas.join("\n");
     try {
-      await navigator.clipboard.writeText(linhas.join("\n"));
+      await navigator.clipboard.writeText(texto);
       toast("Resumo copiado.");
     } catch {
       toast("Não deu para copiar. Tente de novo.", "alert-circle");
@@ -297,6 +322,18 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
         </div>
       </div>
       {datalist}
+      <div className="calc-modo segmentado" role="group" aria-label="Modo da calculadora">
+        {(
+          [
+            ["unica", "Carga única"],
+            ["lote", "Lote de carga"],
+          ] as const
+        ).map(([m, r]) => (
+          <button key={m} type="button" aria-pressed={modoCalc === m} onClick={() => setModoCalc(m)}>
+            {r}
+          </button>
+        ))}
+      </div>
 
       <div className="calc-grade">
         <div className="calc-entradas">
@@ -384,257 +421,278 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
             </div>
           </section>
 
-          <section className="painel" aria-labelledby="calc-carga">
-            <CabSecao id="calc-carga" titulo="Caminhão e carga">
-              O tipo de carga e os eixos escolhem a coluna da tabela da ANTT.
-            </CabSecao>
-            <div className="campos">
-              <div className="campo f6">
-                <label htmlFor="tipo">Tipo de carga (ANTT)</label>
-                <select id="tipo" value={e.tipo} onChange={(ev) => muda("tipo", ev.target.value as TipoCarga)}>
-                  {(Object.keys(tiposCarga) as TipoCarga[]).map((t) => (
-                    <option key={t} value={t}>
-                      {tiposCarga[t]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="campo f6">
-                <span className="rotulo" id="eixos-rot">
-                  Eixos do caminhão
-                </span>
-                <Escolha
-                  rotuloId="eixos-rot"
-                  opcoes={EIXOS.map((x) => [String(x), String(x)])}
-                  valor={String(e.eixos)}
-                  aoMudar={(v) => muda("eixos", Number(v))}
-                />
-                {coef && coef.eixosTabela !== e.eixos && <span className="ajuda">a ANTT não tem {e.eixos} eixos: vale a coluna de {coef.eixosTabela}</span>}
-              </div>
-              <CampoNumero classe="f4" id="peso" rotulo="Peso da carga" unidade="t" valor={e.peso} aoMudar={(v) => muda("peso", v)} />
-              <CampoNumero
-                classe="f4"
-                id="capacidade"
-                rotulo="Capacidade do caminhão"
-                unidade="t"
-                valor={e.capacidade}
-                aoMudar={(v) => muda("capacidade", v)}
-                ajuda={<Ocupacao peso={peso} capacidade={capacidade} />}
-              />
-              <CampoNumero
-                classe="f4"
-                id="valor-mercadoria"
-                rotulo="Valor da mercadoria"
-                opcional
-                unidade="R$"
-                valor={e.valorMercadoria}
-                aoMudar={(v) => muda("valorMercadoria", v)}
-                ajuda="valor da NF: base do seguro da carga"
-              />
-            </div>
-          </section>
+          {avLote !== null ? (
+            <LotePaineis
+              lote={lote}
+              muda={setLote}
+              av={avLote}
+              tipo={e.tipo}
+              aoTipo={(t) => muda("tipo", t)}
+              tiposCarga={tiposCarga}
+              verTudo={verTudo}
+              abrir={abrirCaminhao}
+            />
+          ) : (
+            <>
+              <section className="painel" aria-labelledby="calc-carga">
+                <CabSecao id="calc-carga" titulo="Caminhão e carga">
+                  O tipo de carga e os eixos escolhem a coluna da tabela da ANTT.
+                </CabSecao>
+                <div className="campos">
+                  <div className="campo f6">
+                    <label htmlFor="tipo">Tipo de carga (ANTT)</label>
+                    <select id="tipo" value={e.tipo} onChange={(ev) => muda("tipo", ev.target.value as TipoCarga)}>
+                      {(Object.keys(tiposCarga) as TipoCarga[]).map((t) => (
+                        <option key={t} value={t}>
+                          {tiposCarga[t]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="campo f6">
+                    <span className="rotulo" id="eixos-rot">
+                      Eixos do caminhão
+                    </span>
+                    <Escolha
+                      rotuloId="eixos-rot"
+                      opcoes={EIXOS.map((x) => [String(x), String(x)])}
+                      valor={String(e.eixos)}
+                      aoMudar={(v) => muda("eixos", Number(v))}
+                    />
+                    {coef && coef.eixosTabela !== e.eixos && <span className="ajuda">a ANTT não tem {e.eixos} eixos: vale a coluna de {coef.eixosTabela}</span>}
+                  </div>
+                  <CampoNumero classe="f4" id="peso" rotulo="Peso da carga" unidade="t" valor={e.peso} aoMudar={(v) => muda("peso", v)} />
+                  <CampoNumero
+                    classe="f4"
+                    id="capacidade"
+                    rotulo="Capacidade do caminhão"
+                    unidade="t"
+                    valor={e.capacidade}
+                    aoMudar={(v) => muda("capacidade", v)}
+                    ajuda={<Ocupacao peso={peso} capacidade={capacidade} />}
+                  />
+                  <CampoNumero
+                    classe="f4"
+                    id="valor-mercadoria"
+                    rotulo="Valor da mercadoria"
+                    opcional
+                    unidade="R$"
+                    valor={e.valorMercadoria}
+                    aoMudar={(v) => muda("valorMercadoria", v)}
+                    ajuda="valor da NF: base do seguro da carga"
+                  />
+                </div>
+              </section>
 
-          <section className="painel" aria-labelledby="calc-fretes">
-            <CabSecao id="calc-fretes" titulo="Fretes">
-              O que o cliente paga à Prisa e o que a Prisa paga ao motorista.
-            </CabSecao>
-            <div className="campos">
-              <div className="campo f6">
-                <span className="rotulo" id="modo-rot">
-                  O cliente paga
-                </span>
-                <Escolha
-                  rotuloId="modo-rot"
-                  opcoes={[
-                    ["por_tonelada", "Por tonelada"],
-                    ["total", "Valor total"],
-                  ]}
-                  valor={e.modo}
-                  aoMudar={(v) => trocarModo(v as Modo)}
-                />
-              </div>
-              <CampoNumero
-                classe="f6"
-                id="frete-cliente"
-                rotulo={e.modo === "por_tonelada" ? "Frete contratado por tonelada" : "Frete contratado (total)"}
-                unidade={e.modo === "por_tonelada" ? "R$/t" : "R$"}
-                valor={e.freteCliente}
-                aoMudar={(v) => muda("freteCliente", v)}
-                ajuda={
-                  <>
-                    valor negociado com o cliente
-                    {e.modo === "por_tonelada"
-                      ? peso
-                        ? `: ${formato.reais(freteCliente)} no total`
-                        : "; informe o peso da carga"
-                      : peso && freteCliente
-                        ? `: ${formato.reais(freteCliente / peso)} por tonelada`
-                        : ""}
-                  </>
-                }
-              />
-              <div className="f12 calc-contratado">
-                {sitContratado && <Sinal tipo={sitContratado.tipo} texto={sitContratado.texto} />}
-                {sugerido > 0 && (
-                  <button type="button" className="btn" onClick={() => usarContratado(sugerido)}>
-                    Usar o sugerido ({formato.reais(sugerido)})
-                  </button>
-                )}
-                {contratadoMinimo !== null && (
-                  <button type="button" className="btn" onClick={() => usarContratado(contratadoMinimo)}>
-                    Usar o da margem mínima ({formato.reais(contratadoMinimo)})
-                  </button>
-                )}
-              </div>
-              <CampoNumero
-                classe="f6"
-                id="frete-motorista"
-                rotulo="Frete do motorista"
-                unidade="R$"
-                valor={e.freteMotorista}
-                aoMudar={(v) => muda("freteMotorista", v)}
-                ajuda="valor total da viagem, sem o pedágio"
-              />
-              <div className="campo f6">
-                <span className="rotulo" id="pf-rot">
-                  Contratado
-                </span>
-                <Escolha
-                  rotuloId="pf-rot"
-                  opcoes={[
-                    ["pj", "Pessoa jurídica"],
-                    ["pf", "Pessoa física"],
-                  ]}
-                  valor={e.pf ? "pf" : "pj"}
-                  aoMudar={(v) => muda("pf", v === "pf")}
-                />
-                <span className="ajuda">{e.pf ? "INSS patronal de 4% e retenções de 13,5% sobre 20% do frete" : "sem INSS nem retenções"}</span>
-              </div>
-              <CampoNumero
-                classe="f4"
-                id="prazo"
-                rotulo="Saldo em"
-                unidade="dias"
-                valor={e.prazo}
-                aoMudar={(v) => muda("prazo", v)}
-                ajuda="dias úteis; a lei permite até 30"
-              />
-              <CampoNumero
-                classe="f4"
-                id="adiantamento"
-                rotulo="Adiantamento"
-                unidade="%"
-                valor={e.adiantamento}
-                aoMudar={(v) => muda("adiantamento", v)}
-                ajuda={freteMotorista ? `${formato.reais((freteMotorista * num(e.adiantamento)) / 100)} na carga` : undefined}
-              />
-              <div className="campo f4 calc-chave-campo">
-                <label className="chave">
-                  <input type="checkbox" checked={e.rntrc} onChange={(ev) => muda("rntrc", ev.target.checked)} />
-                  RNTRC conferido
-                </label>
-                <a className="ajuda" href="https://consultapublica.antt.gov.br/Site/ConsultaRNTRC.aspx" target="_blank" rel="noreferrer">
-                  consultar na ANTT
-                </a>
-              </div>
-            </div>
-          </section>
+              <section className="painel" aria-labelledby="calc-fretes">
+                <CabSecao id="calc-fretes" titulo="Fretes">
+                  O que o cliente paga à Prisa e o que a Prisa paga ao motorista.
+                </CabSecao>
+                <div className="campos">
+                  <div className="campo f6">
+                    <span className="rotulo" id="modo-rot">
+                      O cliente paga
+                    </span>
+                    <Escolha
+                      rotuloId="modo-rot"
+                      opcoes={[
+                        ["por_tonelada", "Por tonelada"],
+                        ["total", "Valor total"],
+                      ]}
+                      valor={e.modo}
+                      aoMudar={(v) => trocarModo(v as Modo)}
+                    />
+                  </div>
+                  <CampoNumero
+                    classe="f6"
+                    id="frete-cliente"
+                    rotulo={e.modo === "por_tonelada" ? "Frete contratado por tonelada" : "Frete contratado (total)"}
+                    unidade={e.modo === "por_tonelada" ? "R$/t" : "R$"}
+                    valor={e.freteCliente}
+                    aoMudar={(v) => muda("freteCliente", v)}
+                    ajuda={
+                      <>
+                        valor negociado com o cliente
+                        {e.modo === "por_tonelada"
+                          ? peso
+                            ? `: ${formato.reais(freteCliente)} no total`
+                            : "; informe o peso da carga"
+                          : peso && freteCliente
+                            ? `: ${formato.reais(freteCliente / peso)} por tonelada`
+                            : ""}
+                      </>
+                    }
+                  />
+                  <div className="f12 calc-contratado">
+                    {sitContratado && <Sinal tipo={sitContratado.tipo} texto={sitContratado.texto} />}
+                    {sugerido > 0 && (
+                      <button type="button" className="btn" onClick={() => usarContratado(sugerido)}>
+                        Usar o sugerido ({formato.reais(sugerido)})
+                      </button>
+                    )}
+                    {contratadoMinimo !== null && (
+                      <button type="button" className="btn" onClick={() => usarContratado(contratadoMinimo)}>
+                        Usar o da margem mínima ({formato.reais(contratadoMinimo)})
+                      </button>
+                    )}
+                  </div>
+                  <CampoNumero
+                    classe="f6"
+                    id="frete-motorista"
+                    rotulo="Frete do motorista"
+                    unidade="R$"
+                    valor={e.freteMotorista}
+                    aoMudar={(v) => muda("freteMotorista", v)}
+                    ajuda="valor total da viagem, sem o pedágio"
+                  />
+                  <div className="campo f6">
+                    <span className="rotulo" id="pf-rot">
+                      Contratado
+                    </span>
+                    <Escolha
+                      rotuloId="pf-rot"
+                      opcoes={[
+                        ["pj", "Pessoa jurídica"],
+                        ["pf", "Pessoa física"],
+                      ]}
+                      valor={e.pf ? "pf" : "pj"}
+                      aoMudar={(v) => muda("pf", v === "pf")}
+                    />
+                    <span className="ajuda">{e.pf ? "INSS patronal de 4% e retenções de 13,5% sobre 20% do frete" : "sem INSS nem retenções"}</span>
+                  </div>
+                  <CampoNumero
+                    classe="f4"
+                    id="prazo"
+                    rotulo="Saldo em"
+                    unidade="dias"
+                    valor={e.prazo}
+                    aoMudar={(v) => muda("prazo", v)}
+                    ajuda="dias úteis; a lei permite até 30"
+                  />
+                  <CampoNumero
+                    classe="f4"
+                    id="adiantamento"
+                    rotulo="Adiantamento"
+                    unidade="%"
+                    valor={e.adiantamento}
+                    aoMudar={(v) => muda("adiantamento", v)}
+                    ajuda={freteMotorista ? `${formato.reais((freteMotorista * num(e.adiantamento)) / 100)} na carga` : undefined}
+                  />
+                  <div className="campo f4 calc-chave-campo">
+                    <label className="chave">
+                      <input type="checkbox" checked={e.rntrc} onChange={(ev) => muda("rntrc", ev.target.checked)} />
+                      RNTRC conferido
+                    </label>
+                    <a className="ajuda" href="https://consultapublica.antt.gov.br/Site/ConsultaRNTRC.aspx" target="_blank" rel="noreferrer">
+                      consultar na ANTT
+                    </a>
+                  </div>
+                </div>
+              </section>
 
-          <section className="painel" aria-labelledby="calc-viagem">
-            <CabSecao id="calc-viagem" titulo="Viagem">
-              Referências para a conversa com o motorista.
-            </CabSecao>
-            <div className="campos">
-              <CampoNumero classe="f3" id="diesel" rotulo="Preço do diesel" unidade="R$/l" valor={e.diesel} aoMudar={(v) => muda("diesel", v)} />
-              <CampoNumero classe="f3" id="consumo" rotulo="Consumo" unidade="km/l" valor={e.consumo} aoMudar={(v) => muda("consumo", v)} />
-            </div>
-            <Apoio km={km} freteMotorista={freteMotorista} diesel={num(e.diesel)} consumo={num(e.consumo) || 3} />
-          </section>
+              <section className="painel" aria-labelledby="calc-viagem">
+                <CabSecao id="calc-viagem" titulo="Viagem">
+                  Referências para a conversa com o motorista.
+                </CabSecao>
+                <div className="campos">
+                  <CampoNumero classe="f3" id="diesel" rotulo="Preço do diesel" unidade="R$/l" valor={e.diesel} aoMudar={(v) => muda("diesel", v)} />
+                  <CampoNumero classe="f3" id="consumo" rotulo="Consumo" unidade="km/l" valor={e.consumo} aoMudar={(v) => muda("consumo", v)} />
+                </div>
+                <Apoio km={km} freteMotorista={freteMotorista} diesel={num(e.diesel)} consumo={num(e.consumo) || 3} />
+              </section>
+            </>
+          )}
         </div>
 
         <aside className="calc-lateral" aria-label="Decisão">
-          <BarraDecisao d={decisao} />
-          <CartaoDecisao d={decisao} porTonelada={e.modo === "por_tonelada" ? peso : 0} margem={verTudo && freteCliente && freteMotorista ? resultado : null} />
-
-          <section className="painel" aria-labelledby="calc-piso">
-            <CabSecao id="calc-piso" titulo="Piso ANTT">
-              {coef && km > 0
-                ? `${km.toLocaleString("pt-BR")} km × R$ ${coef.ccd.toLocaleString("pt-BR", { minimumFractionDigits: 4 })} + R$ ${coef.cc.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}${e.retornoVazio ? " + retorno vazio" : ""}, coluna de ${coef.eixosTabela} eixos. ${coef.portaria}.`
-                : coef
-                  ? "Informe o km da rota."
-                  : "Não há coluna da ANTT para este tipo de carga."}
-            </CabSecao>
-            <dl className="kv calc-kv">
-              <dt>Frete mínimo ANTT</dt>
-              <dd>
-                {piso ? formato.reais(piso) : "—"}
-                <span className="linha2">o mínimo para pagar ao motorista</span>
-              </dd>
-              <dt>Frete sugerido</dt>
-              <dd>
-                {sugerido ? formato.reais(sugerido) : "—"}
-                <span className="linha2">mínimo + {ACRESCIMO_SUGERIDO * 100}% + pedágio</span>
-              </dd>
-              <dt>Frete contratado</dt>
-              <dd>
-                {freteCliente ? formato.reais(freteCliente) : "—"}
-                {sitContratado && (
-                  <span className="linha2">
-                    <Sinal tipo={sitContratado.tipo} texto={sitContratado.texto} />
-                  </span>
-                )}
-              </dd>
-              <dt>Frete do motorista</dt>
-              <dd>
-                {freteMotorista ? formato.reais(freteMotorista) : "—"}
-                <span className="linha2">
-                  <SituacaoPiso piso={piso} freteMotorista={freteMotorista} />
-                </span>
-              </dd>
-            </dl>
-          </section>
-
-          <section className="painel" aria-labelledby="calc-ciot">
-            <CabSecao id="calc-ciot" titulo="Antes de emitir o CIOT" />
-            <Checklist itens={ciot} />
-          </section>
-
-          {verTudo ? (
-            <>
-              <BlocoCte
-                cte={cte}
-                r={resultado}
-                pesoT={peso}
-                duplicata={e.duplicata}
-                aoDuplicata={(v) => muda("duplicata", v)}
-                margemDup={margemDup}
-                taxaDup={p.descontoDuplicata}
-              />
-              <details className="painel calc-aliquotas">
-                <summary>Alíquotas</summary>
-                <p className="nota">
-                  {vigenciaFiscal ? `Vigentes desde ${formato.data(vigenciaFiscal)}.` : "Sem alíquotas vigentes no banco: valores de partida."} Mudar aqui vale só
-                  para esta simulação. Confirme com o contador; o seguro segue a apólice.
-                </p>
-                <div className="campos">
-                  {CAMPOS_FISCAIS.map((c) => (
-                    <CampoNumero
-                      key={c.chave}
-                      classe="f6"
-                      id={`fiscal-${c.chave}`}
-                      rotulo={c.rotulo}
-                      valor={fiscalTxt[c.chave]}
-                      aoMudar={(v) => setFiscalTxt((s) => ({ ...s, [c.chave]: v }))}
-                    />
-                  ))}
-                </div>
-                <button type="button" className="btn btn-texto" onClick={() => setFiscalTxt(textoFiscal(fiscal))}>
-                  <RotateCcw size={16} strokeWidth={1.8} aria-hidden="true" /> Voltar às vigentes
-                </button>
-              </details>
-            </>
+          {avLote !== null ? (
+            <LoteLateral av={avLote} pesoTotal={num(lote.pesoTotal)} rota={rotaLote} tabela={tabela} verTudo={verTudo} />
           ) : (
-            <p className="aviso aviso-info">Impostos, margem e resultado do CT-e aparecem só para admin e financeiro. A decisão já considera a margem mínima.</p>
+            <>
+              <BarraDecisao d={decisao} />
+              <CartaoDecisao d={decisao} porTonelada={e.modo === "por_tonelada" ? peso : 0} margem={verTudo && freteCliente && freteMotorista ? resultado : null} />
+
+              <section className="painel" aria-labelledby="calc-piso">
+                <CabSecao id="calc-piso" titulo="Piso ANTT">
+                  {coef && km > 0
+                    ? `${km.toLocaleString("pt-BR")} km × R$ ${coef.ccd.toLocaleString("pt-BR", { minimumFractionDigits: 4 })} + R$ ${coef.cc.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}${e.retornoVazio ? " + retorno vazio" : ""}, coluna de ${coef.eixosTabela} eixos. ${coef.portaria}.`
+                    : coef
+                      ? "Informe o km da rota."
+                      : "Não há coluna da ANTT para este tipo de carga."}
+                </CabSecao>
+                <dl className="kv calc-kv">
+                  <dt>Frete mínimo ANTT</dt>
+                  <dd>
+                    {piso ? formato.reais(piso) : "—"}
+                    <span className="linha2">o mínimo para pagar ao motorista</span>
+                  </dd>
+                  <dt>Frete sugerido</dt>
+                  <dd>
+                    {sugerido ? formato.reais(sugerido) : "—"}
+                    <span className="linha2">mínimo + {ACRESCIMO_SUGERIDO * 100}% + pedágio</span>
+                  </dd>
+                  <dt>Frete contratado</dt>
+                  <dd>
+                    {freteCliente ? formato.reais(freteCliente) : "—"}
+                    {sitContratado && (
+                      <span className="linha2">
+                        <Sinal tipo={sitContratado.tipo} texto={sitContratado.texto} />
+                      </span>
+                    )}
+                  </dd>
+                  <dt>Frete do motorista</dt>
+                  <dd>
+                    {freteMotorista ? formato.reais(freteMotorista) : "—"}
+                    <span className="linha2">
+                      <SituacaoPiso piso={piso} freteMotorista={freteMotorista} />
+                    </span>
+                  </dd>
+                </dl>
+              </section>
+
+              <section className="painel" aria-labelledby="calc-ciot">
+                <CabSecao id="calc-ciot" titulo="Antes de emitir o CIOT" />
+                <Checklist itens={ciot} />
+              </section>
+
+              {verTudo ? (
+                <>
+                  <BlocoCte
+                    cte={cte}
+                    r={resultado}
+                    pesoT={peso}
+                    duplicata={e.duplicata}
+                    aoDuplicata={(v) => muda("duplicata", v)}
+                    margemDup={margemDup}
+                    taxaDup={p.descontoDuplicata}
+                  />
+                  <details className="painel calc-aliquotas">
+                    <summary>Alíquotas</summary>
+                    <p className="nota">
+                      {vigenciaFiscal ? `Vigentes desde ${formato.data(vigenciaFiscal)}.` : "Sem alíquotas vigentes no banco: valores de partida."} Mudar aqui vale só
+                      para esta simulação. Confirme com o contador; o seguro segue a apólice.
+                    </p>
+                    <div className="campos">
+                      {CAMPOS_FISCAIS.map((c) => (
+                        <CampoNumero
+                          key={c.chave}
+                          classe="f6"
+                          id={`fiscal-${c.chave}`}
+                          rotulo={c.rotulo}
+                          valor={fiscalTxt[c.chave]}
+                          aoMudar={(v) => setFiscalTxt((s) => ({ ...s, [c.chave]: v }))}
+                        />
+                      ))}
+                    </div>
+                    <button type="button" className="btn btn-texto" onClick={() => setFiscalTxt(textoFiscal(fiscal))}>
+                      <RotateCcw size={16} strokeWidth={1.8} aria-hidden="true" /> Voltar às vigentes
+                    </button>
+                  </details>
+                </>
+              ) : (
+                <p className="aviso aviso-info">Impostos, margem e resultado do CT-e aparecem só para admin e financeiro. A decisão já considera a margem mínima.</p>
+              )}
+            </>
           )}
         </aside>
       </div>
@@ -644,131 +702,6 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
 
 /* ---------- pedaços ---------- */
 
-function CabSecao({ id, titulo, children }: { id: string; titulo: string; children?: ReactNode }) {
-  return (
-    <div className="calc-cab">
-      <h2 id={id}>{titulo}</h2>
-      {children && <p>{children}</p>}
-    </div>
-  );
-}
-
-function CampoNumero({
-  id,
-  rotulo,
-  valor,
-  aoMudar,
-  unidade,
-  ajuda,
-  classe,
-  opcional,
-}: {
-  id: string;
-  rotulo: string;
-  valor: string;
-  aoMudar: (v: string) => void;
-  unidade?: string;
-  ajuda?: ReactNode;
-  classe: string;
-  opcional?: boolean;
-}) {
-  const ruim = invalido(valor);
-  return (
-    <div className={`campo ${classe}`} data-invalido={ruim || undefined}>
-      <label htmlFor={id}>
-        {rotulo}
-        {opcional && <span className="opcional"> (opcional)</span>}
-      </label>
-      <div className={unidade ? "calc-unidade" : undefined}>
-        <input
-          id={id}
-          inputMode="decimal"
-          autoComplete="off"
-          value={valor}
-          onChange={(ev) => aoMudar(ev.target.value)}
-          aria-invalid={ruim || undefined}
-          aria-describedby={ajuda || ruim ? `${id}-ajuda` : undefined}
-        />
-        {unidade && <span aria-hidden="true">{unidade}</span>}
-      </div>
-      {ruim ? (
-        <span className="erro" id={`${id}-ajuda`}>
-          Número inválido: use vírgula nos centavos, como 1.234,56.
-        </span>
-      ) : (
-        ajuda && (
-          <span className="ajuda" id={`${id}-ajuda`}>
-            {ajuda}
-          </span>
-        )
-      )}
-    </div>
-  );
-}
-
-function CampoCidade({
-  id,
-  rotulo,
-  valor,
-  aoMudar,
-  busca,
-  carregando,
-  remover,
-}: {
-  id: string;
-  rotulo: string;
-  valor: string;
-  aoMudar: (v: string) => void;
-  busca: ReturnType<typeof acharMunicipio> | undefined;
-  carregando: boolean;
-  remover?: () => void;
-}) {
-  const vazio = valor.trim() === "";
-  const problema =
-    carregando || vazio || busca?.municipio
-      ? null
-      : busca && busca.ambiguos > 1
-        ? `Há ${busca.ambiguos} cidades com esse nome: escolha a da UF certa na lista.`
-        : "Cidade não encontrada: escolha da lista ou digite o km.";
-  return (
-    <div className="campo f6" data-invalido={problema ? true : undefined}>
-      <label htmlFor={id}>{rotulo}</label>
-      <div className={remover ? "com-acao" : undefined}>
-        <input
-          id={id}
-          list="municipios"
-          autoComplete="off"
-          placeholder="Digite a cidade"
-          value={valor}
-          onChange={(ev) => aoMudar(ev.target.value)}
-          aria-describedby={problema ? `${id}-erro` : undefined}
-        />
-        {remover && (
-          <button type="button" className="btn" onClick={remover} aria-label={`Remover ${rotulo.toLowerCase()}`}>
-            <X size={16} strokeWidth={1.8} aria-hidden="true" />
-          </button>
-        )}
-      </div>
-      {problema && (
-        <span className="erro" id={`${id}-erro`}>
-          {problema}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function Escolha({ rotuloId, opcoes, valor, aoMudar }: { rotuloId: string; opcoes: [string, string][]; valor: string; aoMudar: (v: string) => void }) {
-  return (
-    <div className="calc-opcoes" role="group" aria-labelledby={rotuloId}>
-      {opcoes.map(([v, r]) => (
-        <button key={v} type="button" aria-pressed={v === valor} onClick={() => aoMudar(v)}>
-          {r}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 function Automatico({ texto, voltar }: { texto: string; voltar?: () => void }) {
   return (
@@ -817,14 +750,6 @@ function Checklist({ itens }: { itens: readonly ItemCiot[] }) {
   );
 }
 const ROTULO_ITEM: Record<ItemCiot["tipo"], string> = { normal: "ok", pendente: "falta informar", vencendo: "conferir", bloqueado: "impedimento" };
-
-const FORMA: Record<Decisao["veredito"], ReactNode> = {
-  contratar: <rect x="4" y="8" width="22" height="14" rx="2" fill="currentColor" />,
-  negociar: <rect x="8" y="8" width="14" height="14" rx="1.5" fill="none" stroke="currentColor" strokeWidth="2.5" transform="rotate(45 15 15)" />,
-  ajustar: <rect x="8" y="8" width="14" height="14" rx="1.5" fill="none" stroke="currentColor" strokeWidth="2.5" transform="rotate(45 15 15)" />,
-  nao_contratar: <circle cx="15" cy="15" r="10" fill="none" stroke="currentColor" strokeWidth="3" />,
-  incompleto: <circle cx="15" cy="15" r="4" fill="currentColor" />,
-};
 
 /** Celular e tablet: a decisão fica abaixo dos campos, então uma pílula fixa no rodapé mostra o veredito e
    o limite principal enquanto se digita; tocar leva ao cartão. */
