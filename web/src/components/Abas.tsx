@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 
-export type Aba = { id: string; rotulo: string; n?: number };
+/** `href` fixa o endereço da aba (para páginas de servidor, que não podem passar `hrefDe` a este componente). */
+export type Aba = { id: string; rotulo: string; n?: number; href?: string };
 
 type Props = {
   abas: Aba[];
@@ -44,7 +45,7 @@ export function Abas({ abas, ativa, rotulo, hrefDe, aoEscolher }: Props) {
       {abas.map((a) => (
         <Link
           key={a.id}
-          href={hrefDe ? hrefDe(a.id) : `?aba=${a.id}`}
+          href={a.href ?? (hrefDe ? hrefDe(a.id) : `?aba=${a.id}`)}
           id={`aba-${a.id}`}
           scroll={false}
           replace

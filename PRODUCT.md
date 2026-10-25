@@ -33,7 +33,8 @@ Feito em volta da operação real da Prisa, não de um TMS genérico: uma mesma 
 
 ## Capabilities and Constraints
 
-- Fase 1 só cadastros; nada de CT-e, frota ou financeiro nas telas ainda.
+- Fase 1 só cadastros; nada de CT-e ou frota nas telas ainda.
+- Financeiro (primeira parte): importação do extrato bancário em OFX, lançamentos classificados em receita e pagamento de frete (Roadcard), despesa, empréstimo e devolução, aporte e devolução de capital e transferência entre contas, com regras aprendidas pela descrição, e o resultado de cada mês. Só administrador e financeiro veem.
 - Todos os campos de cadastro do ATUA existem no NILT (decisão do usuário).
 - Regras no banco: RLS por papel, auditoria de toda alteração e de toda visualização de documento, bucket de documentos privado, arquivo restrito visível só ao admin.
 - LGPD: documentos pessoais de terceiros; acesso restrito e registrado.

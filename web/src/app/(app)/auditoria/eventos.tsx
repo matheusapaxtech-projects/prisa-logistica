@@ -1,9 +1,11 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { Placa } from "@/components/Placa";
 import { Ponto } from "@/components/Ponto";
 import { Sinal } from "@/components/Sinal";
 import { resumoEvento } from "@/lib/auditoria";
+import { partesDaConta } from "@/lib/financeiro";
 import { hora } from "./dias";
 import { obj, type Evento, type Resolucao } from "./consultas";
 
@@ -135,6 +137,36 @@ function Registro({ e, res }: { e: Evento; res: Resolucao }) {
       const u = res.usuarios.get(id);
       if (!u) return <SemLink txt={id} por="usuário removido" />;
       return <Link href={`/usuarios?editar=${id}`}>{u.nome}</Link>;
+    }
+    case "fin_lancamento": {
+      const desc = texto(dados?.descricao);
+      const data = texto(dados?.data);
+      if (!desc) return <SemLink txt={id} />;
+      return <Link href={`/financeiro?aba=lancamentos${data ? `&mes=${data.slice(0, 7)}` : ""}`}>{desc}</Link>;
+    }
+    case "fin_regra": {
+      const chave = texto(dados?.chave);
+      return chave ? <Link href="/financeiro?aba=regras">{chave}</Link> : <SemLink txt={id} />;
+    }
+    case "fin_importacao": {
+      const nome = texto(dados?.nome_arquivo);
+      return nome ? <Link href="/financeiro/importar">{nome}</Link> : <SemLink txt={id} />;
+    }
+    case "fin_conta": {
+      const banco = texto(dados?.banco);
+      const numero = texto(dados?.numero);
+      return banco && numero ? (
+        <span className="nome">
+          {partesDaConta({ banco, agencia: texto(dados?.agencia) ?? "", numero }).map((p, i) => (
+            <Fragment key={i}>
+              {i > 0 && <Ponto />}
+              {p}
+            </Fragment>
+          ))}
+        </span>
+      ) : (
+        <SemLink txt={id} />
+      );
     }
     default:
       return <SemLink txt={id} />;
