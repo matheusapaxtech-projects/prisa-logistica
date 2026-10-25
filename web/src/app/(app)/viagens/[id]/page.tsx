@@ -22,6 +22,8 @@ import { BlocoAptidao } from "./aptidao";
 import { Canhoto } from "./canhoto";
 import { BlocoFrete } from "./frete";
 import { BlocoQuebraEstadia, lerQuebraEstadia } from "./quebra-estadia";
+import { BlocoRetorno } from "./retorno";
+import { DEPOIS_DA_SAIDA, retornoDaViagem } from "../retorno";
 import { LinhaDoTempo } from "./linha-do-tempo";
 import { Ocorrencias } from "./ocorrencias";
 import "@/styles/paginas/proprietarios.css";
@@ -90,6 +92,19 @@ export default async function FichaViagemPage({ params }: Params) {
   const db = tipado(await createClient());
   const [f, frete, qe] = await Promise.all([carregarViagem(db, id), carregarFrete(db, id, verResultado), db.rpc("quebra_e_estadia", { p_viagem: id })]);
   if (qe.error) throw qe.error;
+  // Previsão de chegada e frete de retorno: da saída ("Em rota") até descarregar.
+  const retorno =
+    f && f.pedido && !f.canceladaEm && f.status_campo && DEPOIS_DA_SAIDA.includes(f.status_campo)
+      ? await retornoDaViagem(db, {
+          viagemId: f.id,
+          pedidoId: f.pedido.id,
+          origem: f.pedido.origem,
+          destino: f.pedido.destino,
+          kmViagem: f.kmViagem,
+          conjuntoId: f.conjuntoId,
+          eventos: f.eventos,
+        })
+      : null;
   // Quebra e estadia só depois do início (antes não há pesos nem horas na linha do tempo).
   const quebraEstadia = f && f.status_campo !== null && !f.canceladaEm ? lerQuebraEstadia(qe.data) : null;
   if (!f) notFound();
@@ -408,6 +423,7 @@ export default async function FichaViagemPage({ params }: Params) {
         />
       )}
 
+      {retorno && <BlocoRetorno r={retorno} />}
       {quebraEstadia && <BlocoQuebraEstadia q={quebraEstadia} />}
 
       <div className="blocos-viagem">
