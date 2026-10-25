@@ -1,7 +1,5 @@
-# Verificações automáticas do NILT: a cada PR (qualquer branch de destino) e a cada push na main.
-# Roda o que não depende do banco vivo: lint, tipos e testes de unidade do web/. Os testes do banco
-# (supabase/tests, pgTAP) e os de tela (Playwright) precisam do Supabase e de usuários de teste e
-# continuam rodando à parte (ver supabase/tests/README.md e web/playwright.config.ts).
+# Checagem de todo PR e de todo push no main: app web (lint, tipos, unitários, build) e banco
+# (migrations do zero + suíte pgTAP num Supabase local). Não usa nenhum segredo nem a nuvem.
 name: CI
 
 on:
@@ -15,9 +13,8 @@ concurrency:
 
 jobs:
   web:
-    name: Lint, tipos e testes de unidade
+    name: Web
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     defaults:
       run:
         working-directory: web
@@ -25,14 +22,28 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - name: Instalar dependências
-        run: npm ci
-      - name: Lint
-        run: npm run lint
-      - name: Tipos
-        run: npx tsc --noEmit -p .
-      - name: Testes de unidade
-        run: npm test
+      - run: npm ci
+      - run: cp .env.example .env.local
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  banco:
+    name: Banco
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Supabase local (migrations e seeds do zero)
+        run: supabase start -x studio,mailpit,imgproxy,edge-runtime,logflare,vector,postgres-meta,supavisor
+      - name: Testes do banco (pgTAP)
+        run: node supabase/tests/rodar-local.mjs

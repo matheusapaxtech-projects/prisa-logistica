@@ -11,5 +11,7 @@ node_modules/
 # vercel (ligação local do projeto)
 .vercel
 
-# configurações locais do Claude Code (permissões, launch e worktrees desta máquina)
-.claude/
+# configurações pessoais do Claude Code e cópias de trabalho (worktrees)
+.claude/settings.local.json
+.claude/worktrees/
+.claude/launch.json
