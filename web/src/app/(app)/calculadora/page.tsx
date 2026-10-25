@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { RE_ID } from "../_pessoa/formulario";
 import { TIPOS_CARGA_ANTT } from "../pedidos/regras";
 import { CalculadoraCliente } from "./calculadora-cliente";
-import { daViagem, parametros, tabelaAntt } from "./consultas";
+import { daViagem, parametros, rotasSalvas, tabelaAntt } from "./consultas";
 import "@/styles/paginas/calculadora.css";
 
 export const metadata: Metadata = { title: "Calcular frete" };
@@ -21,10 +21,11 @@ export default async function CalculadoraPage({ searchParams }: { searchParams: 
   const sp = await searchParams;
   const db = tipado(await createClient());
   const idViagem = um(sp.viagem);
-  const [perfil, tabela, param, viagem] = await Promise.all([
+  const [perfil, tabela, param, rotas, viagem] = await Promise.all([
     getPerfil(),
     tabelaAntt(db),
     parametros(db),
+    rotasSalvas(db),
     RE_ID.test(idViagem) ? daViagem(db, idViagem) : Promise.resolve(null),
   ]);
   return (
@@ -36,6 +37,9 @@ export default async function CalculadoraPage({ searchParams }: { searchParams: 
         tiposCarga={TIPOS_CARGA_ANTT}
         verTudo={pode(perfil, "financeiro")}
         viagem={viagem}
+        rotas={rotas}
+        podeSalvar={pode(perfil, "editar")}
+        podeApagar={pode(perfil, "admin")}
       />
     </main>
   );

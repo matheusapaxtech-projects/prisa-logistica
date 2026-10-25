@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Plus, RotateCcw } from "lucide-react";
+import { Plus, RotateCcw, Save } from "lucide-react";
 import { Sinal } from "@/components/Sinal";
 import { toast } from "@/components/Toast";
 import { formato } from "@/lib/formato";
@@ -28,11 +28,13 @@ import {
   type ParamFiscais,
   type TipoCarga,
 } from "@/lib/calculadora/regras";
-import { acharMunicipio, estimarRota, lerMunicipios, pedagioEstimado, type Municipio, type Municipios } from "@/lib/calculadora/rota";
+import { acharMunicipio, dataBr, estimarRota, indexarSalvas, lerMunicipios, pedagioEstimado, type Municipio, type Municipios, type RotaSalva } from "@/lib/calculadora/rota";
 import { porcento, sinalDaFaixa } from "@/lib/frete";
 import { dinheiro } from "../financeiro/regras";
 import { pisoDoCaminhao, type Caminhao, type Rota } from "@/lib/calculadora/lote";
+import { salvarRota } from "./actions";
 import type { DaViagem } from "./consultas";
+import { RotasSalvas } from "./rotas-salvas";
 import { avaliar, LOTE_VAZIO, LoteLateral, LotePaineis, resumoLote, type LoteTela } from "./lote-cliente";
 import { CabSecao, campo, CampoCidade, CampoNumero, Escolha, FORMA, num } from "./partes";
 
@@ -48,6 +50,11 @@ type Props = {
   /** Admin e financeiro: margem, resultado do CT-e, duplicata e alíquotas. */
   verTudo: boolean;
   viagem: DaViagem | null;
+  /** Rotas salvas pela equipe (tabela `rota_salva`). */
+  rotas: RotaSalva[];
+  /** Admin e operação salvam rotas; só o admin apaga. */
+  podeSalvar: boolean;
+  podeApagar: boolean;
 };
 
 type Modo = "por_tonelada" | "total";
@@ -140,7 +147,7 @@ const CAMPOS_FISCAIS: CampoFiscal[] = [
 const textoFiscal = (p: ParamFiscais) =>
   Object.fromEntries(CAMPOS_FISCAIS.map((c) => [c.chave, campo(c.pct ? p[c.chave] * 100 : p[c.chave], c.casas)])) as Record<keyof ParamFiscais, string>;
 
-export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga, verTudo, viagem }: Props) {
+export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga, verTudo, viagem, rotas, podeSalvar, podeApagar }: Props) {
   const [e, setE] = useState<Estado>(() => inicial(viagem));
   const [fiscalTxt, setFiscalTxt] = useState(() => textoFiscal(fiscal));
   const [mun, setMun] = useState<Municipios | null>(null);
@@ -174,7 +181,8 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
     if (vias.some((b) => !b.municipio)) return null;
     return [buscas.origem.municipio, ...vias.map((b) => b.municipio!), buscas.destino.municipio];
   }, [buscas, e.vias]);
-  const est = useMemo(() => (pontos ? estimarRota(pontos) : null), [pontos]);
+  const salvas = useMemo(() => indexarSalvas(rotas), [rotas]);
+  const est = useMemo(() => (pontos ? estimarRota(pontos, salvas) : null), [pontos, salvas]);
   const km = e.km !== null ? num(e.km) : (est?.km ?? 0);
   const pedEixoKm = est?.pedagioEixoKm ?? PEDAGIO_PADRAO;
   const pedagioAuto = pedagioEstimado(km, e.eixos, pedEixoKm);
@@ -236,6 +244,33 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
       valorMercadoria: num(lote.valorMercadoria) && c.peso ? campo(num(lote.valorMercadoria) * c.peso) : s.valorMercadoria,
     }));
     setModoCalc("unica");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  /* ---------- rotas salvas ---------- */
+  const [salvando, iniciarSalvar] = useTransition();
+  // Rota salva em uso e nada digitado por cima: não há o que gravar.
+  const semMudanca = est?.origemKm === "salva" && est.salva?.km === km && e.km === null && e.pedagio === null;
+
+  function salvar() {
+    if (!pontos) return;
+    iniciarSalvar(async () => {
+      const r = await salvarRota({
+        origem: pontos[0].nome,
+        destino: pontos[pontos.length - 1].nome,
+        vias: pontos.slice(1, -1).map((x) => x.nome),
+        km,
+        eixos: e.eixos,
+        pedagio: pedagio > 0 ? pedagio : null,
+      });
+      if (!r.ok) return toast(r.erro, "alert-circle");
+      toast(`Rota salva: ${km.toLocaleString("pt-BR")} km${pedagio > 0 ? ` e pedágio de ${formato.reais(pedagio)} para ${e.eixos} eixos` : ""}.`);
+      setE((s) => ({ ...s, km: null, pedagio: null }));
+    });
+  }
+
+  function usarRota(r: RotaSalva) {
+    setE((s) => ({ ...s, origem: r.origem, destino: r.destino, vias: [...r.vias], km: null, pedagio: null }));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -386,7 +421,9 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
                   e.km !== null ? (
                     <Automatico texto="digitado" voltar={est ? () => muda("km", null) : undefined} />
                   ) : est ? (
-                    est.origemKm === "medida" ? (
+                    est.origemKm === "salva" && est.salva ? (
+                      `rota salva pela equipe em ${dataBr(est.salva.atualizada)}`
+                    ) : est.origemKm === "medida" ? (
                       "rota já medida pela Prisa"
                     ) : (
                       `estimado: linha reta × ${est.fator.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}${est.trechos > 1 ? ` em ${est.trechos} trechos` : ""}`
@@ -407,7 +444,7 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
                   e.pedagio !== null ? (
                     <Automatico texto="digitado" voltar={() => muda("pedagio", null)} />
                   ) : (
-                    `estimado: R$ ${pedEixoKm.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} por eixo/km${est ? `, ${est.origemPedagio}` : ""}`
+                    `${est?.origemKm === "salva" && est.salva?.pedagio && est.origemPedagio.startsWith("da rota") ? "da rota salva" : "estimado"}: R$ ${pedEixoKm.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} por eixo/km × ${e.eixos} eixos${est && !est.origemPedagio.startsWith("da rota") ? `, ${est.origemPedagio}` : ""}`
                   )
                 }
               />
@@ -418,6 +455,19 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
                 </label>
                 <span className="ajuda">soma 92% do trecho ao piso</span>
               </div>
+              {podeSalvar && pontos && km > 0 && (
+                <div className="f12 calc-salvar">
+                  <button type="button" className="btn" disabled={salvando || semMudanca} onClick={salvar}>
+                    <Save size={16} strokeWidth={1.8} aria-hidden="true" />
+                    {salvando ? "Salvando…" : est?.salva && est.origemKm === "salva" ? "Atualizar rota salva" : "Salvar rota para a equipe"}
+                  </button>
+                  <span className="ajuda">
+                    {semMudanca
+                      ? "esta rota já está salva com estes valores"
+                      : `grava ${km.toLocaleString("pt-BR")} km${pedagio > 0 ? ` e pedágio de ${formato.reais(pedagio)} para ${e.eixos} eixos` : ""} para a próxima cotação`}
+                  </span>
+                </div>
+              )}
             </div>
           </section>
 
@@ -602,6 +652,7 @@ export function CalculadoraCliente({ tabela, fiscal, vigenciaFiscal, tiposCarga,
               </section>
             </>
           )}
+          <RotasSalvas rotas={rotas} podeApagar={podeApagar} usar={usarRota} />
         </div>
 
         <aside className="calc-lateral" aria-label="Decisão">

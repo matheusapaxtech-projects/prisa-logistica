@@ -158,3 +158,9 @@
   .calc-caminhao .campos .f3 { grid-column: 1 / -1; }
   .calc-caminhao-acoes { margin-left: 0; width: 100%; }
 }
+
+/* rotas salvas */
+.calc-salvar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.calc-salvas th[scope="col"] { font-size: 12px; color: var(--muted); font-weight: 400; padding-top: 0; }
+.calc-salvas td:nth-child(2), .calc-salvas td:nth-child(3) { color: var(--ink); }
+.calc-salvas-acoes { display: flex; gap: 14px; justify-content: flex-end; }

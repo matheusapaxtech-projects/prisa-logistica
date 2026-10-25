@@ -9,10 +9,11 @@ import { Dialogo } from "@/components/Dialogo";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import { Placa } from "@/components/Placa";
 import { toast } from "@/components/Toast";
+import { dataBr } from "@/lib/calculadora/rota";
 import { formato } from "@/lib/formato";
 import { Opcoes } from "../../_pessoa/partes";
 import { criarViagem } from "../actions";
-import type { OpcaoConjunto } from "../consultas";
+import type { OpcaoConjunto, RotaSalvaDoPedido } from "../consultas";
 import { pesoSugerido, TIPOS_TARIFA } from "../regras";
 
 type Props = {
@@ -21,6 +22,8 @@ type Props = {
   saldoKg: number;
   /** Conjuntos abertos e com motorista. */
   conjuntos: OpcaoConjunto[];
+  /** Rota salva na calculadora para coleta → descarga: sugere km e pedágio (a pessoa pode mudar). */
+  rotaSalva?: RotaSalvaDoPedido | null;
 };
 
 /* Botão "Nova viagem" da ficha do pedido (só pedido aberto, Ruling R4) e o diálogo: conjunto aberto
@@ -50,9 +53,12 @@ export function NovaViagem(props: Props) {
   );
 }
 
-function DialogoViagem({ pedidoId, numero, saldoKg, conjuntos, aberto, aoFechar }: Props & { aberto: boolean; aoFechar: () => void }) {
+function DialogoViagem({ pedidoId, numero, saldoKg, conjuntos, rotaSalva, aberto, aoFechar }: Props & { aberto: boolean; aoFechar: () => void }) {
   const router = useRouter();
   const peso = useRef<HTMLInputElement>(null);
+  const pedagio = useRef<HTMLInputElement>(null);
+  // O pedágio sugerido só é escrito enquanto a pessoa não digitou outro valor.
+  const pedagioSugerido = useRef("");
   const [estado, enviar, gravando] = useActionState(criarViagem, null);
   const campos: Record<string, string> = estado && !estado.ok && "campos" in estado ? estado.campos : {};
   const erro = estado && !estado.ok && !("campos" in estado) ? estado.erro : null;
@@ -79,6 +85,11 @@ function DialogoViagem({ pedidoId, numero, saldoKg, conjuntos, aberto, aoFechar 
     // Campo não controlado: a sugestão é escrita nele (a pessoa pode mudar depois).
     const sugerido = pesoSugerido(saldoKg, c.capacidadeT);
     if (peso.current) peso.current.value = sugerido > 0 ? formato.numeroCampo(sugerido) : "";
+    const pe = rotaSalva?.pedagioEixoKm;
+    if (pedagio.current && pe && c.eixos && (pedagio.current.value === "" || pedagio.current.value === pedagioSugerido.current)) {
+      pedagioSugerido.current = formato.numeroCampo(Math.round(rotaSalva.km * c.eixos * pe * 100) / 100, 2);
+      pedagio.current.value = pedagioSugerido.current;
+    }
   }
 
   const descr = (nome: string, ajuda = true) => [ajuda ? `${nome}-ajuda` : "", campos[nome] ? `${nome}-erro` : ""].filter(Boolean).join(" ") || undefined;
@@ -212,13 +223,18 @@ function DialogoViagem({ pedidoId, numero, saldoKg, conjuntos, aberto, aoFechar 
           id="km_viagem"
           label="Km da viagem"
           opcional
-          ajuda="Conferidos no Qualp. Com eles, o frete é conferido com o piso da ANTT."
+          ajuda={
+            rotaSalva
+              ? `Da rota salva na calculadora em ${dataBr(rotaSalva.atualizada)}. Com eles, o frete é conferido com o piso da ANTT.`
+              : "Conferidos no Qualp. Com eles, o frete é conferido com o piso da ANTT."
+          }
           erro={campos.km_viagem}
           controle={
             <span className="sufixo">
               <input
                 id="km_viagem"
                 name="km_viagem"
+                defaultValue={rotaSalva ? String(rotaSalva.km) : undefined}
                 className="num"
                 inputMode="numeric"
                 autoComplete="off"
@@ -235,12 +251,17 @@ function DialogoViagem({ pedidoId, numero, saldoKg, conjuntos, aberto, aoFechar 
           id="pedagio_valor"
           label="Pedágio da viagem"
           opcional
-          ajuda="Total do vale-pedágio, para o resultado do CT-e."
+          ajuda={
+            rotaSalva?.pedagioEixoKm
+              ? "Da rota salva, pelos eixos do conjunto escolhido. Total do vale-pedágio, para o resultado do CT-e."
+              : "Total do vale-pedágio, para o resultado do CT-e."
+          }
           erro={campos.pedagio_valor}
           controle={
             <span className="prefixo">
               <span aria-hidden="true">R$</span>
               <input
+                ref={pedagio}
                 id="pedagio_valor"
                 name="pedagio_valor"
                 className="num"

@@ -3,6 +3,7 @@
    saída quando já há, senão o previsto); a capacidade do conjunto, de `v_conjunto_capacidade`. */
 import type { Banco, Database } from "@/lib/banco";
 import type { StatusCampo } from "@/lib/quadro";
+import { chaveRota } from "@/lib/calculadora/rota";
 import { formato } from "@/lib/formato";
 import { listarClientes, type Local } from "../clientes/consultas";
 
@@ -266,6 +267,8 @@ export type OpcaoConjunto = {
   motorista: string;
   /** Capacidade de carga das carretas (t), de `v_conjunto_capacidade`; nula quando não há como saber. */
   capacidadeT: number | null;
+  /** Eixos do cavalo + peças (tipo do veículo); nulo se algum tipo não informa. */
+  eixos: number | null;
 };
 
 /** Conjuntos abertos (fim nulo) com motorista, na ordem em que foram montados. */
@@ -283,7 +286,7 @@ export async function listarConjuntosAbertos(db: Banco): Promise<OpcaoConjunto[]
 
   const veiculoIds = [...new Set(conjuntos.flatMap((c) => [c.cavalo_id, ...c.conjunto_item.map((i) => i.veiculo_id)]))];
   const [vs, nomes, caps] = await Promise.all([
-    db.from("veiculo").select("id, placa").in("id", veiculoIds),
+    db.from("veiculo").select("id, placa, tipo_veiculo(eixos)").in("id", veiculoIds),
     nomesDeMotorista(db, conjuntos.map((c) => c.motorista_id!)),
     db
       .from("v_conjunto_capacidade")
@@ -296,6 +299,11 @@ export async function listarConjuntosAbertos(db: Banco): Promise<OpcaoConjunto[]
   erroDe(vs);
   erroDe(caps);
   const placas = new Map((vs.data ?? []).map((v) => [v.id, v.placa]));
+  const eixosDe = new Map((vs.data ?? []).map((v) => [v.id, um(v.tipo_veiculo as Embutido<{ eixos: number | null }>)?.eixos ?? null]));
+  const somaEixos = (ids: string[]) => {
+    const e = ids.map((i) => eixosDe.get(i) ?? null);
+    return e.some((x) => x === null) ? null : (e as number[]).reduce((a, b) => a + b, 0);
+  };
   const capacidade = new Map((caps.data ?? []).map((c) => [c.conjunto_id ?? "", num(c.capacidade_total_t)]));
 
   return conjuntos.map((c) => ({
@@ -304,6 +312,7 @@ export async function listarConjuntosAbertos(db: Banco): Promise<OpcaoConjunto[]
     carretas: [...c.conjunto_item].sort((a, b) => a.posicao - b.posicao).map((i) => placas.get(i.veiculo_id) ?? "—"),
     motorista: nomes.get(c.motorista_id!) ?? "—",
     capacidadeT: capacidade.get(c.id) ?? null,
+    eixos: somaEixos([c.cavalo_id, ...c.conjunto_item.map((i) => i.veiculo_id)]),
   }));
 }
 
@@ -331,4 +340,20 @@ export async function opcoesDeClientes(db: Banco): Promise<OpcaoCliente[]> {
     doc: l.tipo === "pj" ? formato.cnpj(l.documento) : formato.cpf(l.documento),
     locais: l.locais,
   }));
+}
+
+/** Rota salva da calculadora para coleta → descarga do pedido (sugere km e pedágio na nova viagem). A volta
+   serve para o km; o pedágio por eixo/km só vem da rota no mesmo sentido. */
+export type RotaSalvaDoPedido = { km: number; pedagioEixoKm: number | null; atualizada: string };
+
+export async function rotaSalvaDoPedido(db: Banco, coleta: string, descarga: string): Promise<RotaSalvaDoPedido | null> {
+  const ida = chaveRota(coleta, descarga);
+  const volta = chaveRota(descarga, coleta);
+  const r = await db.from("rota_salva").select("chave, km, eixos, pedagio, updated_at").in("chave", [ida, volta]);
+  erroDe(r);
+  const linhas = r.data ?? [];
+  const l = linhas.find((x) => x.chave === ida) ?? linhas.find((x) => x.chave === volta);
+  if (!l) return null;
+  const pedagio = l.chave === ida && l.pedagio ? Number(l.pedagio) / (l.km * l.eixos) : null;
+  return { km: l.km, pedagioEixoKm: pedagio, atualizada: l.updated_at };
 }
