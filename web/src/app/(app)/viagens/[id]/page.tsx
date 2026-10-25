@@ -334,6 +334,7 @@ export default async function FichaViagemPage({ params }: Params) {
 
       {frete.frete && (
         <BlocoFrete
+          viagemId={f.id}
           frete={frete.frete}
           resultado={frete.resultado}
           verResultado={verResultado}

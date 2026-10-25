@@ -38,6 +38,7 @@
 /* ---------- ficha: frete, piso ANTT e resultado do CT-e ---------- */
 /* Dinheiro tabular, à direita e sem cor (Regra do Dinheiro sem Cor); total em 600 com filete acima. */
 .via .frete-viagem { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 32px; margin-top: 32px; align-items: start; }
+.via .frete-viagem .painel-cab .dir { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .via .frete-viagem .kv dd .linha2 { display: block; font-size: 13px; color: var(--muted); line-height: 18px; }
 .via .demonstrativo { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .via .demonstrativo th { text-align: left; font-weight: 400; padding: 8px 0; border-top: 1px solid var(--rule); }

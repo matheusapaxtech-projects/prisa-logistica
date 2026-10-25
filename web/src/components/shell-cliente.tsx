@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Building2,
+  Calculator,
   ClipboardList,
   Columns3,
   History,
@@ -35,6 +36,7 @@ const SECOES: Item[] = [
   { href: "/quadro", rotulo: "Quadro", Icone: Columns3 },
   { href: "/pedidos", rotulo: "Pedidos", Icone: ClipboardList },
   { href: "/viagens", rotulo: "Viagens", Icone: Route },
+  { href: "/calculadora", rotulo: "Calcular frete", Icone: Calculator },
   { href: "/clientes", rotulo: "Clientes", Icone: Store },
   { href: "/pendencias", rotulo: "Pendências", Icone: TriangleAlert },
 ];
