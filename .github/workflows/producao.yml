@@ -37,9 +37,7 @@ jobs:
     env:
       VERCEL_ORG_ID: team_Kwkzqpzq8IPvNxFWTfaeCHgU
       VERCEL_PROJECT_ID: prj_AOnVQ2U58womzqWye97MUmSp6L9B
-    defaults:
-      run:
-        working-directory: web
+    # Sem working-directory: o projeto na Vercel já tem web/ como pasta raiz.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
