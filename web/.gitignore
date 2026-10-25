@@ -42,6 +42,7 @@ next-env.d.ts
 
 # NILT: exemplo versionado, resto de .env* ignorado
 !.env.example
+!.env.test.example
 
 # testes
 test-results/
