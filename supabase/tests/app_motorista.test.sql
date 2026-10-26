@@ -259,5 +259,56 @@ begin
                  'registrar de novo reativa o interesse');
 end $$;
 
+create function tests.test_posicao_do_gps() returns setof text language plpgsql as $$
+declare
+  c record;
+  f record;
+begin
+  select * into c from tests.cenario();
+  -- "Estou livre" em Cuiabá (fora do raio), mas o GPS diz Ponta Grossa: vale o GPS recente.
+  perform tests.checkin(c.motorista, -15.60, -56.10);
+  return next is(tests.fretes(c.app), '{}'::uuid[], 'só com o check-in em Cuiabá o frete não aparece');
+  perform tests.como(c.app);
+  perform public.registrar_posicao(-25.09, -50.16, 12, now() - interval '5 minutes');
+  select * into f from public.fretes_para_mim();
+  perform tests.como_servico();
+  return next is(f.oferta_id, c.oferta, 'com o GPS em Ponta Grossa o frete aparece');
+  return next ok(f.km_ate_embarque between 110 and 130, 'a distância sai do GPS');
+
+  perform tests.como(c.app);
+  perform public.registrar_posicao(-15.60, -56.10, 12, now() - interval '1 hour');
+  perform tests.como_servico();
+  return next is((select latitude from public.motorista_posicao where motorista_id = c.motorista), -25.090000,
+                 'posição mais velha que a guardada é ignorada');
+
+  update public.motorista_posicao set em = now() - interval '3 hours' where motorista_id = c.motorista;
+  return next is(tests.fretes(c.app), '{}'::uuid[], 'GPS com mais de 2 h deixa de valer');
+
+  perform tests.como(c.op);
+  return next ok((select not posicao_gps from public.v_motorista_livre where motorista_id = c.motorista),
+                 'para a operação, posição velha volta a ser a do check-in');
+  perform tests.como_servico();
+  update public.motorista_posicao set em = now() where motorista_id = c.motorista;
+  perform tests.como(c.op);
+  return next is((select latitude from public.v_motorista_livre where motorista_id = c.motorista), -25.090000,
+                 'para a operação, o ranking usa o GPS recente');
+  perform tests.como_servico();
+end $$;
+
+create function tests.test_posicao_permissoes() returns setof text language plpgsql as $$
+declare
+  c record;
+begin
+  select * into c from tests.cenario();
+  return next throws_ok(format('select tests.executar_como(%L, %L)', c.op, 'select public.registrar_posicao(-25.1, -50.1)'),
+                        '42501', null, 'só o motorista manda posição');
+  return next throws_ok(format('select tests.executar_como(%L, %L)', c.app, 'select public.registrar_posicao(40.7, -74.0)'),
+                        'P0001', 'Posição fora do Brasil.', 'posição fora do Brasil é recusada');
+  perform tests.como(c.app);
+  perform public.registrar_posicao(-25.09, -50.16);
+  return next is((select count(*)::integer from public.motorista_posicao), 0, 'o motorista não lê a tabela de posições');
+  perform tests.como_servico();
+end $$;
+
 select * from runtests('tests'::name, '^test_');
 rollback;

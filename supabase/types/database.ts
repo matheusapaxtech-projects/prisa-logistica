@@ -886,6 +886,41 @@ export type Database = {
           },
         ]
       }
+      motorista_posicao: {
+        Row: {
+          em: string
+          latitude: number
+          longitude: number
+          motorista_id: string
+          precisao_m: number | null
+          recebida_em: string
+        }
+        Insert: {
+          em: string
+          latitude: number
+          longitude: number
+          motorista_id: string
+          precisao_m?: number | null
+          recebida_em?: string
+        }
+        Update: {
+          em?: string
+          latitude?: number
+          longitude?: number
+          motorista_id?: string
+          precisao_m?: number | null
+          recebida_em?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "motorista_posicao_motorista_id_fkey"
+            columns: ["motorista_id"]
+            isOneToOne: true
+            referencedRelation: "motorista"
+            referencedColumns: ["pessoa_id"]
+          },
+        ]
+      }
       motorista_disponibilidade: {
         Row: {
           cidade: string
@@ -2618,6 +2653,8 @@ export type Database = {
           observacao: string | null
           ocorrencias: number | null
           viagens_finalizadas: number | null
+          posicao_em: string | null
+          posicao_gps: boolean | null
         }
         Relationships: []
       }
@@ -2793,6 +2830,15 @@ export type Database = {
       liberar_acesso_app: {
         Args: { p_celular: string; p_motorista: string }
         Returns: string
+      }
+      registrar_posicao: {
+        Args: {
+          p_em?: string
+          p_latitude: number
+          p_longitude: number
+          p_precisao_m?: number
+        }
+        Returns: undefined
       }
       revogar_acesso_app: { Args: { p_motorista: string }; Returns: undefined }
       desistir_interesse: { Args: { p_oferta: string }; Returns: undefined }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import * as Location from "expo-location";
+import { enviarPosicaoAgora, type EstadoLocalizacao } from "../localizacao";
 import { mensagem, supabase, type Cadastro, type Frete, type Pendencia } from "../supabase";
 import { cor, dia, quando, reais } from "../tema";
 import { Botao } from "./Entrar";
@@ -14,7 +15,18 @@ const PRAZOS = [
 
 /* Tela principal: "Estou livre" (posição do GPS), o que falta para ser contratado e os fretes em que ele
    pode entrar, com o frete dele. "Tenho interesse" só avisa a operação. */
-export function Principal() {
+type Dados = { cad: Cadastro; pend: Pendencia[]; fretes: Frete[] };
+
+/** Cadastro, pendências e fretes do motorista logado (funções do app no banco). */
+async function buscar(): Promise<Dados> {
+  const [c, p, f] = await Promise.all([supabase.rpc("meu_cadastro"), supabase.rpc("minhas_pendencias"), supabase.rpc("fretes_para_mim")]);
+  for (const r of [c, p, f]) if (r.error) throw r.error;
+  return { cad: c.data as Cadastro, pend: (p.data ?? []) as Pendencia[], fretes: (f.data ?? []) as Frete[] };
+}
+
+type Props = { localizacao: EstadoLocalizacao; aoPedirLocalizacao: () => void; aoSair: () => void };
+
+export function Principal({ localizacao, aoPedirLocalizacao, aoSair }: Props) {
   const [cad, setCad] = useState<Cadastro | null>(null);
   const [pend, setPend] = useState<Pendencia[]>([]);
   const [fretes, setFretes] = useState<Frete[]>([]);
@@ -23,24 +35,22 @@ export function Principal() {
   const [erro, setErro] = useState<string | null>(null);
   const [escolherPrazo, setEscolherPrazo] = useState(false);
 
-  const carregar = useCallback(async () => {
+  const aplicar = useCallback((d: Dados) => {
+    setCad(d.cad);
+    setPend(d.pend);
+    setFretes(d.fretes);
     setErro(null);
-    try {
-      const [c, p, f] = await Promise.all([supabase.rpc("meu_cadastro"), supabase.rpc("minhas_pendencias"), supabase.rpc("fretes_para_mim")]);
-      for (const r of [c, p, f]) if (r.error) throw r.error;
-      setCad(c.data as Cadastro);
-      setPend((p.data ?? []) as Pendencia[]);
-      setFretes((f.data ?? []) as Frete[]);
-    } catch (e) {
-      setErro(mensagem(e));
-    } finally {
-      setCarregando(false);
-    }
+    setCarregando(false);
   }, []);
+  const falhar = useCallback((e: unknown) => {
+    setErro(mensagem(e));
+    setCarregando(false);
+  }, []);
+  const carregar = useCallback(() => buscar().then(aplicar, falhar), [aplicar, falhar]);
 
   useEffect(() => {
-    carregar();
-  }, [carregar]);
+    buscar().then(aplicar, falhar);
+  }, [aplicar, falhar]);
 
   async function acao(chave: string, f: () => Promise<void>) {
     setErro(null);
@@ -60,7 +70,7 @@ export function Principal() {
       setEscolherPrazo(false);
       const perm = await Location.requestForegroundPermissionsAsync();
       if (perm.status !== "granted") throw new Error("Libere a localização para a Prisa achar os fretes perto de você.");
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const pos = (await enviarPosicaoAgora()) ?? (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
       const { latitude, longitude } = pos.coords;
       if (latitude < -35 || latitude > 6 || longitude < -75 || longitude > -28) throw new Error("Sua localização está fora do Brasil.");
       const [lugar] = await Location.reverseGeocodeAsync({ latitude, longitude }).catch(() => []);
@@ -100,12 +110,19 @@ export function Principal() {
             </Text>
           )}
         </View>
-        <Pressable onPress={() => supabase.auth.signOut()}>
+        <Pressable onPress={aoSair}>
           <Text style={s.sair}>Sair</Text>
         </Pressable>
       </View>
 
       {erro && <Text style={s.erro}>{erro}</Text>}
+
+      {localizacao !== "ativa" && (
+        <Pressable style={s.semLocal} onPress={aoPedirLocalizacao}>
+          <Text style={s.semLocalTitulo}>Localização desligada</Text>
+          <Text style={s.semLocalTexto}>Sem ela a Prisa não te encontra para os fretes perto. Toque para ligar.</Text>
+        </Pressable>
+      )}
 
       <View style={[s.cartao, cad?.checkin ? s.cartaoLivre : null]}>
         {cad?.checkin ? (
@@ -204,5 +221,8 @@ const s = StyleSheet.create({
   detalhe: { fontSize: 14, color: cor.apagado, lineHeight: 20 },
   recado: { fontSize: 14, color: cor.azulTinta, backgroundColor: cor.azulClaro, padding: 10, borderRadius: 8, marginTop: 8 },
   interesse: { fontSize: 14, color: cor.verdeTinta, marginBottom: 10, lineHeight: 20 },
+  semLocal: { backgroundColor: "#f8e7d4", borderColor: "rgba(227,139,61,0.45)", borderWidth: 1, borderRadius: 18, padding: 14, marginBottom: 14 },
+  semLocalTitulo: { fontSize: 16, fontWeight: "700", color: "#7a3c0b" },
+  semLocalTexto: { fontSize: 14, lineHeight: 20, color: "#7a3c0b", marginTop: 2 },
   erro: { color: cor.vermelhoTinta, backgroundColor: cor.vermelhoClaro, padding: 12, borderRadius: 8, fontSize: 14, marginBottom: 14 },
 });

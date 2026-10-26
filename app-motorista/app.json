@@ -7,7 +7,8 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "br.com.prisa.motorista"
     },
     "android": {
       "adaptiveIcon": {
@@ -26,9 +27,14 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "A Prisa usa sua localização quando você avisa que está livre, para mostrar os fretes perto de você."
+          "locationAlwaysAndWhenInUsePermission": "A Prisa usa sua localização o tempo todo, mesmo com o app fechado, para achar os fretes perto de você e escolher o caminhão mais perto da coleta.",
+          "locationWhenInUsePermission": "A Prisa usa sua localização para achar os fretes perto de você.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
+          "isIosBackgroundLocationEnabled": true
         }
-      ]
+      ],
+      "expo-dev-client"
     ]
   }
 }
