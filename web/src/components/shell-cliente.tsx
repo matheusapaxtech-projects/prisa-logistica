@@ -24,6 +24,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { SinalNilt } from "@/components/Logo";
 import { LayoutGroup, MotionConfig, motion } from "motion/react";
 import { sair } from "@/app/login/actions";
 import { Avatar } from "@/components/Avatar";
@@ -149,14 +150,7 @@ export function MolduraShell({ usuario, pendencias, admin, financeiro = false, b
             <Menu size={16} strokeWidth={1.6} aria-hidden="true" />
           </button>
           <Link className="marca" href="/" aria-label="NILT, início">
-            <span className="marca-sinal" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 21V8" />
-                <path d="M12 8l-4 4" />
-                <path d="M12 8l4 4" />
-                <path d="M5 21h14" />
-              </svg>
-            </span>
+            <SinalNilt className="marca-sinal" />
             <span className="marca-nome">NILT</span>
           </Link>
           <NavSecoes secoes={secoes} caminho={caminho} pendencias={pendencias} />
@@ -170,14 +164,7 @@ export function MolduraShell({ usuario, pendencias, admin, financeiro = false, b
 
         <aside className="sidebar" aria-label="Menu principal">
           <div className="gaveta-cab so-gaveta">
-            <span className="marca-sinal" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 21V8" />
-                <path d="M12 8l-4 4" />
-                <path d="M12 8l4 4" />
-                <path d="M5 21h14" />
-              </svg>
-            </span>
+            <SinalNilt className="marca-sinal" />
             <span className="usuario-nome">
               <b>{usuario.nome}</b>
               <span>{usuario.papel}</span>
