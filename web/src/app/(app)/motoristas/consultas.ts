@@ -13,7 +13,7 @@ export type MotoristaRow = Tabelas["motorista"]["Row"];
 /* ---------- situação de validade e da gerenciadora (motoristas.js) ---------- */
 
 export type EstadoGr = {
-  chave: "sem_consulta" | "habilitado" | "vencendo" | "vencido";
+  chave: "sem_consulta" | "habilitado" | "vencendo" | "vencido" | "recusado";
   /** Rótulo curto (Habilitado, Vencido, Sem consulta). */
   rot: string;
   /** Segunda linha: "até 26/12/2026", "vence em 9 dias", "nunca consultado"… */
@@ -28,6 +28,7 @@ export function textoValidade(e: EstadoValidade): string {
 /** Situação na gerenciadora de risco, com "vencendo" derivado da validade (`estadoGr` do protótipo). */
 export function estadoGr(m: Pick<MotoristaRow, "situacao_gr" | "gr_validade">): EstadoGr {
   if (!m.situacao_gr || m.situacao_gr === "sem_consulta") return { chave: "sem_consulta", rot: "Sem consulta", sub: "nunca consultado" };
+  if (m.situacao_gr === "recusado") return { chave: "recusado", rot: "Recusado", sub: "recusado pela gerenciadora" };
   const v = estadoValidade(m.gr_validade);
   if (m.situacao_gr === "vencido" || v.cls === "vencido")
     return { chave: "vencido", rot: "Vencido", sub: m.gr_validade ? textoValidade(v) : "consulta vencida" };

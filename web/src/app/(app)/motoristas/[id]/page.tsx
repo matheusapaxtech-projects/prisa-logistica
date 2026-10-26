@@ -51,6 +51,7 @@ function SinalGr({ f }: { f: Ficha }) {
   const g = estadoGr(f.motorista);
   if (g.chave === "sem_consulta") return <Sinal situacao="sem_consulta" texto="Risco sem consulta" />;
   if (g.chave === "vencido") return <Sinal situacao="vencido" texto="Risco vencido" />;
+  if (g.chave === "recusado") return <Sinal situacao="recusado" texto="Recusado pela gerenciadora" />;
   if (g.chave === "vencendo") return <Sinal tipo="vencendo" texto={`Risco ${g.sub}`} />;
   return <Sinal situacao="habilitado" texto="Risco habilitado" />;
 }
