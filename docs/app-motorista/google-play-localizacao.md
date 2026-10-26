@@ -47,13 +47,14 @@ da página) e pedir a revisão do jurídico.
 > O serviço em primeiro plano mantém o envio da posição do caminhão enquanto o motorista dirige com o app fechado,
 > com a notificação fixa "Prisa: localização ativa". Ele para quando o motorista sai do app.
 
-## Roteiro do vídeo (até 30 segundos, sem som)
+## Vídeo (`video-localizacao.mp4`, gravado no emulador com a versão de produção)
 
-1. Abrir o app e entrar (tela de entrada com o link da política).
-2. Aparece o aviso em destaque "A Prisa usa sua localização o tempo todo": mostrar os três itens.
-3. Tocar em "Permitir localização" e escolher "Durante o uso do app" no Android.
-4. O Android abre os ajustes: escolher "Permitir o tempo todo" e voltar.
-5. Tela principal com os fretes perto e a distância até a coleta.
-6. Sair do app (botão início) e abrir a barra de notificações: aviso "Prisa: localização ativa".
+1. Aviso em destaque "A Prisa usa sua localização o tempo todo", com os três itens e o link da política.
+2. "Permitir localização" e, no Android, "Durante o uso do app".
+3. O Android abre os ajustes: "Permitir o tempo todo" e voltar ao app.
+4. Pedido de notificações (Android 13+): sem ele o aviso fixo fica escondido.
+5. Tela principal com o frete perto e a distância até a coleta.
+6. App em segundo plano e a barra de notificações com o aviso "Prisa: localização ativa".
 
-Gravar no emulador com `adb shell screenrecord /sdcard/video.mp4` e baixar com `adb pull`.
+Para gravar de novo: `adb shell screenrecord /sdcard/video.mp4` durante o fluxo e `adb pull /sdcard/video.mp4`.
+Antes, `adb shell pm clear br.com.prisa.motorista` (depois de uma recusa o Android não abre mais os ajustes).

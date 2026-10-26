@@ -4,7 +4,7 @@
    do app (development build): o Expo Go do Android não roda serviço em segundo plano. */
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
-import { Linking, Platform } from "react-native";
+import { Linking, PermissionsAndroid, Platform } from "react-native";
 import { supabase } from "./supabase";
 
 export const TAREFA_POSICAO = "prisa-posicao-motorista";
@@ -42,8 +42,16 @@ export async function ativarLocalizacao(): Promise<EstadoLocalizacao> {
   if (frente.status !== "granted") return "sem_permissao";
   const fundo = await Location.requestBackgroundPermissionsAsync();
   if (fundo.status !== "granted") return "so_com_app_aberto";
+  await pedirNotificacoes();
   await ligarEnvio();
   return "ativa";
+}
+
+/** Android 13+: sem a permissão de notificações o aviso fixo "Prisa: localização ativa" fica escondido (o Google
+    Play exige que o motorista veja quando a localização está ligada). Recusar não impede o envio. */
+async function pedirNotificacoes(): Promise<void> {
+  if (Platform.OS !== "android" || Number(Platform.Version) < 33) return;
+  await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS).catch(() => undefined);
 }
 
 /** Liga o serviço (ou atualiza as opções) se as permissões já existem; roda ao abrir o app. */
