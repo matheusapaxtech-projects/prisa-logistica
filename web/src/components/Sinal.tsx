@@ -12,6 +12,7 @@ export const SITUACOES: Record<string, readonly [TipoSinal, string]> = {
   vencendo: ["vencendo", "Vencendo"],
   habilitado: ["normal", "Habilitado"],
   sem_consulta: ["neutro", "Sem consulta"],
+  recusado: ["bloqueado", "Recusado"],
   arrendado: ["info", "Arrendado"],
   ativo: ["normal", "Ativo"],
   parado: ["neutro", "Parado"],

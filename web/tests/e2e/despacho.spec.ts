@@ -32,13 +32,12 @@ test("motorista livre aparece no ranking do pedido", async ({ page }) => {
   const select = page.getByLabel("Motorista", { exact: true });
   const opcoes = await select.locator("option").allTextContents();
   test.skip(opcoes.length < 2, "não há motorista de conjunto aberto");
-  // um motorista que não está em viagem (quem está em viagem fica de fora do ranking, de propósito)
+  // um motorista sem viagem planejada ou em andamento (esses ficam de fora do ranking, de propósito)
   const ativas = await db
     .from("viagem")
     .select("cavalo:veiculo!viagem_cavalo_id_fkey(placa)")
     .is("cancelada_em", null)
-    .not("status_campo", "is", null)
-    .not("status_campo", "in", "(aguardando_saldo,frete_finalizado)");
+    .or("status_campo.is.null,status_campo.not.in.(aguardando_saldo,frete_finalizado)");
   const ocupadas = new Set((ativas.data ?? []).map((v) => (v.cavalo as unknown as { placa: string } | null)?.placa));
   const indice = opcoes.findIndex((o, i) => i > 0 && !ocupadas.has(o.split(" · ")[1]));
   test.skip(indice < 0, "todos os motoristas de conjunto aberto estão em viagem");
@@ -61,7 +60,7 @@ test("motorista livre aparece no ranking do pedido", async ({ page }) => {
 
     await page.goto(`/pedidos/${pedido!.id}`);
     await expect(page.getByRole("heading", { name: "Despacho" }).first()).toBeVisible({ timeout: 30_000 });
-    await expect(page.locator(".despacho-ranking").getByText(nome, { exact: false }).first()).toBeVisible();
+    await expect(page.locator(".desp-cartoes").getByText(nome, { exact: false }).first()).toBeVisible();
     await prepararPrint(page);
     await page.screenshot({ path: path.join(PRINTS, "2-ranking.png"), fullPage: true });
   } finally {

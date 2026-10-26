@@ -211,17 +211,20 @@ export type Composicao = {
   observacoes: string[];
 };
 
-export type OpcoesComposicao = { maxCaminhoes?: number; aceitarAtrasados?: boolean; penalidadeKm?: number; param?: ParamFiscais };
+/** `acimaDoPiso`: frete do motorista acima do piso da ANTT (0,05 = 5%), como na negociação real. */
+export type OpcoesComposicao = { maxCaminhoes?: number; aceitarAtrasados?: boolean; penalidadeKm?: number; param?: ParamFiscais; acimaDoPiso?: number };
 
-/** Menor custo total que cobre o lote (frete no piso + pedágio + INSS de PF + R$ 0,50/km até o embarque),
+/** Menor custo total que cobre o lote (frete no piso, ou `acimaDoPiso` acima dele, + pedágio + INSS de PF + R$ 0,50/km até o embarque),
    por programação dinâmica sobre a capacidade em décimos de tonelada; empate → menos caminhões → maior nota. */
 export function comporLote(carga: CargaDespacho, candidatos: readonly Candidato[], op: OpcoesComposicao = {}): Composicao {
   const fiscal = op.param ?? FISCAL_PADRAO;
   const pen = op.penalidadeKm ?? 0.5;
+  const fator = 1 + Math.max(0, op.acimaDoPiso ?? 0);
+  const freteDe = (c: Candidato) => Math.ceil(c.piso * fator);
   const pool = candidatos.filter((c) => op.aceitarAtrasados || c.chegaNoPrazo);
   const U = 10;
   const alvo = Math.ceil(carga.pesoT * U);
-  const custo = pool.map((c) => Math.ceil(c.piso) * (c.motorista.tipo === "PF" ? 1.04 : 1) + c.pedagio + pen * c.kmAteEmbarque);
+  const custo = pool.map((c) => freteDe(c) * (c.motorista.tipo === "PF" ? 1.04 : 1) + c.pedagio + pen * c.kmAteEmbarque);
   const cap = pool.map((c) => Math.floor(c.motorista.capacidadeT * U));
   const maxN = op.maxCaminhoes ?? Infinity;
 
@@ -263,7 +266,7 @@ export function comporLote(carga: CargaDespacho, candidatos: readonly Candidato[
         ? Math.round(((pesoTotal * c.motorista.capacidadeT) / capTotal) * 100) / 100
         : Math.round((pesoTotal - acc) * 100) / 100;
     acc += peso;
-    const freteMotorista = Math.ceil(c.piso);
+    const freteMotorista = freteDe(c);
     const freteEmpresa = (carga.fretePorT ?? 0) * peso;
     const cte =
       freteEmpresa > 0
@@ -286,7 +289,11 @@ export function comporLote(carga: CargaDespacho, candidatos: readonly Candidato[
   const fe = caminhoes.reduce((s, c) => s + c.freteEmpresa, 0);
   const liq = caminhoes.reduce((s, c) => s + (c.cte?.resultadoLiquido ?? 0), 0);
   for (const c of caminhoes) if (c.cte && c.cte.resultadoLiquido < 0) obs.push(`${c.candidato.motorista.placaCavalo}: dá prejuízo com este preço por tonelada.`);
-  obs.push("Frete do motorista calculado no piso da ANTT: o negociado costuma ser maior, então a margem real tende a ser menor.");
+  obs.push(
+    fator > 1
+      ? `Frete do motorista ${Math.round((fator - 1) * 1000) / 10}% acima do piso da ANTT.`
+      : "Frete do motorista calculado no piso da ANTT: o negociado costuma ser maior, então a margem real tende a ser menor.",
+  );
   return {
     caminhoes,
     capacidadeT: capTotal,

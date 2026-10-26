@@ -389,6 +389,21 @@ td.num, th.num { text-align: right; }
 
 /* ---------- tabela ---------- */
 .tabela-wrap { overflow-x: auto; }
+
+/* ---------- rodapé de lista com páginas (components/Paginacao.tsx) ---------- */
+.paginacao { display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap; margin-top: 16px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.paginacao-conta { margin: 0; }
+.paginacao-conta strong { color: var(--ink); font-weight: 600; }
+.paginacao-por { display: inline-flex; align-items: center; gap: 8px; }
+.paginacao-por select { height: var(--control-h); border: 1px solid rgba(22, 24, 24, 0.14); border-radius: 999px; padding: 0 28px 0 12px; background: rgba(255, 255, 255, 0.62); }
+.paginacao-paginas { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.paginacao-paginas .paginacao-numero { font-weight: 500; }
+.paginacao-paginas .paginacao-numero[aria-current="page"] { background: var(--noite); border-color: var(--noite); color: #fff; }
+.paginacao-paginas .btn:not(.paginacao-numero[aria-current="page"]):not([aria-disabled="true"]) { background: transparent; border-color: transparent; }
+@media (hover: hover) and (pointer: fine) { .paginacao-paginas a.btn:not([aria-current="page"]):hover { background: rgba(255, 255, 255, 0.8); border-color: rgba(22, 24, 24, 0.14); } }
+.paginacao-paginas [aria-disabled="true"] { background: transparent; }
+.paginacao-reticencias { width: 24px; text-align: center; }
+.paginacao-de { display: none; padding: 0 8px; color: var(--ink); }
 .sheet-inner .tabela-wrap:not(.bloco .tabela-wrap):not(dialog .tabela-wrap) {
   background: var(--painel); border: 1px solid var(--painel-borda); border-radius: var(--radius-painel);
   box-shadow: var(--sombra-painel); padding: 6px 20px 10px;
@@ -1026,6 +1041,11 @@ dialog.dialogo[open]::backdrop { animation: veu 220ms ease-out; }
   .campos > [class*="f"] { grid-column: 1 / -1; }
   .ferramentas .busca-lista { width: 100%; }
   .ferramentas .total { margin-left: 0; }
+  .paginacao { justify-content: space-between; }
+  .paginacao-paginas { width: 100%; justify-content: space-between; margin-left: 0; }
+  .paginacao-paginas .paginacao-numero, .paginacao-reticencias { display: none; }
+  .paginacao-de { display: inline; }
+  .paginacao-paginas .btn { width: 44px; height: 44px; background: rgba(255, 255, 255, 0.62); border-color: rgba(22, 24, 24, 0.14); }
   .busca kbd { display: none; }
   .tabela .some-celular { display: none; }
   .marco { grid-template-columns: minmax(0, 1fr) 84px; }

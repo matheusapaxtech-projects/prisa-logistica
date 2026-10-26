@@ -1,0 +1,108 @@
+/* NILT — Despacho (/despacho e o painel na ficha do pedido). Fila de pedidos em cartões; o pedido escolhido numa
+   faixa verde com a rota; simulação, lote sugerido e ranking em cartões (apto em verde, pendente em mostarda,
+   sempre com o texto do sinal ao lado da cor). */
+
+.desp-pag .titulo .sub a { color: inherit; text-decoration: underline; text-decoration-color: rgba(22, 24, 24, 0.3); }
+.desp-secao { font-size: var(--fs-section); font-weight: 500; margin: 24px 0 12px; }
+.desp-secao span, .desp h3 span { color: var(--muted); font-weight: 400; font-size: 14px; }
+
+/* fila de pedidos */
+.desp-fila { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.desp-fila a {
+  display: grid; gap: 4px; height: 100%; padding: 14px 16px; color: var(--ink); text-decoration: none;
+  background: var(--painel); border: 1px solid var(--painel-borda); border-radius: var(--radius-card); box-shadow: var(--sombra-cartao);
+  transition: border-color 150ms ease, transform 150ms var(--ease-out);
+}
+.desp-fila a:active { transform: scale(0.98); }
+.desp-fila a[aria-current] { border-color: var(--verde); box-shadow: 0 0 0 2px var(--verde); }
+.desp-fila .topo { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
+.desp-fila b { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.01em; }
+.desp-fila .cliente { font-size: 13px; }
+.desp-fila .linha2 { font-size: 12px; color: var(--muted); }
+.desp-fila .trilho { display: block; height: 6px; margin-top: 6px; border-radius: 3px; background: var(--raised); overflow: hidden; }
+.desp-fila .trilho i { display: block; height: 100%; background: var(--verde); }
+@media (hover: hover) and (pointer: fine) { .desp-fila a:hover { border-color: rgba(22, 24, 24, 0.22); } }
+
+/* pedido escolhido */
+.desp-escolhido { margin-top: 28px; }
+.desp-faixa {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px;
+  padding: 18px 22px; margin-bottom: 18px; border-radius: var(--radius-painel); background: var(--verde); color: #fff;
+}
+.desp-faixa h2 { font-size: 24px; line-height: 1.1; font-weight: 600; text-transform: uppercase; letter-spacing: 0.01em; }
+.desp-faixa p { margin-top: 6px; font-size: 14px; opacity: 0.9; }
+.desp-faixa a { color: inherit; text-decoration: underline; }
+.desp-faixa .km { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* painel (também dentro da ficha do pedido) */
+.desp { display: grid; gap: 18px; }
+.desp .nota { margin: 0; font-size: 13px; line-height: 18px; color: var(--muted); max-width: 90ch; }
+.desp-sim { padding: 16px; border: 1px solid var(--border); border-radius: 18px; background: rgba(255, 255, 255, 0.55); }
+.desp-sim .sufixo { position: relative; display: block; }
+.desp-sim .sufixo > span { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+
+.desp-lote, .desp-ranking { display: grid; gap: 12px; }
+.desp-lote { padding: 16px; border: 1px solid var(--border); border-radius: 18px; background: rgba(255, 255, 255, 0.55); }
+.desp-lote-cab, .desp-ranking-cab { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.desp h3 { font-size: 16px; font-weight: 600; }
+.desp-ranking-cab .dir { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.desp-filtro { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; }
+
+.desp-numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 0; }
+.desp-numeros div { display: grid; gap: 2px; }
+.desp-numeros dt { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.desp-numeros dd { margin: 0; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.desp-lote-tabela td { vertical-align: middle; }
+.desp-lote-tabela .placa, .desp-cartoes .placa { transform: scale(0.8); transform-origin: left center; vertical-align: middle; }
+.desp-acoes { display: flex; justify-content: flex-end; }
+
+/* ranking em cartões */
+.desp-cartoes { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.desp-cartoes > li { padding: 14px 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--painel); display: grid; gap: 6px; }
+.desp-cartoes > li.pendente { border-color: var(--laranja); }
+.desp-cartao-topo { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.desp-cartao-topo .pos {
+  display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--raised); font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.desp-cartao-topo .quem { flex: 1 1 260px; min-width: 0; display: grid; gap: 2px; }
+.desp-cartao-topo .quem b { margin-right: 8px; }
+.desp-cartao-topo .quem .linha2, .desp-cartoes .linha2 { display: block; font-size: 12px; color: var(--muted); line-height: 18px; }
+.desp-medidas { display: flex; gap: 18px; margin: 0; }
+.desp-medidas div { display: grid; text-align: right; }
+.desp-medidas dt { font-size: 11px; color: var(--muted); }
+.desp-medidas dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.desp-botoes { display: flex; gap: 8px; }
+.desp-motivos { margin: 0; font-size: 12px; color: var(--muted); }
+.desp-pendencias { padding: 10px 12px; border-radius: 12px; background: var(--laranja-claro); color: var(--laranja-tinta); font-size: 13px; }
+.desp-pendencias ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 2px; }
+
+.desp-descartados { color: var(--muted); font-size: 13px; }
+.desp-descartados summary { cursor: pointer; }
+.desp-descartados ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+
+@media (max-width: 760px) {
+  .desp-sim .f3 { grid-column: 1 / -1; }
+  .desp-medidas { width: 100%; justify-content: space-between; }
+  .desp-medidas div { text-align: left; }
+  .desp-botoes { width: 100%; }
+  .desp-botoes .btn { flex: 1; justify-content: center; }
+  .desp-faixa h2, .desp-faixa .km { font-size: 19px; }
+}
+
+/* aba "Calculadora e negociações" */
+.desp-pag .abas { margin-bottom: 16px; }
+.neg-salvar { display: grid; gap: 6px; }
+.neg-salvar .btn { justify-content: center; }
+.neg-salvar .nota { margin: 0; font-size: 12px; color: var(--muted); }
+.neg-pagos { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; font-size: 13px; }
+.neg-pagos li { display: flex; justify-content: space-between; gap: 12px; }
+.neg-pagos b { font-variant-numeric: tabular-nums; }
+.neg-usar { display: flex; flex-wrap: wrap; gap: 8px; }
+.neg-lista { margin-top: 32px; display: grid; gap: 12px; }
+.neg-lista h2 { font-size: var(--fs-section); font-weight: 500; }
+.neg-lista td { vertical-align: top; }
+.neg-lista .linha2 { display: block; font-size: 12px; color: var(--muted); line-height: 18px; margin-top: 2px; }
+.neg-lista .placa { transform: scale(0.8); transform-origin: left center; vertical-align: middle; }
+.neg-botoes { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.neg-congelado { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); }

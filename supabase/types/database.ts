@@ -268,6 +268,8 @@ export type Database = {
       }
       conjunto: {
         Row: {
+          aprovado_em: string | null
+          aprovado_por: string | null
           cavalo_id: string
           created_at: string
           created_by: string | null
@@ -279,6 +281,8 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
           cavalo_id: string
           created_at?: string
           created_by?: string | null
@@ -290,6 +294,8 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
           cavalo_id?: string
           created_at?: string
           created_by?: string | null
@@ -580,6 +586,9 @@ export type Database = {
           created_at: string
           created_by: string | null
           dt_qualificacao_gmp: string | null
+          gr_consulta_em: string | null
+          gr_gerenciadora: string | null
+          gr_protocolo: string | null
           gr_validade: string | null
           pessoa_id: string
           qualificado_gmp: boolean | null
@@ -604,6 +613,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           dt_qualificacao_gmp?: string | null
+          gr_consulta_em?: string | null
+          gr_gerenciadora?: string | null
+          gr_protocolo?: string | null
           gr_validade?: string | null
           pessoa_id: string
           qualificado_gmp?: boolean | null
@@ -628,6 +640,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           dt_qualificacao_gmp?: string | null
+          gr_consulta_em?: string | null
+          gr_gerenciadora?: string | null
+          gr_protocolo?: string | null
           gr_validade?: string | null
           pessoa_id?: string
           qualificado_gmp?: boolean | null
@@ -883,6 +898,148 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      negociacao_frete: {
+        Row: {
+          conjunto_id: string | null
+          created_at: string
+          created_by: string | null
+          cte_em: string | null
+          cte_numero: string | null
+          destino: string
+          eixos: number
+          frete_cliente_t: number | null
+          frete_motorista: number
+          id: string
+          km: number
+          motivo: string | null
+          motorista_id: string
+          origem: string
+          pedagio: number
+          pedido_id: string | null
+          peso_kg: number
+          piso: number
+          respondida_em: string | null
+          situacao: Database["public"]["Enums"]["situacao_negociacao"]
+          tipo_carga: Database["public"]["Enums"]["tipo_carga_antt"]
+          updated_at: string
+          updated_by: string | null
+          valor_mercadoria_t: number | null
+          valor_pedido: number | null
+          viagem_id: string | null
+        }
+        Insert: {
+          conjunto_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          cte_em?: string | null
+          cte_numero?: string | null
+          destino: string
+          eixos: number
+          frete_cliente_t?: number | null
+          frete_motorista: number
+          id?: string
+          km: number
+          motivo?: string | null
+          motorista_id: string
+          origem: string
+          pedagio?: number
+          pedido_id?: string | null
+          peso_kg: number
+          piso: number
+          respondida_em?: string | null
+          situacao?: Database["public"]["Enums"]["situacao_negociacao"]
+          tipo_carga: Database["public"]["Enums"]["tipo_carga_antt"]
+          updated_at?: string
+          updated_by?: string | null
+          valor_mercadoria_t?: number | null
+          valor_pedido?: number | null
+          viagem_id?: string | null
+        }
+        Update: {
+          conjunto_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          cte_em?: string | null
+          cte_numero?: string | null
+          destino?: string
+          eixos?: number
+          frete_cliente_t?: number | null
+          frete_motorista?: number
+          id?: string
+          km?: number
+          motivo?: string | null
+          motorista_id?: string
+          origem?: string
+          pedagio?: number
+          pedido_id?: string | null
+          peso_kg?: number
+          piso?: number
+          respondida_em?: string | null
+          situacao?: Database["public"]["Enums"]["situacao_negociacao"]
+          tipo_carga?: Database["public"]["Enums"]["tipo_carga_antt"]
+          updated_at?: string
+          updated_by?: string | null
+          valor_mercadoria_t?: number | null
+          valor_pedido?: number | null
+          viagem_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "negociacao_frete_conjunto_id_fkey"
+            columns: ["conjunto_id"]
+            isOneToOne: false
+            referencedRelation: "conjunto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "negociacao_frete_motorista_id_fkey"
+            columns: ["motorista_id"]
+            isOneToOne: false
+            referencedRelation: "motorista"
+            referencedColumns: ["pessoa_id"]
+          },
+          {
+            foreignKeyName: "negociacao_frete_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedido"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "negociacao_frete_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "viagem"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      negociacao_resultado: {
+        Row: {
+          margem_liquida: number
+          negociacao_id: string
+          resultado_liquido: number
+        }
+        Insert: {
+          margem_liquida: number
+          negociacao_id: string
+          resultado_liquido: number
+        }
+        Update: {
+          margem_liquida?: number
+          negociacao_id?: string
+          resultado_liquido?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "negociacao_resultado_negociacao_id_fkey"
+            columns: ["negociacao_id"]
+            isOneToOne: false
+            referencedRelation: "negociacao_frete"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pedido: {
         Row: {
@@ -2399,6 +2556,20 @@ export type Database = {
         }
         Relationships: []
       }
+      v_frete_pago_rota: {
+        Row: {
+          destino: string | null
+          dia: string | null
+          eixos: number | null
+          fonte: string | null
+          id: string | null
+          km: number | null
+          motorista_id: string | null
+          origem: string | null
+          valor: number | null
+        }
+        Relationships: []
+      }
       v_motorista_livre: {
         Row: {
           cidade: string | null
@@ -2528,6 +2699,19 @@ export type Database = {
       }
     }
     Functions: {
+      aprovar_conjunto: {
+        Args: { p_aprovar?: boolean; p_conjunto: string }
+        Returns: undefined
+      }
+      aptidao_conjuntos: {
+        Args: { p_conjuntos: string[]; p_tomador?: string }
+        Returns: {
+          codigo: string
+          conjunto_id: string
+          mensagem: string
+          nivel: string
+        }[]
+      }
       aptidao_da_viagem: { Args: { p_viagem: string }; Returns: Json }
       aptidao_viagem: {
         Args: { p_conjunto: string; p_tomador?: string }
@@ -2540,6 +2724,7 @@ export type Database = {
       arquivo_restrito: { Args: { p_path: string }; Returns: boolean }
       auditar: { Args: { p_tabela: unknown }; Returns: undefined }
       calcular_cte: { Args: { p: Json; p_dia?: string }; Returns: Json }
+      contratar_lote: { Args: { p_itens: Json; p_pedido: string }; Returns: string[] }
       cancelar_viagem: {
         Args: { p_motivo: string; p_viagem: string }
         Returns: undefined
@@ -2716,6 +2901,10 @@ export type Database = {
         }
         Returns: number
       }
+      informar_cte_negociacao: {
+        Args: { p_id: string; p_numero: string }
+        Returns: undefined
+      }
       placa_valida: { Args: { p: string }; Returns: boolean }
       pode_editar: { Args: never; Returns: boolean }
       pode_financeiro: { Args: never; Returns: boolean }
@@ -2728,6 +2917,14 @@ export type Database = {
       quebra_e_estadia: { Args: { p_viagem: string }; Returns: Json }
       rotulo_status_campo: {
         Args: { p: Database["public"]["Enums"]["status_campo"] }
+        Returns: string
+      }
+      registrar_negociacao: {
+        Args: { p: Json; p_margem_liquida?: number; p_resultado_liquido?: number }
+        Returns: string
+      }
+      responder_negociacao: {
+        Args: { p_aceita: boolean; p_id: string; p_motivo?: string; p_valor_pedido?: number }
         Returns: string
       }
       salvar_conjunto: {
@@ -2818,7 +3015,8 @@ export type Database = {
         | "cancelada_multiplicidade"
         | "nula"
         | "cancelada_oficio"
-      situacao_gr: "sem_consulta" | "habilitado" | "vencido"
+      situacao_gr: "sem_consulta" | "habilitado" | "vencido" | "recusado"
+      situacao_negociacao: "aberta" | "aceita" | "recusada" | "cte_emitido"
       situacao_operacional:
         | "ag_motorista"
         | "apreendido"
@@ -3120,7 +3318,8 @@ export const Constants = {
         "nula",
         "cancelada_oficio",
       ],
-      situacao_gr: ["sem_consulta", "habilitado", "vencido"],
+      situacao_gr: ["sem_consulta", "habilitado", "vencido", "recusado"],
+      situacao_negociacao: ["aberta", "aceita", "recusada", "cte_emitido"],
       situacao_operacional: [
         "ag_motorista",
         "apreendido",

@@ -21,7 +21,7 @@ import { Montador } from "../montador";
 import { diaSP, diasEntre, haDias, Partes } from "../partes";
 import { nomeConjunto, tipoTxt, type VeiculoConjunto } from "../regras";
 import { SemPermissao } from "../sem-permissao";
-import { AcoesConjunto, BotaoEscolherMotorista, type DadosAcoes } from "./acoes-conjunto";
+import { AcoesConjunto, AprovarConjunto, BotaoEscolherMotorista, type DadosAcoes } from "./acoes-conjunto";
 import "@/styles/paginas/conjuntos.css";
 
 type Params = { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
@@ -150,6 +150,7 @@ export default async function ConjuntoFicha({ params, searchParams }: Params) {
             </h1>
             {aberto ? <Sinal situacao="ativo" texto="Aberto" /> : <Sinal tipo="neutro" texto="Encerrado" />}
             {aberto && cap.excede_cmt && <Sinal tipo="bloqueado" texto="Acima do CMT" />}
+            {aberto && !f.aprovado_em && <Sinal tipo="pendente" texto="Aguardando aprovação" />}
           </div>
           <p className="sub">
             {aberto ? (
@@ -167,6 +168,15 @@ export default async function ConjuntoFicha({ params, searchParams }: Params) {
         </div>
         {acoes && <AcoesConjunto d={acoes} />}
       </div>
+
+      {aberto && !f.aprovado_em && (
+        <div className="avisos" style={{ marginBottom: 24 }}>
+          <Aviso tipo="pendente" icone={Info}>
+            <b>Conjunto ainda não aprovado pela Prisa.</b> Confira os documentos do motorista e das placas e aprove: até lá ele não pode ser
+            contratado no Despacho nem sair de viagem.{podeEditar && <> <AprovarConjunto id={f.id} /></>}
+          </Aviso>
+        </div>
+      )}
 
       {!aberto && (
         <div className="avisos" style={{ marginBottom: 24 }}>

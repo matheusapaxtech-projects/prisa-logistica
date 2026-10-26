@@ -110,10 +110,12 @@ type LinhaConjunto = {
   motorista_id: string | null;
   inicio: string;
   fim: string | null;
+  /** Nulo = ainda não aprovado pela Prisa (não pode ser contratado no Despacho). */
+  aprovado_em: string | null;
   conjunto_item: { posicao: number; veiculo_id: string }[];
 };
 
-const COLUNAS_CONJUNTO = "id, cavalo_id, motorista_id, inicio, fim, conjunto_item(posicao, veiculo_id)";
+const COLUNAS_CONJUNTO = "id, cavalo_id, motorista_id, inicio, fim, aprovado_em, conjunto_item(posicao, veiculo_id)";
 
 const itensEmOrdem = (c: LinhaConjunto) => [...c.conjunto_item].sort((a, b) => a.posicao - b.posicao).map((i) => i.veiculo_id);
 
@@ -240,6 +242,7 @@ export type FichaConjunto = {
   motorista_id: string | null;
   inicio: string;
   fim: string | null;
+  aprovado_em: string | null;
   cavalo: VeiculoConjunto;
   itens: VeiculoConjunto[];
   motorista: MotoristaFicha | null;
@@ -280,6 +283,7 @@ export async function carregarFicha(cliente: SupabaseClient, id: string): Promis
     motorista_id: c.motorista_id,
     inicio: c.inicio,
     fim: c.fim,
+    aprovado_em: c.aprovado_em,
     cavalo,
     itens: itensEmOrdem(c).flatMap((x) => veiculos.get(x) ?? []),
     motorista,
