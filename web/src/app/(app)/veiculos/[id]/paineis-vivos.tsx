@@ -5,9 +5,9 @@ import type { ReactNode } from "react";
 import { formato } from "@/lib/formato";
 import { BlocoDonos } from "../dono";
 import type { OpcaoPessoa } from "../pessoas-tipos";
-import { ASSOALHO, RECEBEDOR, num, type CategoriaVeiculo, type SituacaoOperacional } from "../rotulos";
+import { ASSOALHO, CARROCERIA, RECEBEDOR, num, type CategoriaVeiculo, type SituacaoOperacional } from "../rotulos";
 import { SeletorPessoa } from "../seletor-pessoa";
-import { CampoNumero, Radios, Secao, type Erros } from "./campos-ficha";
+import { CampoNumero, CampoSelect, Radios, Secao, type Erros } from "./campos-ficha";
 import type { VeiculoFicha } from "./tipos";
 
 /* Abas que reagem ao que se digita antes de salvar: Proprietários (cartões de posse e ANTT) e
@@ -271,6 +271,19 @@ export function PainelCaracteristicas({
         titulo="Medidas"
         texto={<p>{medidas ? "Do implemento, em metros. O assoalho diz que carga ele aceita." : "Do veículo, em metros, como no manual do fabricante."}</p>}
       >
+        {medidas && (
+          <CampoSelect
+            nome="tipo_carroceria"
+            classe="f4"
+            rotulo="Carroceria"
+            opcoes={CARROCERIA}
+            valor={v.tipo_carroceria ?? null}
+            erros={erros}
+            vazio="Não informada"
+            opcional
+            ajuda="O frete publicado no app do motorista pode pedir uma carroceria."
+          />
+        )}
         {medidas && <Radios nome="tipo_assoalho" rotulo="Tipo de assoalho" opcoes={ASSOALHO} valor={v.tipo_assoalho ?? ""} erros={erros} />}
         <CampoNumero nome="comprimento_m" classe="f4" rotulo="Comprimento (m)" valor={v.comprimento_m} casas={2} erros={erros} opcional />
         <CampoNumero nome="largura_m" classe="f4" rotulo="Largura (m)" valor={v.largura_m} casas={2} erros={erros} opcional />

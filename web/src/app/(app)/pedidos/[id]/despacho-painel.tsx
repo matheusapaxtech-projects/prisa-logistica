@@ -26,11 +26,13 @@ type Props = {
   saldoKg: number;
   conjuntos: OpcaoConjunto[];
   rotaSalva: RotaSalvaDoPedido | null;
+  /** Motoristas que disseram "Tenho interesse" no app do motorista. */
+  interessadosApp: string[];
 };
 
 const ORIGEM_KM = { salva: "rota salva pela equipe", medida: "rota medida pela Prisa", estimada: "estimado entre as cidades" } as const;
 
-export function DespachoPainel({ dados: d, podeEditar, verResultado, pedidoId, numero, saldoKg, conjuntos, rotaSalva }: Props) {
+export function DespachoPainel({ dados: d, podeEditar, verResultado, pedidoId, numero, saldoKg, conjuntos, rotaSalva, interessadosApp }: Props) {
   const [planejando, setPlanejando] = useState<InicialViagem | null>(null);
   const [vez, setVez] = useState(0);
   const planejar = (c: Candidato, pesoT: number) => {
@@ -117,6 +119,7 @@ export function DespachoPainel({ dados: d, podeEditar, verResultado, pedidoId, n
                         <span className="id">
                           {i + 1}. {c.motorista.nome}
                         </span>
+                        {interessadosApp.includes(c.motorista.id) && <Sinal tipo="info" texto="Tem interesse (app)" />}
                         <span className="linha2">
                           <Placa placa={c.motorista.placaCavalo} /> {c.motorista.eixos} eixos · {c.motorista.capacidadeT.toLocaleString("pt-BR")} t ·{" "}
                           {c.disponibilidade.posicao.cidade}

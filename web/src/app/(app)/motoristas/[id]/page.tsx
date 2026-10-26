@@ -21,6 +21,7 @@ import { RE_ID } from "../../_pessoa/formulario";
 import { ROT } from "../../_pessoa/rotulos";
 import { carregarFicha, categoriaCnh, estadoGr, textoValidade, type Ficha } from "../consultas";
 import { MarcaValidade } from "../validade";
+import { AcessoAppPainel, type AcessoApp } from "./acesso-app";
 import { ErroFicha } from "./erro-ficha";
 import { FichaFormulario } from "./ficha-formulario";
 import { Referencias } from "./referencias";
@@ -36,7 +37,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return { title: r.data ? `${r.data.nome} · Motoristas` : "Motorista não encontrado" };
 }
 
-const ABAS_FICHA = ["dados", "cnh", "contatos", "referencias", "contas", "documentos", "gr", "historico"] as const;
+const ABAS_FICHA = ["dados", "cnh", "contatos", "referencias", "contas", "documentos", "gr", "app", "historico"] as const;
 
 function SinalCnh({ iso }: { iso: string | null }) {
   const e = estadoValidade(iso);
@@ -249,6 +250,7 @@ export default async function FichaMotoristaPage({ params, searchParams }: Param
     { id: "contas", rotulo: "Contas e Pix", n: f.contagens.contas },
     { id: "documentos", rotulo: "Documentos", n: f.contagens.documentos },
     { id: "gr", rotulo: "Gerenciadora de risco" },
+    { id: "app", rotulo: "App do motorista" },
     ...(admin ? [{ id: "historico", rotulo: "Histórico" }] : []),
   ];
   const pedida = Array.isArray(sp.aba) ? sp.aba[0] : sp.aba;
@@ -268,6 +270,20 @@ export default async function FichaMotoristaPage({ params, searchParams }: Param
       .order("dt_referencia", { ascending: false, nullsFirst: false });
     if (r.error) throw r.error;
     referencias = r.data ?? [];
+  }
+
+  let acessoApp: AcessoApp = null;
+  let celularSugerido = "";
+  if (aba === "app") {
+    const [a, t] = await Promise.all([
+      db.from("motorista_acesso_app").select("celular, liberado_em, revogado_em").eq("motorista_id", id).maybeSingle(),
+      db.from("pessoa_telefone").select("numero, whatsapp, principal").eq("pessoa_id", id).order("created_at"),
+    ]);
+    if (a.error) throw a.error;
+    if (t.error) throw t.error;
+    acessoApp = a.data;
+    const tels = t.data ?? [];
+    celularSugerido = (tels.find((x) => x.whatsapp && x.principal) ?? tels.find((x) => x.whatsapp) ?? tels[0])?.numero ?? "";
   }
 
   return (
@@ -341,6 +357,7 @@ export default async function FichaMotoristaPage({ params, searchParams }: Param
           }}
         />
       )}
+      {aba === "app" && <AcessoAppPainel motoristaId={id} acesso={acessoApp} sugestao={celularSugerido} podeEditar={podeEditar} />}
       {aba === "referencias" && <Referencias motoristaId={id} referencias={referencias} podeEditar={podeEditar} />}
       {aba === "contas" && (
         <ContasPix
