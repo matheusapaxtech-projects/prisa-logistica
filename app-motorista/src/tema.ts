@@ -60,27 +60,36 @@ export const numeros: TextStyle = { fontVariant: ["tabular-nums"] };
 export const reais = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const DIAS = ["dom.", "seg.", "ter.", "qua.", "qui.", "sex.", "sáb."];
-const brasilia = (d: Date) => new Date(d.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+const dd = (n: number) => String(n).padStart(2, "0");
 
-/** Data de um pedido ("2026-10-27") para a frase: "hoje", "amanhã" ou "27/10". */
+/** Data em Brasília (UTC−3; o Brasil não tem horário de verão desde 2019). Sem Intl: o Hermes do Android não
+    garante fuso horário em toLocaleString. */
+function brasilia(d: Date) {
+  const b = new Date(d.getTime() - 3 * 36e5);
+  return { ano: b.getUTCFullYear(), mes: b.getUTCMonth() + 1, dia: b.getUTCDate(), hora: b.getUTCHours(), semana: b.getUTCDay() };
+}
+/** Dias corridos entre duas datas no calendário de Brasília. */
+function difDias(a: { ano: number; mes: number; dia: number }, b: { ano: number; mes: number; dia: number }) {
+  return Math.round((Date.UTC(b.ano, b.mes - 1, b.dia) - Date.UTC(a.ano, a.mes - 1, a.dia)) / 864e5);
+}
+
+/** Data de um pedido ("2026-10-27") para a frase: "hoje, 27/10", "amanhã, 28/10" ou "29/10". */
 export function diaDoPedido(iso: string | null): string {
   if (!iso) return "a combinar";
-  const hoje = brasilia(new Date());
-  const alvo = new Date(`${iso}T12:00:00`);
-  const dif = Math.round((alvo.getTime() - new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 12).getTime()) / 864e5);
-  const dm = `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+  const [ano, mes, dia] = iso.slice(0, 10).split("-").map(Number);
+  const dif = difDias(brasilia(new Date()), { ano, mes, dia });
+  const dm = `${dd(dia)}/${dd(mes)}`;
   return dif === 0 ? `hoje, ${dm}` : dif === 1 ? `amanhã, ${dm}` : dm;
 }
 
 /** Fim de um prazo: "hoje, 21 h", "amanhã, 9 h" ou "qui., 28/10, 21 h". */
 export function fimDoPrazo(d: Date): string {
   const b = brasilia(d);
-  const hoje = brasilia(new Date());
-  const dif = Math.round((new Date(b.getFullYear(), b.getMonth(), b.getDate()).getTime() - new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).getTime()) / 864e5);
-  const hora = `${b.getHours()} h`;
+  const dif = difDias(brasilia(new Date()), b);
+  const hora = `${b.hora} h`;
   if (dif === 0) return `hoje, ${hora}`;
   if (dif === 1) return `amanhã, ${hora}`;
-  return `${DIAS[b.getDay()]}, ${String(b.getDate()).padStart(2, "0")}/${String(b.getMonth() + 1).padStart(2, "0")}, ${hora}`;
+  return `${DIAS[b.semana]}, ${dd(b.dia)}/${dd(b.mes)}, ${hora}`;
 }
 
 /** Quanto falta até uma data, grande: "2 dias", "18 h", "40 min". */
@@ -103,8 +112,8 @@ export function haQuanto(iso: string): string {
 }
 
 export function saudacao(): string {
-  const h = brasilia(new Date()).getHours();
-  return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+  const h = brasilia(new Date()).hora;
+  return h < 5 ? "Boa noite" : h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
 }
 
 export const CARROCERIA: Record<string, string> = {
