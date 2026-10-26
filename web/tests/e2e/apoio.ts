@@ -5,7 +5,7 @@ import path from "node:path";
 
 // Apoio dos specs E2E. Credenciais dos usuários de teste em web/.env.test.local (carregado pelo
 // playwright.config).
-export const { E2E_EMAIL, E2E_SENHA } = process.env;
+export const { E2E_EMAIL, E2E_SENHA, E2E_FINANCEIRO_EMAIL, E2E_FINANCEIRO_SENHA } = process.env;
 
 /** Sessão do administrador de teste gravada pelo sessao.setup.ts (pasta fora do git). */
 export const PASTA_SESSAO = path.join(__dirname, ".sessao");
@@ -34,6 +34,45 @@ export function bancoAdmin(): SupabaseClient {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${access_token}` } },
   });
+}
+
+let clienteFinanceiro: SupabaseClient | null = null;
+
+/**
+ * Cliente do Supabase já logado como o usuário financeiro de teste (E2E_FINANCEIRO_*), para o que a regra de
+ * duas pessoas pede: quem lançou a conta (o admin, ao contratar a viagem) não a aprova. Um login só por worker.
+ */
+export async function bancoFinanceiro(): Promise<SupabaseClient> {
+  if (clienteFinanceiro) return clienteFinanceiro;
+  const { NEXT_PUBLIC_SUPABASE_URL: URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: CHAVE } = process.env;
+  if (!URL || !CHAVE) throw new Error("Faltam as chaves públicas do Supabase (.env.local).");
+  if (!E2E_FINANCEIRO_EMAIL || !E2E_FINANCEIRO_SENHA) throw new Error("Faltam E2E_FINANCEIRO_EMAIL/E2E_FINANCEIRO_SENHA (.env.test.local).");
+  const db = createClient(URL, CHAVE, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { error } = await db.auth.signInWithPassword({ email: E2E_FINANCEIRO_EMAIL, password: E2E_FINANCEIRO_SENHA });
+  if (error) throw new Error(`Não foi possível entrar no banco como o financeiro de teste: ${error.message}`);
+  clienteFinanceiro = db;
+  return db;
+}
+
+/**
+ * Paga, pelo banco, a parcela do frete da viagem no Contas a pagar (o que o financeiro faz na tela): o financeiro
+ * aprova se ainda falta (`fin_aprovar_pagar`) e o admin paga com a data de hoje (`fin_pagar_conta`). O banco marca a
+ * viagem como paga (pagamento_saida_em / saldo_pago_em). O adiantamento só passa depois do peso de saída, e o saldo,
+ * em "Aguardando saldo (30%)": quem chama escolhe o momento. Parcela já paga não faz nada.
+ */
+export async function pagarParcelaDoFrete(admin: SupabaseClient, viagemId: string, origem: "frete_adiantamento" | "frete_saldo") {
+  const c = await admin.from("v_fin_pagar").select("id, situacao").eq("viagem_id", viagemId).eq("origem", origem).single();
+  if (c.error) throw new Error(`A viagem não tem a parcela ${origem} no Contas a pagar: ${c.error.message}`);
+  if (c.data.situacao === "paga") return;
+  if (c.data.situacao === "cancelada") throw new Error(`A parcela ${origem} da viagem está cancelada.`);
+  if (c.data.situacao === "falta_aprovar") {
+    const financeiro = await bancoFinanceiro();
+    const a = await financeiro.rpc("fin_aprovar_pagar", { p_id: c.data.id });
+    if (a.error) throw new Error(`O financeiro não conseguiu aprovar a parcela ${origem}: ${a.error.message}`);
+  }
+  const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  const p = await admin.rpc("fin_pagar_conta", { p_id: c.data.id, p_data: hoje });
+  if (p.error) throw new Error(`Não foi possível pagar a parcela ${origem}: ${p.error.message}`);
 }
 
 /** CPF válido aleatório (nunca os das fixtures pgTAP nem com todos os dígitos iguais). */

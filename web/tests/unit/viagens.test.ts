@@ -93,6 +93,18 @@ describe("proximoPasso", () => {
   it('Aguardando NF e pagamento com pagamento → "Informar CT-e, MDF-e, NF-e, CIOT e averbação"', () => {
     expect(proximoPasso(v("aguardando_nf_pagamento", true))).toBe("Informar CT-e, MDF-e, NF-e, CIOT e averbação");
   });
+  it("com a parcela no financeiro, o próximo passo é esperar o financeiro (nunca confirmar à mão)", () => {
+    expect(proximoPasso({ ...v("aguardando_nf_pagamento"), adiantamento_no_financeiro: true })).toBe("Esperar o financeiro pagar o adiantamento");
+    expect(proximoPasso({ ...v("aguardando_nf_pagamento", true), adiantamento_no_financeiro: true })).toBe(
+      "Informar CT-e, MDF-e, NF-e, CIOT e averbação",
+    );
+    expect(proximoPasso({ ...v("aguardando_saldo", true, true), saldo_pago: false, saldo_no_financeiro: true })).toBe(
+      "Esperar o financeiro pagar o saldo",
+    );
+    expect(proximoPasso({ ...v("aguardando_saldo", true, true), saldo_pago: true, saldo_no_financeiro: true })).toBe(
+      "Encerrar MDF-e e CIOT e finalizar",
+    );
+  });
   it("Aguardando carregamento → checklist do veículo; Descarregando sem canhoto → enviar canhoto", () => {
     expect(proximoPasso(v("aguardando_carregamento"))).toBe("Conferir o checklist do veículo");
     expect(proximoPasso(v("descarregando", true))).toBe("Enviar canhoto");
@@ -201,6 +213,19 @@ describe("descreverEvento (linha do tempo)", () => {
     expect(descreverEvento({ de: null, para: null, motivo: null, dados: { tipo: "pagamento_saida" } }).titulo).toBe(
       "Adiantamento e vale-pedágio confirmados",
     );
+  });
+  it("pagamentos pelo Contas a pagar levam o número da conta; sem ele, o texto antigo", () => {
+    const e = (tipo: string, conta?: number) =>
+      descreverEvento({ de: null, para: null, motivo: null, dados: { tipo, ...(conta ? { conta_pagar: conta } : {}) } }).titulo;
+    expect(e("pagamento_saida", 42)).toBe("Adiantamento e vale-pedágio pagos (conta a pagar 42)");
+    expect(e("saldo_pago", 43)).toBe("Saldo de 30% pago (conta a pagar 43)");
+    expect(e("pagamento_saida")).toBe("Adiantamento e vale-pedágio confirmados");
+    expect(e("saldo_pago")).toBe("Saldo de 30% confirmado");
+  });
+  it("pagamentos desfeitos pelo admin", () => {
+    const e = (tipo: string, conta: number) => descreverEvento({ de: null, para: null, motivo: null, dados: { tipo, conta_pagar: conta } }).titulo;
+    expect(e("pagamento_saida_desfeito", 42)).toBe("Pagamento do adiantamento desfeito (conta a pagar 42)");
+    expect(e("saldo_pago_desfeito", 43)).toBe("Pagamento do saldo desfeito (conta a pagar 43)");
   });
   it("cancelamento", () => {
     expect(descreverEvento({ de: "transito", para: null, motivo: "Cliente adiou", dados: {} })).toEqual({

@@ -5,6 +5,7 @@ import type { Banco, Database } from "@/lib/banco";
 import { lerFrete, lerResultado, type FreteViagem, type ResultadoCte } from "@/lib/frete";
 import type { StatusCampo } from "@/lib/quadro";
 import { nomesDeMotorista } from "../pedidos/consultas";
+import { lerParcelas, type ParcelaViagem } from "./parcelas";
 import { lerAptidao, type ItemAptidao, type TipoOcorrencia, type TipoPausa } from "./regras";
 
 type Enums = Database["public"]["Enums"];
@@ -409,4 +410,12 @@ export async function carregarFrete(db: Banco, id: string, comResultado: boolean
   const r = await db.rpc("frete_da_viagem", { p_viagem: id });
   erroDe(r);
   return { frete: lerFrete(r.data), resultado: null };
+}
+
+/** As duas parcelas do frete do motorista no Contas a pagar (`viagem_parcelas`: lê quem lê viagens, inclusive a operação).
+   Viagem antiga (confirmação manual no Quadro) não tem parcelas: devolve lista vazia. */
+export async function carregarParcelas(db: Banco, id: string): Promise<ParcelaViagem[]> {
+  const r = await db.rpc("viagem_parcelas", { p_viagem: id });
+  erroDe(r);
+  return lerParcelas(r.data);
 }

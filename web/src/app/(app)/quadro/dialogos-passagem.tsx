@@ -361,8 +361,9 @@ export function DialogoPassagem({ passagem, executar, enviarCanhoto, aoFechar }:
             <div className="aviso aviso-pendente">
               <CircleAlert size={16} strokeWidth={1.6} aria-hidden="true" />
               <span>
-                Falta confirmar o adiantamento e o vale-pedágio. Use “Confirmar pagamento de saída” no cartão; sem isso a viagem não vai
-                para “Em rota”.
+                {cartao.adiantamento_no_financeiro
+                  ? "O adiantamento e o vale-pedágio são pagos pelo financeiro (Contas a pagar): a viagem só vai para “Em rota” depois que ele pagar."
+                  : "Falta confirmar o adiantamento e o vale-pedágio. Use “Confirmar pagamento de saída” no cartão; sem isso a viagem não vai para “Em rota”."}
               </span>
             </div>
           )}
@@ -447,7 +448,11 @@ export function DialogoPassagem({ passagem, executar, enviarCanhoto, aoFechar }:
           ) : (
             <div className="aviso aviso-pendente">
               <CircleAlert size={16} strokeWidth={1.6} aria-hidden="true" />
-              <span>Falta confirmar o pagamento do saldo. Use “Confirmar pagamento do saldo” no cartão; sem isso a viagem não finaliza.</span>
+              <span>
+                {cartao.saldo_no_financeiro
+                  ? "O saldo é pago pelo financeiro (Contas a pagar): a viagem só finaliza depois que ele pagar."
+                  : "Falta confirmar o pagamento do saldo. Use “Confirmar pagamento do saldo” no cartão; sem isso a viagem não finaliza."}
+              </span>
             </div>
           )}
           <fieldset className="campo" data-invalido={campos.mdfe_encerrado || campos.ciot_encerrado ? "" : undefined}>

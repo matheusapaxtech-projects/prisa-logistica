@@ -970,6 +970,11 @@ dialog.dialogo[open]::backdrop { animation: veu 220ms ease-out; }
 .quadro-cartao .sem-placa { opacity: 0.7; }
 .quadro-sinais { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .quadro-sinais .sinal { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4); }
+.quadro-no-financeiro { position: relative; z-index: 1; margin: 0; }
+.quadro-no-financeiro .sinal { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4); }
+.quadro-no-financeiro a { display: inline-flex; color: inherit; text-decoration: none; border-radius: 999px; }
+.quadro-no-financeiro a .sinal { text-decoration: underline; text-underline-offset: 2px; }
+.quadro-no-financeiro a:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .quadro-cartao-acoes { position: relative; z-index: 1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-top: 2px; }
 .quadro-cartao-acoes .btn { height: 30px; padding: 0 12px; font-size: 13px; background: rgba(255, 255, 255, 0.9); border-color: transparent; color: var(--ink); }
 .quadro-cartao-acoes .btn-texto { background: transparent; color: inherit; text-decoration-color: currentColor; }
