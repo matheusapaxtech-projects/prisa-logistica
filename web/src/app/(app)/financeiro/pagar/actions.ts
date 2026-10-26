@@ -6,7 +6,7 @@ import { tipado } from "@/lib/banco";
 import { hojeISO } from "@/lib/datas";
 import { mesValido } from "@/lib/financeiro";
 import { ehIdConta, lerMotivo } from "../contas-comum/leitura";
-import { lerAjusteGerada, lerConta, lerPagamento } from "./regras";
+import { ehVersao, lerAjusteGerada, lerConta, lerPagamento } from "./regras";
 
 /* Gravações do contas a pagar. Toda escrita passa por `comSessao` (a sessão é conferida antes de qualquer
    trabalho). Quem pode o quê é do banco: o lançamento e a edição vão pela API (RLS e gatilhos conferem as
@@ -89,11 +89,13 @@ export async function editarConta(id: string, form: FormData): Promise<Resultado
   });
 }
 
-/** Aprova a conta (quem lançou ou alterou por último não aprova: o banco recusa). */
-export async function aprovar(id: string): Promise<ResultadoAcao> {
+/** Aprova a conta (quem lançou ou alterou por último não aprova: o banco recusa). `versao` é a `updated_at` da conta
+   como a tela a carregou: se a conta mudou depois (valor, vencimento…), o banco recusa e a pessoa confere antes de aprovar. */
+export async function aprovar(id: string, versao: string): Promise<ResultadoAcao> {
   if (!ehIdConta(id)) return { ok: false, erro: NAO_ACHADO };
+  if (!ehVersao(versao)) return { ok: false, erro: "Atualize a página e confira a conta antes de aprovar." };
   return comSessao(async ({ supabase }) => {
-    const r = await tipado(supabase).rpc("fin_aprovar_pagar", { p_id: id });
+    const r = await tipado(supabase).rpc("fin_aprovar_pagar", { p_id: id, p_versao: versao });
     if (r.error) throw r.error;
     revalidar();
   });
@@ -176,4 +178,18 @@ export async function lancarTaxaCartao(mes: string): Promise<ResultadoAcao<strin
     revalidar();
     return r.data;
   });
+}
+
+/** Liga ou desliga o frete dos motoristas no Contas a pagar (só o administrador). Desligar não mexe nas parcelas que já existem. */
+export async function definirParcelasFrete(ativo: boolean): Promise<ResultadoAcao> {
+  if (typeof ativo !== "boolean") return { ok: false, erro: "Atualize a página e tente de novo." };
+  return comSessao(
+    async ({ supabase }) => {
+      const r = await tipado(supabase).rpc("fin_definir_parcelas_frete", { p_ativo: ativo });
+      if (r.error) throw r.error;
+      revalidar();
+      revalidatePath("/quadro");
+    },
+    { somenteAdmin: true },
+  );
 }

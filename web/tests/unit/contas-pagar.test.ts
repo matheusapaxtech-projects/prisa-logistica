@@ -31,6 +31,7 @@ import {
   acoesDaConta,
   chaveCentro,
   chaveTipo,
+  ehVersao,
   lerAjusteGerada,
   lerAgrupar,
   lerConta,
@@ -41,6 +42,7 @@ import {
   aprovar,
   cancelar,
   desfazerPagamento,
+  definirParcelasFrete,
   editarConta,
   lancarConta,
   lancarTaxaCartao,
@@ -50,6 +52,7 @@ import {
 
 const HOJE = "2026-10-26";
 const UUID = "00000000-0000-4000-8000-000000000901";
+const VERSAO = "2026-10-26T15:04:05.123456+00:00";
 const CONTA_BANCO = "00000000-0000-4000-8000-000000000902";
 
 function formulario(campos: Record<string, string> = {}): FormData {
@@ -226,6 +229,15 @@ describe("lerMotivo", () => {
   });
 });
 
+describe("ehVersao", () => {
+  it("aceita o updated_at do banco (com microssegundos e fuso) e recusa o resto", () => {
+    expect(ehVersao("2026-10-26T15:04:05.123456+00:00")).toBe(true);
+    expect(ehVersao("2026-10-26T15:04:05Z")).toBe(true);
+    expect(ehVersao("2026-10-26 15:04:05.5-03")).toBe(true);
+    for (const v of ["", "ontem", "2026-10-26", null, undefined, 42]) expect(ehVersao(v)).toBe(false);
+  });
+});
+
 describe("lerFiltro e lerAgrupar", () => {
   it("padrões: aberto e por centro de custo", () => {
     expect(lerFiltro(undefined)).toBe("aberto");
@@ -395,17 +407,39 @@ describe("Server Actions de contas a pagar", () => {
     expect(r.ok).toBe(false);
   });
 
-  it("aprovar chama fin_aprovar_pagar e traz a frase do banco quando recusa", async () => {
-    expect(await aprovar(UUID)).toEqual({ ok: true, dados: undefined });
-    expect(rpc).toHaveBeenCalledWith("fin_aprovar_pagar", { p_id: UUID });
+  it("aprovar chama fin_aprovar_pagar com a versão da conta e traz a frase do banco quando recusa", async () => {
+    expect(await aprovar(UUID, VERSAO)).toEqual({ ok: true, dados: undefined });
+    expect(rpc).toHaveBeenCalledWith("fin_aprovar_pagar", { p_id: UUID, p_versao: VERSAO });
     rpc.mockResolvedValueOnce({ data: null, error: { code: "P0001", message: "Quem lançou a conta não pode aprová-la." } });
-    expect(await aprovar(UUID)).toEqual({ ok: false, erro: "Quem lançou a conta não pode aprová-la." });
+    expect(await aprovar(UUID, VERSAO)).toEqual({ ok: false, erro: "Quem lançou a conta não pode aprová-la." });
   });
 
-  it("aprovar com id inválido nem chama o banco", async () => {
-    const r = await aprovar("abc");
-    expect(r.ok).toBe(false);
+  it("aprovar mostra como está a recusa de conta que mudou desde que a página abriu", async () => {
+    const frase = "A conta mudou desde que você abriu a página. Atualize e confira o valor antes de aprovar.";
+    rpc.mockResolvedValueOnce({ data: null, error: { code: "P0001", message: frase } });
+    expect(await aprovar(UUID, VERSAO)).toEqual({ ok: false, erro: frase });
+  });
+
+  it("aprovar com id inválido ou sem versão nem chama o banco", async () => {
+    expect((await aprovar("abc", VERSAO)).ok).toBe(false);
+    expect((await aprovar(UUID, "")).ok).toBe(false);
+    expect((await aprovar(UUID, undefined as unknown as string)).ok).toBe(false);
     expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("definirParcelasFrete chama fin_definir_parcelas_frete e só aceita verdadeiro ou falso", async () => {
+    expect(await definirParcelasFrete(true)).toEqual({ ok: true, dados: undefined });
+    expect(rpc).toHaveBeenLastCalledWith("fin_definir_parcelas_frete", { p_ativo: true });
+    expect((await definirParcelasFrete(false)).ok).toBe(true);
+    expect(rpc).toHaveBeenLastCalledWith("fin_definir_parcelas_frete", { p_ativo: false });
+    rpc.mockClear();
+    expect((await definirParcelasFrete("sim" as unknown as boolean)).ok).toBe(false);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("definirParcelasFrete: quem não é administrador recebe 'só o administrador'", async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { code: "42501", message: "permission denied" } });
+    expect(await definirParcelasFrete(true)).toEqual({ ok: false, erro: "Só o administrador pode fazer isso." });
   });
 
   it("pagar manda data, conta e forma; sem conta bancária omite p_conta", async () => {

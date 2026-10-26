@@ -11,10 +11,13 @@ const pagar = vi.fn();
 const editarConta = vi.fn();
 const cancelar = vi.fn();
 const liberarAntecipacao = vi.fn();
+const desfazerPagamento = vi.fn();
+const definirParcelasFrete = vi.fn();
 vi.mock("@/app/(app)/financeiro/pagar/actions", () => ({
   aprovar: (...a: unknown[]) => aprovar(...a),
   desaprovar: vi.fn(),
-  desfazerPagamento: vi.fn(),
+  desfazerPagamento: (...a: unknown[]) => desfazerPagamento(...a),
+  definirParcelasFrete: (...a: unknown[]) => definirParcelasFrete(...a),
   pagar: (...a: unknown[]) => pagar(...a),
   editarConta: (...a: unknown[]) => editarConta(...a),
   lancarConta: vi.fn(),
@@ -26,6 +29,7 @@ vi.mock("@/app/(app)/financeiro/pagar/actions", () => ({
 import { TabelaPagar } from "@/app/(app)/financeiro/pagar/tabela-pagar";
 import { DialogoPagar } from "@/app/(app)/financeiro/pagar/dialogo-pagar";
 import type { ContaPagar } from "@/app/(app)/financeiro/pagar/consultas";
+import { InterruptorFrete } from "@/app/(app)/financeiro/pagar/interruptor-frete";
 import { Toaster } from "@/components/Toast";
 
 beforeAll(() => {
@@ -49,12 +53,15 @@ beforeEach(() => {
   editarConta.mockReset();
   cancelar.mockReset();
   liberarAntecipacao.mockReset();
+  desfazerPagamento.mockReset();
+  definirParcelasFrete.mockReset();
 });
 afterEach(cleanup);
 
 const HOJE = hojeISO();
 const BANCO = "00000000-0000-4000-8000-000000000902";
 const EU = "u-eu";
+const VERSAO = "2026-10-26T15:04:05.123456+00:00";
 
 function conta(c: Partial<ContaPagar> = {}): ContaPagar {
   return {
@@ -72,6 +79,7 @@ function conta(c: Partial<ContaPagar> = {}): ContaPagar {
     forma: "pix",
     vencimento: "2999-01-01",
     valor: 100,
+    parteRetencao: 0,
     observacao: null,
     viagemId: null,
     viagemNumero: null,
@@ -85,6 +93,8 @@ function conta(c: Partial<ContaPagar> = {}): ContaPagar {
     antecipacaoMotivo: null,
     canceladoEm: null,
     cancelamentoMotivo: null,
+    canceladoAutomatico: false,
+    versao: VERSAO,
     lancadoPorNome: "Ana",
     aprovadoPorNome: null,
     pagoPorNome: null,
@@ -117,7 +127,7 @@ describe("linha da conta a pagar", () => {
     tabela([conta()]);
     expect(screen.getByText("Falta aprovar")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Aprovar" }));
-    await waitFor(() => expect(aprovar).toHaveBeenCalledWith("c1"));
+    await waitFor(() => expect(aprovar).toHaveBeenCalledWith("c1", VERSAO));
     expect(await screen.findByText("Conta aprovada.")).toBeInTheDocument();
   });
 
@@ -149,6 +159,33 @@ describe("linha da conta a pagar", () => {
     ]);
     expect(document.querySelectorAll(".sinal-bloqueado")).toHaveLength(1);
     expect(screen.getByText("vence hoje")).toHaveClass("sinal-vencendo");
+  });
+
+  it("vencida e sem aprovação: o selo diz que falta aprovar e que venceu", () => {
+    tabela([conta({ vencimento: "2000-01-01" })]);
+    expect(screen.getByText(/^Falta aprovar · venceu há \d+ dias$/)).toHaveClass("sinal-pendente");
+  });
+
+  it("vencida mas aprovada: o selo é de aprovada (o vencimento aparece na outra coluna)", () => {
+    tabela([conta({ vencimento: "2000-01-01", aprovadoEm: "2026-10-20T10:00:00Z", aprovadoPor: "u-x" })]);
+    expect(screen.getByText("Aprovada")).toBeInTheDocument();
+    expect(screen.queryByText(/Falta aprovar/)).not.toBeInTheDocument();
+  });
+
+  it("saldo com retenção do autônomo: diz quanto já foi descontado; sem retenção não diz", () => {
+    const { unmount } = tabela([conta({ origem: "frete_saldo", viagemId: "v1", viagemNumero: 7, parteRetencao: 270 })]);
+    expect(screen.getByText(/Já descontadas as retenções do autônomo \(INSS, SEST e SENAT\): R\$\s270,00/)).toBeInTheDocument();
+    unmount();
+    tabela([conta({ origem: "frete_saldo", viagemId: "v1", viagemNumero: 7 })]);
+    expect(screen.queryByText(/Já descontadas as retenções/)).not.toBeInTheDocument();
+  });
+
+  it("parcela cancelada pelo NILT mostra 'Cancelada pelo NILT' e o motivo", () => {
+    tabela([
+      conta({ origem: "frete_saldo", canceladoEm: "2026-10-26T10:00:00Z", canceladoAutomatico: true, cancelamentoMotivo: "O que já foi pago ao motorista cobre o frete." }),
+    ]);
+    expect(screen.getByText("Cancelada pelo NILT")).toBeInTheDocument();
+    expect(screen.getByText(/O que já foi pago ao motorista cobre o frete\./)).toBeInTheDocument();
   });
 
   it("paga: mostra quando e por quem, sem ação de aprovar nem pagar", () => {
@@ -243,6 +280,102 @@ describe("menu e diálogos", () => {
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
     expect(await screen.findByText("Informe um valor maior que zero.")).toBeInTheDocument();
     expect(editarConta).not.toHaveBeenCalled();
+  });
+});
+
+describe("desfazer pagamento (administrador)", () => {
+  const paga = () => conta({ origem: "frete_saldo", viagemId: "v1", viagemNumero: 7, lancadoPor: null, aprovadoEm: "2026-10-20T10:00:00Z", aprovadoPor: "u-x", pagoEm: "2026-10-25" });
+  const clicar = (rotulo: string) => fireEvent.click(Array.from(document.querySelectorAll<HTMLButtonElement>(".contas-menu button")).find((b) => b.textContent === rotulo)!);
+
+  it("pede confirmação antes de chamar o banco", async () => {
+    desfazerPagamento.mockResolvedValue({ ok: true, dados: undefined });
+    tabela([paga()], { usuario: { userId: EU, admin: true } });
+    clicar("Desfazer pagamento");
+    expect(desfazerPagamento).not.toHaveBeenCalled();
+    expect(screen.getByText("O pagamento sai da conta e, se for parcela do frete, a viagem volta a ficar sem esse pagamento.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Desfazer o pagamento" }));
+    await waitFor(() => expect(desfazerPagamento).toHaveBeenCalledWith("c1"));
+    expect(await screen.findByText("Pagamento desfeito.")).toBeInTheDocument();
+  });
+
+  it("Voltar não desfaz nada", () => {
+    tabela([paga()], { usuario: { userId: EU, admin: true } });
+    clicar("Desfazer pagamento");
+    fireEvent.click(screen.getByRole("button", { name: "Voltar" }));
+    expect(desfazerPagamento).not.toHaveBeenCalled();
+  });
+
+  it("enquanto a ação roda o botão fica desabilitado (sem clique duplo) e a frase do banco aparece se recusar", async () => {
+    let terminar!: (v: { ok: false; erro: string }) => void;
+    desfazerPagamento.mockReturnValue(new Promise((ok) => (terminar = ok)));
+    tabela([paga()], { usuario: { userId: EU, admin: true } });
+    clicar("Desfazer pagamento");
+    const botao = screen.getByRole("button", { name: "Desfazer o pagamento" });
+    fireEvent.click(botao);
+    await waitFor(() => expect(botao).toBeDisabled());
+    fireEvent.click(botao);
+    expect(desfazerPagamento).toHaveBeenCalledTimes(1);
+    terminar({ ok: false, erro: "A viagem já foi finalizada." });
+    expect(await screen.findByRole("alert")).toHaveTextContent("A viagem já foi finalizada.");
+  });
+});
+
+describe("interruptor do frete dos motoristas", () => {
+  const ligado = { ativo: true, mudadoEm: "2026-10-26T17:30:00Z", mudadoPorNome: "Ana" };
+  const desligado = { ativo: false, mudadoEm: null, mudadoPorNome: null };
+  const vista = (config: React.ComponentProps<typeof InterruptorFrete>["config"], admin: boolean) =>
+    render(
+      <>
+        <InterruptorFrete config={config} admin={admin} />
+        <Toaster />
+      </>,
+    );
+
+  it("diz se o frete está no Contas a pagar e quem mudou e quando", () => {
+    vista(ligado, false);
+    expect(screen.getByText(/está no Contas a pagar/)).toBeInTheDocument();
+    expect(screen.getByText("Mudado por Ana em 26/10/2026 14:30.")).toBeInTheDocument();
+  });
+
+  it("desligado e nunca mudado: não cita ninguém", () => {
+    vista(desligado, false);
+    expect(screen.getByText(/não está no Contas a pagar/)).toBeInTheDocument();
+    expect(screen.queryByText(/Mudado/)).not.toBeInTheDocument();
+  });
+
+  it("quem não é administrador só lê: não há botão", () => {
+    vista(desligado, false);
+    expect(screen.queryByRole("button", { name: "Ligar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Desligar" })).not.toBeInTheDocument();
+  });
+
+  it("administrador liga depois de confirmar, e a confirmação explica o que muda", async () => {
+    definirParcelasFrete.mockResolvedValue({ ok: true, dados: undefined });
+    vista(desligado, true);
+    fireEvent.click(screen.getByRole("button", { name: "Ligar" }));
+    expect(definirParcelasFrete).not.toHaveBeenCalled();
+    expect(screen.getByText(/com aprovação de outra pessoa\. O Quadro deixa de/)).toBeInTheDocument();
+    fireEvent.click(within(document.querySelector("dialog")!).getByRole("button", { name: "Ligar" }));
+    await waitFor(() => expect(definirParcelasFrete).toHaveBeenCalledWith(true));
+    expect(await screen.findByText(/no Contas a pagar nas viagens novas/)).toBeInTheDocument();
+  });
+
+  it("administrador desliga: a confirmação diz que as parcelas que já existem continuam", async () => {
+    definirParcelasFrete.mockResolvedValue({ ok: true, dados: undefined });
+    vista(ligado, true);
+    fireEvent.click(screen.getByRole("button", { name: "Desligar" }));
+    expect(screen.getByText(/voltam a ter o pagamento confirmado à mão no Quadro/)).toBeInTheDocument();
+    expect(screen.getByText(/continuam aqui no Contas a pagar/)).toBeInTheDocument();
+    fireEvent.click(within(document.querySelector("dialog")!).getByRole("button", { name: "Desligar" }));
+    await waitFor(() => expect(definirParcelasFrete).toHaveBeenCalledWith(false));
+  });
+
+  it("mostra a frase do banco se recusar", async () => {
+    definirParcelasFrete.mockResolvedValue({ ok: false, erro: "Só o administrador pode fazer isso." });
+    vista(desligado, true);
+    fireEvent.click(screen.getByRole("button", { name: "Ligar" }));
+    fireEvent.click(within(document.querySelector("dialog")!).getByRole("button", { name: "Ligar" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Só o administrador pode fazer isso.");
   });
 });
 

@@ -6,14 +6,14 @@ import { EstadoVazio } from "@/components/EstadoVazio";
 import { Ponto } from "@/components/Ponto";
 import { Sinal } from "@/components/Sinal";
 import { toast } from "@/components/Toast";
-import { agrupar as agruparContas, estadoVencimento, ROTULO_ORIGEM, rotuloForma, sinalAprovacao, somarValores } from "@/lib/contas";
+import { agrupar as agruparContas, estadoVencimento, fraseRetencao, ROTULO_ORIGEM, rotuloForma, sinalAprovacao, somarValores } from "@/lib/contas";
 import type { Conta } from "../consultas";
 import { formato } from "@/lib/formato";
 import { MenuLinha, type ItemMenu } from "../contas-comum/menu-linha";
-import { aprovar, desaprovar, desfazerPagamento } from "./actions";
+import { aprovar, desaprovar } from "./actions";
 import type { CentroCusto, ContaPagar, TipoDespesa } from "./consultas";
 import { DialogoConta } from "./dialogo-conta";
-import { DialogoMotivoPagar, DialogoPagar } from "./dialogo-pagar";
+import { DialogoDesfazerPagamento, DialogoMotivoPagar, DialogoPagar } from "./dialogo-pagar";
 import { acoesDaConta, chaveCentro, chaveTipo, type Agrupamento } from "./regras";
 
 type Props = {
@@ -29,7 +29,7 @@ type Props = {
   vazio: string;
 };
 
-type Aberto = { tipo: "editar" | "pagar" | "cancelar" | "liberar"; conta: ContaPagar } | null;
+type Aberto = { tipo: "editar" | "pagar" | "cancelar" | "liberar" | "desfazer"; conta: ContaPagar } | null;
 
 const COLUNAS = 6;
 const curta = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
@@ -61,11 +61,11 @@ function Linha({
   }
 
   const itens: ItemMenu[] = [];
-  if (a.editar) itens.push({ rotulo: "Editar", aoEscolher: () => abrir("editar", c) });
-  if (a.desaprovar) itens.push({ rotulo: "Desfazer aprovação", aoEscolher: () => rodar(() => desaprovar(c.id), "Aprovação desfeita.") });
-  if (a.liberar) itens.push({ rotulo: "Liberar antecipação", aoEscolher: () => abrir("liberar", c) });
-  if (a.desfazerPagamento) itens.push({ rotulo: "Desfazer pagamento", aoEscolher: () => rodar(() => desfazerPagamento(c.id), "Pagamento desfeito.") });
-  if (a.cancelar) itens.push({ rotulo: "Cancelar a conta", perigo: true, aoEscolher: () => abrir("cancelar", c) });
+  if (a.editar) itens.push({ rotulo: "Editar", desabilitado: pendente, aoEscolher: () => abrir("editar", c) });
+  if (a.desaprovar) itens.push({ rotulo: "Desfazer aprovação", desabilitado: pendente, aoEscolher: () => rodar(() => desaprovar(c.id), "Aprovação desfeita.") });
+  if (a.liberar) itens.push({ rotulo: "Liberar antecipação", desabilitado: pendente, aoEscolher: () => abrir("liberar", c) });
+  if (a.desfazerPagamento) itens.push({ rotulo: "Desfazer pagamento", desabilitado: pendente, aoEscolher: () => abrir("desfazer", c) });
+  if (a.cancelar) itens.push({ rotulo: "Cancelar a conta", desabilitado: pendente, perigo: true, aoEscolher: () => abrir("cancelar", c) });
 
   return (
     <tr className={cancelada ? "sem-link contas-cancelada" : "sem-link"} aria-busy={pendente || undefined}>
@@ -91,6 +91,12 @@ function Linha({
               <span title={c.antecipacaoMotivo ?? undefined}>Antecipação liberada</span>
             </>
           )}
+          {c.parteRetencao > 0 && !cancelada && (
+            <>
+              <Ponto />
+              {fraseRetencao(c.parteRetencao)}
+            </>
+          )}
           {cancelada && c.cancelamentoMotivo && (
             <>
               <Ponto />
@@ -108,7 +114,7 @@ function Linha({
       </td>
       <td className="num contas-valor">{formato.reais(c.valor)}</td>
       <td>
-        <Sinal {...sinalAprovacao(c)} />
+        <Sinal {...sinalAprovacao(c, estado === "vencida" ? dias : null)} />
         <span className="linha2">
           {c.pagoEm ? (
             <>
@@ -131,7 +137,7 @@ function Linha({
       <td className="col-acao">
         <div className="contas-acoes">
           {a.aprovar && (
-            <button className="btn btn-pequeno" type="button" disabled={pendente} onClick={() => rodar(() => aprovar(c.id), "Conta aprovada.")}>
+            <button className="btn btn-pequeno" type="button" disabled={pendente} onClick={() => rodar(() => aprovar(c.id, c.versao), "Conta aprovada.")}>
               Aprovar
             </button>
           )}
@@ -222,6 +228,7 @@ export function TabelaPagar({ contas, agrupar, hoje, usuario, contasBancarias, t
 
       {aberto?.tipo === "editar" && <DialogoConta key={aberto.conta.id} conta={aberto.conta} tipos={tipos} centros={centros} aoFechar={fechar} />}
       {aberto?.tipo === "pagar" && <DialogoPagar key={aberto.conta.id} conta={aberto.conta} contas={contasBancarias} aoFechar={fechar} />}
+      {aberto?.tipo === "desfazer" && <DialogoDesfazerPagamento key={aberto.conta.id} conta={aberto.conta} aoFechar={fechar} />}
       {(aberto?.tipo === "cancelar" || aberto?.tipo === "liberar") && (
         <DialogoMotivoPagar key={`${aberto.tipo}-${aberto.conta.id}`} tipo={aberto.tipo} conta={aberto.conta} aoFechar={fechar} />
       )}

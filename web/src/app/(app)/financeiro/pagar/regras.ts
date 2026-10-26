@@ -78,6 +78,11 @@ export function chaveTipo(c: { planoGrupo: GrupoPlano; planoNome: string }): { i
   return { id: `${ordem}|${c.planoNome}`, rotulo: `${ROTULO_GRUPO_PLANO[c.planoGrupo]} · ${c.planoNome}` };
 }
 
+/** Versão da conta (`updated_at` como o banco devolve, ex. "2026-10-26T12:34:56.123456+00:00"): só confere o formato.
+   Não vira `Date` para não perder os microssegundos que o banco compara. */
+const RE_VERSAO = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}(:?\d{2})?)$/;
+export const ehVersao = (v: unknown): v is string => typeof v === "string" && RE_VERSAO.test(v);
+
 /* ---------- leitura dos formulários ---------- */
 
 /** Campos do formulário "Lançar conta a pagar" (nomes dos inputs). */

@@ -22,6 +22,8 @@ export type ContaPagar = {
   /** "aaaa-mm-dd". */
   vencimento: string;
   valor: number;
+  /** Quanto do saldo do frete já foi descontado de retenções do autônomo (INSS, SEST e SENAT); 0 nas outras contas. */
+  parteRetencao: number;
   observacao: string | null;
   viagemId: string | null;
   viagemNumero: number | null;
@@ -36,6 +38,10 @@ export type ContaPagar = {
   antecipacaoMotivo: string | null;
   canceladoEm: string | null;
   cancelamentoMotivo: string | null;
+  /** O NILT cancelou a parcela sozinho (o que já foi pago ao motorista cobre o frete). */
+  canceladoAutomatico: boolean;
+  /** Versão da conta (`updated_at`, texto do banco, sem mexer): vai de volta na aprovação para o banco recusar se a conta mudou. */
+  versao: string;
   /** Nomes de quem lançou, aprovou e pagou (nulo quando a pessoa não tem mais cadastro). */
   lancadoPorNome: string | null;
   aprovadoPorNome: string | null;
@@ -93,6 +99,7 @@ export async function listarContasPagar(db: Banco, p: { filtro: FiltroPagar; mes
     forma: l.forma,
     vencimento: l.vencimento,
     valor: Number(l.valor),
+    parteRetencao: Number(l.parte_retencao ?? 0),
     observacao: l.observacao,
     viagemId: l.viagem_id,
     viagemNumero: l.viagem_numero,
@@ -106,6 +113,8 @@ export async function listarContasPagar(db: Banco, p: { filtro: FiltroPagar; mes
     antecipacaoMotivo: l.antecipacao_motivo,
     canceladoEm: l.cancelado_em,
     cancelamentoMotivo: l.cancelamento_motivo,
+    canceladoAutomatico: l.cancelado_automatico === true,
+    versao: l.updated_at,
     lancadoPorNome: nome(l.lancado_por),
     aprovadoPorNome: nome(l.aprovado_por),
     pagoPorNome: nome(l.pago_por),
@@ -173,6 +182,29 @@ export async function listarCentrosAtivos(db: Banco): Promise<CentroCusto[]> {
   const r = await db.from("centro_custo").select("id, codigo, nome").eq("ativo", true).order("codigo");
   if (r.error) throw r.error;
   return r.data ?? [];
+}
+
+/* ---------- frete dos motoristas no Contas a pagar (interruptor) ---------- */
+
+export type ConfigFrete = {
+  /** Viagens contratadas daqui em diante ganham o adiantamento e o saldo no Contas a pagar. */
+  ativo: boolean;
+  /** Quando e por quem foi mudado pela última vez (nulos se nunca mudou). */
+  mudadoEm: string | null;
+  mudadoPorNome: string | null;
+};
+
+/** Lê `fin_config` (linha única, id 1): se as parcelas do frete estão ligadas e quem mudou por último. */
+export async function configDoFrete(db: Banco): Promise<ConfigFrete> {
+  const r = await db.from("fin_config").select("parcelas_frete_ativas, parcelas_frete_mudado_em, parcelas_frete_mudado_por").eq("id", 1).maybeSingle();
+  if (r.error) throw r.error;
+  const por = r.data?.parcelas_frete_mudado_por ?? null;
+  const nomes = await nomesDe(db, [por]);
+  return {
+    ativo: r.data?.parcelas_frete_ativas === true,
+    mudadoEm: r.data?.parcelas_frete_mudado_em ?? null,
+    mudadoPorNome: por ? (nomes.get(por) ?? null) : null,
+  };
 }
 
 /* ---------- taxa do cartão-frete ---------- */

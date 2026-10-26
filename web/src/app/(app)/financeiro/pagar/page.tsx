@@ -15,7 +15,7 @@ import { getPerfil, pode } from "@/lib/permissoes";
 import { createClient } from "@/lib/supabase/server";
 import { AbasFinanceiro } from "../abas";
 import { listarContas } from "../consultas";
-import { contagemDasAbas, indicadoresPagar, listarCentrosAtivos, listarContasPagar, listarTiposDespesa, taxaDoMes } from "./consultas";
+import { configDoFrete, contagemDasAbas, indicadoresPagar, listarCentrosAtivos, listarContasPagar, listarTiposDespesa, taxaDoMes } from "./consultas";
 import { BotaoLancarConta } from "./dialogo-conta";
 import {
   AGRUPAMENTOS,
@@ -27,6 +27,7 @@ import {
   type Agrupamento,
   type FiltroPagar,
 } from "./regras";
+import { InterruptorFrete } from "./interruptor-frete";
 import { TabelaPagar } from "./tabela-pagar";
 import { TaxaCartaoBloco } from "./taxa-cartao";
 import "@/styles/paginas/proprietarios.css";
@@ -115,13 +116,14 @@ export default async function PagarPage({ searchParams }: { searchParams: Promis
 
   const db = tipado(await createClient());
   const ind = await indicadoresPagar(db, mesDeHoje());
-  const [contas, contagens, taxa, tipos, centros, contasBancarias] = await Promise.all([
+  const [contas, contagens, taxa, tipos, centros, contasBancarias, configFrete] = await Promise.all([
     listarContasPagar(db, { filtro, mes, busca }),
     contagemDasAbas(db, mes, ind),
     taxaDoMes(db, comMes ? mes : mesDeHoje()),
     listarTiposDespesa(db),
     listarCentrosAtivos(db),
     listarContas(db),
+    configDoFrete(db),
   ]);
 
   const total = somarValores(contas.filter((c) => !c.canceladoEm));
@@ -194,6 +196,8 @@ export default async function PagarPage({ searchParams }: { searchParams: Promis
           )}
         </nav>
       )}
+
+      <InterruptorFrete config={configFrete} admin={pode(perfil, "admin")} />
 
       <TaxaCartaoBloco taxa={taxa} />
 

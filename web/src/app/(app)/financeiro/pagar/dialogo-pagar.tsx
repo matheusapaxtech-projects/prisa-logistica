@@ -3,14 +3,14 @@
 import { useId, useState, useTransition, type FormEvent } from "react";
 import { Dialogo } from "@/components/Dialogo";
 import { toast } from "@/components/Toast";
-import { FORMAS, ROTULO_ORIGEM } from "@/lib/contas";
+import { FORMAS, fraseRetencao, ROTULO_ORIGEM } from "@/lib/contas";
 import { hojeISO } from "@/lib/datas";
 import { partesDaConta } from "@/lib/financeiro";
 import { formato } from "@/lib/formato";
 import { CampoDialogo } from "../contas-comum/campo-dialogo";
 import { DialogoMotivo, type TextosMotivo } from "../contas-comum/dialogo-motivo";
 import { ResumoConta } from "../contas-comum/resumo-conta";
-import { cancelar, liberarAntecipacao, pagar } from "./actions";
+import { cancelar, desfazerPagamento, liberarAntecipacao, pagar } from "./actions";
 import type { ContaPagar } from "./consultas";
 import { lerPagamento, type CampoPagamento } from "./regras";
 
@@ -18,7 +18,12 @@ type ContaBancaria = { id: string; banco: string; agencia: string; numero: strin
 
 /** Resumo da conta a pagar no alto do diálogo: número, descrição, favorecido e valor. */
 function Resumo({ conta }: { conta: ContaPagar }) {
-  return <ResumoConta numero={conta.numero} titulo={conta.descricao} quem={conta.favorecidoNome} vencimento={formato.data(conta.vencimento)} valor={formato.reais(conta.valor)} />;
+  return (
+    <>
+      <ResumoConta numero={conta.numero} titulo={conta.descricao} quem={conta.favorecidoNome} vencimento={formato.data(conta.vencimento)} valor={formato.reais(conta.valor)} />
+      {conta.parteRetencao > 0 && <p className="nota">{fraseRetencao(conta.parteRetencao)}</p>}
+    </>
+  );
 }
 
 /* Diálogo "Pagar": a data do pagamento (hoje ou antes), a conta bancária de onde saiu (o cartão-frete e o dinheiro
@@ -151,5 +156,54 @@ export function DialogoMotivoPagar({ tipo, conta, aoFechar }: { tipo: "cancelar"
       acao={(motivo) => (tipo === "cancelar" ? cancelar(conta.id, motivo) : liberarAntecipacao(conta.id, motivo))}
       aoFechar={aoFechar}
     />
+  );
+}
+
+/* Confirmação de "Desfazer pagamento" (só o administrador): a conta volta para aprovada e sem pagamento. Se for parcela
+   do frete, a viagem volta a ficar sem esse pagamento. */
+export function DialogoDesfazerPagamento({ conta, aoFechar }: { conta: ContaPagar; aoFechar: () => void }) {
+  const [erroAcao, setErroAcao] = useState<string | null>(null);
+  const [gravando, iniciar] = useTransition();
+
+  function aoEnviar(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (gravando) return;
+    setErroAcao(null);
+    iniciar(async () => {
+      const r = await desfazerPagamento(conta.id);
+      if (!r.ok) {
+        setErroAcao(r.erro);
+        return;
+      }
+      toast("Pagamento desfeito.");
+      aoFechar();
+    });
+  }
+
+  return (
+    <Dialogo
+      aberto
+      aoFechar={aoFechar}
+      titulo="Desfazer o pagamento"
+      onSubmit={aoEnviar}
+      pe={
+        <>
+          <button className="btn" type="button" data-fechar disabled={gravando}>
+            Voltar
+          </button>
+          <button className="btn btn-perigo" type="submit" disabled={gravando} aria-busy={gravando}>
+            Desfazer o pagamento
+          </button>
+        </>
+      }
+    >
+      <Resumo conta={conta} />
+      <p className="nota">O pagamento sai da conta e, se for parcela do frete, a viagem volta a ficar sem esse pagamento.</p>
+      {erroAcao && (
+        <div className="aviso aviso-bloqueado" role="alert">
+          <p>{erroAcao}</p>
+        </div>
+      )}
+    </Dialogo>
   );
 }

@@ -3,7 +3,7 @@
 import { useId, useRef, type ToggleEvent } from "react";
 import { Ellipsis } from "lucide-react";
 
-export type ItemMenu = { rotulo: string; aoEscolher: () => void; perigo?: boolean };
+export type ItemMenu = { rotulo: string; aoEscolher: () => void; perigo?: boolean; desabilitado?: boolean };
 
 /* Menu "…" da linha das contas a pagar e a receber. Usa o popover do navegador (camada de cima): a tabela rola para os
    lados e cortaria um menu comum. Fecha sozinho com Esc, clique fora ou ao escolher; ao rolar a página ele fecha também. */
@@ -47,6 +47,7 @@ export function MenuLinha({ rotulo, itens }: { rotulo: string; itens: ItemMenu[]
             key={i.rotulo}
             type="button"
             className={i.perigo ? "perigo" : undefined}
+            disabled={i.desabilitado}
             onClick={() => {
               lista.current?.hidePopover();
               i.aoEscolher();
