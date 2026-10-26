@@ -173,6 +173,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
           { id: "resultado", rotulo: "Resultado", href: href({ mes }) },
           { id: "lancamentos", rotulo: "Lançamentos", n: doMes.quantidade, href: href({ aba: "lancamentos", mes }) },
           { id: "regras", rotulo: "Regras", n: regras.length, href: href({ aba: "regras", mes }) },
+          { id: "retencoes", rotulo: "Retenções", href: `/financeiro/retencoes?mes=${mes}` },
         ]}
       />
 
