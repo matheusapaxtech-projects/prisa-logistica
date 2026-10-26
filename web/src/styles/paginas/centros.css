@@ -2,6 +2,7 @@
    `.centros` e com nomes `centros-`. Departamento em destaque (nome 600), subdepartamento recuado; desativado em tom fraco. */
 
 .centros .centros-regra { margin: 0 0 var(--gap); color: var(--muted); max-width: 70ch; }
+.centros .aviso-topo { margin-bottom: var(--gap); }
 .centros .aviso-topo p { margin: 0; }
 
 .centros .tabela-centros { min-width: 640px; }
