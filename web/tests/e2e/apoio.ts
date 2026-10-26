@@ -61,11 +61,13 @@ export async function bancoFinanceiro(): Promise<SupabaseClient> {
  * em "Aguardando saldo (30%)": quem chama escolhe o momento. Parcela já paga não faz nada.
  */
 export async function pagarParcelaDoFrete(admin: SupabaseClient, viagemId: string, origem: "frete_adiantamento" | "frete_saldo") {
-  const c = await admin.from("v_fin_pagar").select("id, situacao").eq("viagem_id", viagemId).eq("origem", origem).single();
+  const c = await admin.from("v_fin_pagar").select("id, situacao, aprovado_em").eq("viagem_id", viagemId).eq("origem", origem).single();
   if (c.error) throw new Error(`A viagem não tem a parcela ${origem} no Contas a pagar: ${c.error.message}`);
   if (c.data.situacao === "paga") return;
   if (c.data.situacao === "cancelada") throw new Error(`A parcela ${origem} da viagem está cancelada.`);
-  if (c.data.situacao === "falta_aprovar") {
+  // Pela data da aprovação, não pela situação: a conta vencida e sem aprovação também é `falta_aprovar`, mas
+  // quem decide se falta aprovar é `aprovado_em` (a ordem das situações já mudou uma vez).
+  if (c.data.aprovado_em === null) {
     const financeiro = await bancoFinanceiro();
     const a = await financeiro.rpc("fin_aprovar_pagar", { p_id: c.data.id });
     if (a.error) throw new Error(`O financeiro não conseguiu aprovar a parcela ${origem}: ${a.error.message}`);
