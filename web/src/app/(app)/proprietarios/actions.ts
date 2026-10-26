@@ -319,6 +319,8 @@ const Comum = {
   rntrc_validade: data.default(""),
   enquadramento_antt: z.union([z.literal(""), z.enum(ENQUADRAMENTOS)]).default(""),
   alto_desempenho: z.enum(["sim", "nao"]).default("nao"),
+  agregado: z.enum(["sim", "nao"]).default("nao"),
+  agregado_desde: data.default(""),
   qualificado_gmp: z.enum(["sim", "nao"]).optional(),
   dt_qualificacao_gmp: data.default(""),
   regra_pgto_frete: z.enum(REGRAS_FRETE).optional(),
@@ -405,6 +407,9 @@ export async function salvarFicha(pessoaId: string, form: FormData): Promise<Res
         rntrc_validade: n(f.rntrc_validade),
         enquadramento_antt: n(f.enquadramento_antt),
         alto_desempenho: f.alto_desempenho === "sim",
+        agregado: f.agregado === "sim",
+        // A data de início só vale para agregado (o banco recusa data sem a marcação).
+        agregado_desde: f.agregado === "sim" ? n(f.agregado_desde) : null,
         qualificado_gmp: f.qualificado_gmp ? f.qualificado_gmp === "sim" : null,
         dt_qualificacao_gmp: n(f.dt_qualificacao_gmp),
         regra_pgto_frete: f.regra_pgto_frete ?? null,

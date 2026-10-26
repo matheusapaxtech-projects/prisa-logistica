@@ -54,12 +54,14 @@ export type LinhaMotorista = {
   cidade: string | null;
   /** Documentos (CNH, consulta de risco, arquivos) vencidos ou vencendo em até 30 dias. */
   atencao: number;
+  /** É também proprietário marcado como agregado. */
+  agregado: boolean;
 };
 
 export async function listarMotoristas(db: Banco): Promise<LinhaMotorista[]> {
   const mot = await db
     .from("motorista")
-    .select("pessoa_id, situacao_cadastro, cnh_categoria, cnh_validade, situacao_gr, gr_validade, pessoa(nome, apelido, cpf)");
+    .select("pessoa_id, situacao_cadastro, cnh_categoria, cnh_validade, situacao_gr, gr_validade, pessoa(nome, apelido, cpf, proprietario(agregado))");
   if (mot.error) throw mot.error;
   const ids = (mot.data ?? []).map((m) => m.pessoa_id);
   if (!ids.length) return [];
@@ -105,6 +107,7 @@ export async function listarMotoristas(db: Banco): Promise<LinhaMotorista[]> {
         telefone: tel ? { numero: tel.numero, tipo: tel.whatsapp ? "WhatsApp" : (rotulo(ROT.tipo_telefone, tel.tipo) ?? "") } : null,
         cidade: end ? `${end.cidade}/${end.uf}` : null,
         atencao,
+        agregado: !!p.proprietario?.agregado,
       };
     })
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
@@ -134,6 +137,8 @@ export type Ficha = {
   /** Quando e por quem foi cadastrado no NILT; `por` nulo = veio de importação/seed (a linha some). */
   cadastro: { em: string; por: string | null };
   veiculo: ResumoVeiculo;
+  /** É também proprietário marcado como agregado (a marca mora no proprietário). */
+  agregado: { desde: string | null } | null;
   contagens: { contatos: number; referencias: number; contas: number; documentos: number };
 };
 
@@ -251,7 +256,7 @@ async function carregarVeiculo(db: Banco, motoristaId: string): Promise<ResumoVe
 
 /** Ficha do motorista; sem motorista com esse id, diz se a pessoa existe (proprietário, empresa) ou não. */
 export async function carregarFicha(db: Banco, id: string, admin: boolean): Promise<Ficha | SemFicha> {
-  const r = await db.from("pessoa").select("*, motorista(*), proprietario(pessoa_id)").eq("id", id).maybeSingle();
+  const r = await db.from("pessoa").select("*, motorista(*), proprietario(pessoa_id, agregado, agregado_desde)").eq("id", id).maybeSingle();
   if (r.error) throw r.error;
   if (!r.data) return { tipo: "nao_encontrado" };
   const { motorista, proprietario, ...pessoa } = r.data;
@@ -285,6 +290,7 @@ export async function carregarFicha(db: Banco, id: string, admin: boolean): Prom
     tiposArquivo: [...new Set(arquivos.map((a) => a.tipo_arquivo?.nome).filter((n): n is string => !!n))],
     cadastro: { em: pessoa.created_at, por: criador?.data?.[0]?.nome ?? null },
     veiculo,
+    agregado: proprietario?.agregado ? { desde: proprietario.agregado_desde } : null,
     contagens: {
       contatos: contagens.contatos - restritos,
       referencias: refs.count ?? 0,

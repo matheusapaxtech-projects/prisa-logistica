@@ -14,6 +14,7 @@ const ABAS = [
   { id: "todos", rot: "Todos", ok: () => true },
   { id: "pf", rot: "Pessoa física", ok: (l: LinhaProprietario) => l.tipo === "pf" },
   { id: "pj", rot: "Empresa", ok: (l: LinhaProprietario) => l.tipo === "pj" },
+  { id: "agregados", rot: "Agregados", ok: (l: LinhaProprietario) => l.agregado },
   { id: "pendentes", rot: "Pendentes", ok: (l: LinhaProprietario) => l.situacao === "pendente" },
   { id: "rntrc", rot: "RNTRC vencendo ou vencido", ok: (l: LinhaProprietario) => l.r.estado === "vencido" || l.r.estado === "vencendo" },
 ] as const;
@@ -284,6 +285,12 @@ export function ListaProprietarios({ linhas, aba: abaInicial, busca: buscaInicia
                     <span className="id">{l.nome}</span>
                     <span className="linha2">
                       {l.tipo === "pj" ? (l.nomeFantasia ?? "empresa") : "pessoa física"}
+                      {l.agregado && (
+                        <>
+                          <Ponto />
+                          agregado
+                        </>
+                      )}
                       {l.tipo === "pf" && l.tambemMotorista && (
                         <>
                           <Ponto />
