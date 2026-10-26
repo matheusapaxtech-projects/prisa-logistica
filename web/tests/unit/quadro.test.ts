@@ -62,6 +62,8 @@ function cartao(extra: Partial<Cartao> = {}): Cartao {
     peso_saida_kg: null,
     peso_chegada_kg: null,
     tolerancia_quebra_pct: null,
+    adiantamento_no_financeiro: false,
+    saldo_no_financeiro: false,
     ...extra,
   };
 }

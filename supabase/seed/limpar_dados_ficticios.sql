@@ -96,7 +96,8 @@ viagens as (
 ),
 usuarios as (
   select id from auth.users
-  where id in ('e2e00000-0000-4000-8000-000000000001', 'e2e00000-0000-4000-8000-000000000002', 'e2e00000-0000-4000-8000-000000000003')
+  where id in ('e2e00000-0000-4000-8000-000000000001', 'e2e00000-0000-4000-8000-000000000002', 'e2e00000-0000-4000-8000-000000000003',
+                 'e2e00000-0000-4000-8000-000000000004')
 )
 select o_que, quantos from (values
   (1,  'pessoas (seed + E2E)',                (select count(*) from pessoas)),
@@ -199,7 +200,8 @@ create temporary table limpeza_viagem on commit drop as
 
 create temporary table limpeza_usuario on commit drop as
   select id from auth.users
-  where id in ('e2e00000-0000-4000-8000-000000000001', 'e2e00000-0000-4000-8000-000000000002', 'e2e00000-0000-4000-8000-000000000003');
+  where id in ('e2e00000-0000-4000-8000-000000000001', 'e2e00000-0000-4000-8000-000000000002', 'e2e00000-0000-4000-8000-000000000003',
+                 'e2e00000-0000-4000-8000-000000000004');
 
 -- Para a auditoria: (tabela, registro_id) de tudo o que vai sair, no formato do gatilho fn_auditoria
 -- (chave primária; chave composta unida por ':').
@@ -225,7 +227,13 @@ insert into limpeza_registro
   union all select 'viagem', id::text from limpeza_viagem
   union all select 'viagem_pausa', id::text from public.viagem_pausa where viagem_id in (select id from limpeza_viagem)
   union all select 'viagem_ocorrencia', id::text from public.viagem_ocorrencia where viagem_id in (select id from limpeza_viagem)
-  union all select 'perfil_usuario', id::text from limpeza_usuario;
+  union all select 'perfil_usuario', id::text from limpeza_usuario
+  union all select 'fin_pagar', id::text from public.fin_pagar
+            where viagem_id in (select id from limpeza_viagem)
+               or id between '00000000-0000-4000-8000-000000001601' and '00000000-0000-4000-8000-000000001610'
+  union all select 'fin_receber', id::text from public.fin_receber
+            where cliente_id in (select id from limpeza_pessoa)
+               or id between '00000000-0000-4000-8000-000000001701' and '00000000-0000-4000-8000-000000001706';
 
 -- Trava: precisa existir um administrador real ativo (fora dos usuários de teste), senão ninguém entra
 -- no sistema depois da limpeza.
@@ -235,7 +243,8 @@ begin
     select 1 from public.perfil_usuario p
     where p.papel = 'admin' and p.ativo
       and p.user_id not in (select id from limpeza_usuario)
-      and p.user_id not in ('e2e00000-0000-4000-8000-000000000001', 'e2e00000-0000-4000-8000-000000000002', 'e2e00000-0000-4000-8000-000000000003')
+      and p.user_id not in ('e2e00000-0000-4000-8000-000000000001', 'e2e00000-0000-4000-8000-000000000002', 'e2e00000-0000-4000-8000-000000000003',
+                 'e2e00000-0000-4000-8000-000000000004')
   ) then
     raise exception 'Não há administrador real ativo. Crie o primeiro administrador (supabase/criar-primeiro-admin.sql), confira que ele entra e só então rode a limpeza.';
   end if;
@@ -281,6 +290,15 @@ end $$;
 -- 0. Quadro da operação: o que pende da viagem (sairia em cascata; apagado antes, por clareza), a viagem
 --    (aponta para pedido e conjunto com on delete restrict), o pedido (aponta para cliente e locais com
 --    on delete restrict) e o papel cliente (aponta para a pessoa com on delete restrict).
+-- Contas a pagar e a receber fictícias (dev_financeiro_ficticio.sql) e as parcelas do frete das viagens da limpeza
+-- (apontam para a viagem e para a conta bancária com on delete restrict).
+delete from public.fin_pagar
+ where viagem_id in (select id from limpeza_viagem)
+    or id between '00000000-0000-4000-8000-000000001601' and '00000000-0000-4000-8000-000000001610';
+delete from public.fin_receber
+ where cliente_id in (select id from limpeza_pessoa)
+    or id between '00000000-0000-4000-8000-000000001701' and '00000000-0000-4000-8000-000000001706';
+delete from public.fin_conta where id = '00000000-0000-4000-8000-000000001501';
 delete from public.viagem_evento where viagem_id in (select id from limpeza_viagem);
 delete from public.viagem_pausa where viagem_id in (select id from limpeza_viagem);
 delete from public.viagem_ocorrencia where viagem_id in (select id from limpeza_viagem);

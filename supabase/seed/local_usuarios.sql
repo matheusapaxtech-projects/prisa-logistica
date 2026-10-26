@@ -1,12 +1,13 @@
 -- =============================================================================================
 -- SÓ PARA O SUPABASE LOCAL (`supabase start` / `supabase db reset`). NUNCA RODAR NA NUVEM.
 -- =============================================================================================
--- Cria os três usuários de teste com os mesmos ids e e-mails do ambiente da nuvem
+-- Cria os usuários de teste com os mesmos ids e e-mails do ambiente da nuvem
 -- (ver "Antes de usar com dados reais" em web/README.md), já confirmados e com perfil:
 --
---   teste.admin@nilt.test      admin       (também serve de login para desenvolver)
---   teste.semperfil@nilt.test  sem perfil
---   teste.operacao@nilt.test   operação
+--   teste.admin@nilt.test       admin       (também serve de login para desenvolver)
+--   teste.semperfil@nilt.test   sem perfil
+--   teste.operacao@nilt.test    operação
+--   teste.financeiro@nilt.test  financeiro  (aprova o que o admin lança: quem lança não aprova)
 --
 -- Senha de todos: nilt-local-123 (só vale no banco da sua máquina; está em web/.env.test.example).
 -- Carregado depois de dev_dados_ficticios.sql pela ordem de `[db.seed]` em supabase/config.toml.
@@ -19,7 +20,8 @@ begin
     select * from (values
       ('e2e00000-0000-4000-8000-000000000001'::uuid, 'teste.admin@nilt.test',     'Teste Admin',    'admin'),
       ('e2e00000-0000-4000-8000-000000000002'::uuid, 'teste.semperfil@nilt.test', null,             null),
-      ('e2e00000-0000-4000-8000-000000000003'::uuid, 'teste.operacao@nilt.test',  'Teste Operação', 'operacao')
+      ('e2e00000-0000-4000-8000-000000000003'::uuid, 'teste.operacao@nilt.test',  'Teste Operação', 'operacao'),
+      ('e2e00000-0000-4000-8000-000000000004'::uuid, 'teste.financeiro@nilt.test', 'Teste Financeiro', 'financeiro')
     ) as t(id, email, nome, papel)
   loop
     insert into auth.users (
