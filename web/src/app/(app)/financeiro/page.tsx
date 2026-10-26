@@ -2,7 +2,6 @@ import { Fragment } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Percent, Tag, Upload, Wallet, type LucideIcon } from "lucide-react";
-import { Abas } from "@/components/Abas";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import { Numero } from "@/components/Numero";
 import { Ponto } from "@/components/Ponto";
@@ -10,6 +9,7 @@ import { tipado } from "@/lib/banco";
 import { ehCategoria, mesDeHoje, mesValido, nomeDoMes, percentualMargem, somarMes, somarResultado } from "@/lib/financeiro";
 import { getPerfil, pode } from "@/lib/permissoes";
 import { createClient } from "@/lib/supabase/server";
+import { AbasFinanceiro } from "./abas";
 import { BotaoNovoLancamento } from "./botao-lancamento";
 import {
   contarSemCategoria,
@@ -166,16 +166,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
         </div>
       </div>
 
-      <Abas
-        rotulo="Partes do financeiro"
-        ativa={aba}
-        abas={[
-          { id: "resultado", rotulo: "Resultado", href: href({ mes }) },
-          { id: "lancamentos", rotulo: "Lançamentos", n: doMes.quantidade, href: href({ aba: "lancamentos", mes }) },
-          { id: "regras", rotulo: "Regras", n: regras.length, href: href({ aba: "regras", mes }) },
-          { id: "retencoes", rotulo: "Retenções", href: `/financeiro/retencoes?mes=${mes}` },
-        ]}
-      />
+      <AbasFinanceiro ativa={aba} mes={mes} contagens={{ lancamentos: doMes.quantidade, regras: regras.length }} />
 
       {aba !== "regras" && (
         <nav className="mes-nav" aria-label="Mês">
