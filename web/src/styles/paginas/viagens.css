@@ -10,23 +10,68 @@
 .via .sinais .desde { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; align-self: center; }
 .via .aviso-ficha { margin-bottom: 24px; }
 
-/* ---------- ficha: próximo passo (bloco plano com a ação principal) ---------- */
+/* ---------- ficha: próximo passo (cartão com a ação principal) ---------- */
 .via .proximo-passo {
   display: flex; align-items: center; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap;
-  padding: 16px 18px; margin-bottom: 24px;
-  border: 1px solid var(--border); border-radius: var(--radius-card);
+  padding: 20px 22px; margin-bottom: 24px;
+  border: 1px solid var(--painel-borda); border-radius: var(--radius-painel);
+  background: var(--painel); box-shadow: var(--sombra-painel);
 }
 .via .proximo-passo .texto { display: grid; gap: 4px; min-width: 0; flex: 1 1 320px; }
-.via .proximo-passo h2 { font-size: var(--fs-section); font-weight: 600; line-height: 24px; margin: 0; }
+.via .proximo-passo .rotulo { font-size: 12px; line-height: 16px; color: var(--muted); }
+.via .proximo-passo h2 { font-size: 20px; font-weight: 600; line-height: 26px; letter-spacing: -0.01em; margin: 0; }
 .via .proximo-passo p { margin: 0; font-size: 13px; line-height: 18px; color: var(--muted); }
 .via .proximo-passo .acoes { display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
 .via .acao-com-explica { display: inline-grid; gap: 4px; justify-items: end; max-width: 280px; }
 .via .acao-com-explica .explica { font-size: 12px; line-height: 16px; color: var(--muted); text-align: right; }
 
-/* ---------- ficha: resumo ---------- */
-.via .kv dd .placas { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.via .kv dd .codigo { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; word-break: break-all; }
-.via .kv dd .com-acao { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+/* ---------- ficha: cartões ---------- */
+/* Os blocos que vêm de componentes (`section.subsecao` com `.painel-cab`) viram cartões como os `.bloco`
+   da ficha do pedido, sem mexer nos componentes. */
+.via .subsecao:not(.bloco) {
+  min-width: 0; padding: 18px 22px 22px;
+  border: 1px solid var(--painel-borda); border-radius: var(--radius-painel);
+  background: var(--painel); box-shadow: var(--sombra-painel);
+}
+.via .subsecao + .subsecao { margin-top: 0; }
+.via .subsecao > .painel-cab { flex-wrap: wrap; margin-bottom: 14px; min-height: 36px; }
+.via .subsecao > .painel-cab .dir { flex-wrap: wrap; }
+.via .subsecao > .painel-cab h2 { flex: 1 1 auto; font-weight: 500; white-space: nowrap; }
+.sheet-inner .via .subsecao .tabela-wrap:not(.bloco .tabela-wrap):not(dialog .tabela-wrap) { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.via .kv dd .linha2 { display: block; font-size: 13px; line-height: 18px; color: var(--muted); }
+.via .codigo { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; word-break: break-all; }
+
+/* duas colunas como o pedido: rota, equipe e documentos à esquerda; situação, aptidão e observação à direita */
+.via .ficha-via { margin-bottom: 24px; }
+.via .ficha-via .rota .ponta .quando { color: var(--muted); font-weight: 400; }
+
+/* motorista e conjunto: as linhas `.partes` do pedido; o conjunto leva as placas no lugar do nome */
+.via .partes-ped .bloco-cab .dir a { color: var(--ink); text-decoration: underline; text-decoration-color: rgba(22, 24, 24, 0.25); text-underline-offset: 3px; }
+.via .partes .icone-conjunto { display: inline-grid; place-items: center; background: var(--active); color: var(--ink); }
+.via .partes .quem.placas { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+/* documentos fiscais: chaves de 44 dígitos em grupos de 4 (os espaços são margem, não texto) */
+.via .docs { display: grid; gap: 14px; margin: 0; }
+.via .docs > div { display: grid; gap: 2px; min-width: 0; }
+.via .docs .par { grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 14px 24px; padding-top: 14px; border-top: 1px solid rgba(22, 24, 24, 0.08); }
+.via .docs .par > div { display: grid; gap: 2px; min-width: 0; }
+.via .docs dt { font-size: 13px; color: var(--muted); }
+.via .docs dd { margin: 0; }
+.via .chave { display: flex; flex-wrap: wrap; row-gap: 2px; font-family: var(--mono); font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums; }
+.via .chave span { margin-right: 0.55em; }
+
+/* situação: a coluna em número grande, desde quando e os pagamentos */
+.via .situacao-via .bloco-corpo { display: grid; gap: 4px; justify-items: start; padding-top: 10px; }
+.via .situacao-via .valor-medio { font-size: 30px; line-height: 36px; letter-spacing: -0.02em; }
+.via .situacao-via .nota-saldo { margin: 0 0 8px; }
+.via .situacao-via .linhas { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 16px; width: 100%; margin: 10px 0 0; padding-top: 14px; border-top: 1px solid rgba(22, 24, 24, 0.08); font-size: 13px; font-variant-numeric: tabular-nums; }
+.via .situacao-via .linhas dt { color: var(--muted); }
+.via .situacao-via .linhas dd { margin: 0; text-align: right; font-weight: 600; }
+.via .situacao-via .linhas .linha2 { display: block; font-weight: 400; color: var(--muted); line-height: 18px; }
+.via .situacao-via .acao-situacao { width: 100%; margin-top: 14px; }
+.via .situacao-via .acao-situacao .btn { width: 100%; }
+.via .situacao-via .excecao { margin: 12px 0 0; font-size: 13px; line-height: 18px; color: var(--muted); }
+.via .situacao-via .excecao b { color: var(--ink); font-weight: 600; }
 
 /* ---------- ficha: aptidão ---------- */
 .via .aptidao .explica { margin: 0 0 12px; font-size: 13px; line-height: 18px; color: var(--muted); }
@@ -37,9 +82,8 @@
 
 /* ---------- ficha: frete, piso ANTT e resultado do CT-e ---------- */
 /* Dinheiro tabular, à direita e sem cor (Regra do Dinheiro sem Cor); total em 600 com filete acima. */
-.via .frete-viagem { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 32px; margin-top: 32px; align-items: start; }
+.via .frete-viagem { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 24px; margin-bottom: 24px; align-items: start; }
 .via .frete-viagem .painel-cab .dir { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
-.via .frete-viagem .kv dd .linha2, .via .quebra-estadia .kv dd .linha2 { display: block; font-size: 13px; color: var(--muted); line-height: 18px; }
 .via .demonstrativo { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .via .demonstrativo th { text-align: left; font-weight: 400; padding: 8px 0; border-top: 1px solid var(--rule); }
 .via .demonstrativo th .linha2 { display: block; font-size: 12px; line-height: 16px; color: var(--muted); }
@@ -48,8 +92,12 @@
 .via .demonstrativo tr.total th, .via .demonstrativo tr.total td { font-weight: 600; border-top-color: var(--control); }
 .via .resultado-cte .nota { margin: 12px 0 0; font-size: 12px; line-height: 16px; color: var(--muted); }
 
-/* ---------- ficha: blocos de baixo ---------- */
-.via .blocos-viagem { display: grid; gap: 32px; margin-top: 32px; }
+/* ---------- ficha: blocos de baixo (dois a dois; os arquivos na largura toda) ---------- */
+.via .par-via { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 24px; margin-bottom: 24px; align-items: start; }
+.via .blocos-viagem { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; }
+.via .arquivos-via { grid-column: 1 / -1; padding: 18px 22px 22px; }
+.via .arquivos-via > .subsecao { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.via .arquivos-via > .bloco { margin-top: 18px; border-radius: 18px; background: rgba(255, 255, 255, 0.42); box-shadow: none; }
 
 /* linha do tempo: a `.linha-tempo` de componentes.css (a do Histórico); detalhes quebram em qualquer ponto */
 .via .linha-tempo .detalhe { color: var(--ink); overflow-wrap: anywhere; }
@@ -80,14 +128,17 @@
 .dlg-cancelar .campos-ocorrencia { display: grid; gap: 16px; }
 .dlg-cancelar .campo select { width: 100%; }
 
+@media (max-width: 900px) {
+  .via .blocos-viagem { grid-template-columns: minmax(0, 1fr); }
+}
 @media (max-width: 640px) {
+  .via .subsecao:not(.bloco), .via .arquivos-via { padding: 16px 16px 18px; }
+  .via .proximo-passo { padding: 16px; }
+  .via .frete-viagem, .via .par-via, .via .blocos-viagem { gap: 16px; }
   .via .proximo-passo .acoes, .via .proximo-passo .acoes .btn { width: 100%; }
   .via .acao-com-explica { max-width: none; width: 100%; justify-items: stretch; }
   .via .acao-com-explica .explica { text-align: left; }
   .via .lista-aptidao li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 }
-.via .quebra-estadia { margin-top: 32px; }
 .via .quebra-estadia .kv dd .sinal { margin-bottom: 2px; }
-.via .retorno-viagem { margin-top: 32px; }
-.via .retorno-viagem .kv dd .linha2 { display: block; font-size: 13px; color: var(--muted); line-height: 18px; }
 .via .retorno-lista { margin: 0; padding-left: 18px; display: grid; gap: 8px; }
