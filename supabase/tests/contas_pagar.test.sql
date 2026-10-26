@@ -142,15 +142,33 @@ declare
   c1 uuid;
   c2 uuid;
   c3 uuid;
+  c4 uuid;
 begin
   c1 := tests.lancar(a, 100, tests.hoje() - 1);
   c2 := tests.lancar(a, 100, tests.hoje() + 5);
   c3 := tests.lancar(a, 100, tests.hoje() + 5);
+  c4 := tests.lancar(a, 100, tests.hoje() - 1);
   perform tests.executar_como(b, format('select public.fin_aprovar_pagar(%L)', c3));
-  return next is((select situacao from public.v_fin_pagar where id = c1), 'vencida', 'vencimento ontem = vencida');
+  perform tests.executar_como(b, format('select public.fin_aprovar_pagar(%L)', c4));
+  return next is((select situacao from public.v_fin_pagar where id = c1), 'falta_aprovar', 'vencida sem aprovação: falta aprovar primeiro');
   return next is((select situacao from public.v_fin_pagar where id = c2), 'falta_aprovar', 'a vencer sem aprovação');
   return next is((select situacao from public.v_fin_pagar where id = c3), 'a_vencer', 'aprovada a vencer');
+  return next is((select situacao from public.v_fin_pagar where id = c4), 'vencida', 'aprovada com vencimento ontem = vencida');
   return next ok((select vencida and aberta from public.v_fin_pagar where id = c1), 'vencida e aberta');
+end $$;
+
+create function tests.test_aprovar_com_versao() returns setof text language plpgsql as $$
+declare
+  a uuid := tests.criar_usuario('a@exemplo.test', 'financeiro');
+  b uuid := tests.criar_usuario('b@exemplo.test', 'admin');
+  c uuid;
+begin
+  c := tests.lancar(a);
+  return next throws_ok(tests.chamar(b, format('select public.fin_aprovar_pagar(%L, %L)', c, now() - interval '1 minute')), null,
+    'A conta mudou desde que você abriu a página. Atualize e confira o valor antes de aprovar.',
+    'a conta mudou depois que a tela abriu: recusa');
+  return next lives_ok(tests.chamar(b, format('select public.fin_aprovar_pagar(%L, %L)', c,
+    (select updated_at from public.fin_pagar where id = c))), 'com a versão que a tela mostrou, aprova');
 end $$;
 
 create function tests.test_cancelar() returns setof text language plpgsql as $$

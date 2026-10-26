@@ -6,31 +6,95 @@
 --          "Aguardando saldo (30%)"), ou antes se o admin liberar a antecipação;
 -- e o pagamento marca a viagem como paga (pagamento_saida_em / saldo_pago_em, que o Quadro exige).
 --
--- viagem.pagamento_pelo_financeiro  corte: só as viagens contratadas depois desta migration (padrão true nas novas).
+-- fin_config.parcelas_frete_ativas  interruptor da virada: nasce desligado (em produção nada muda ao publicar);
+--                           o admin liga na tela de contas a pagar (fin_definir_parcelas_frete).
+-- viagem.pagamento_pelo_financeiro  a viagem nasce com o interruptor do momento (gatilho no insert). As que já
+--                           existiam ficam com a confirmação manual no Quadro (sem parcelas retroativas).
 -- fin_sincronizar_parcelas  cria/atualiza as duas parcelas a partir da viagem (gatilho trg_viagem_parcelas):
 --                           frete = frete_da_viagem (por tonelada × peso de saída ou previsto); favorecido =
 --                           proprietário (documento) do cavalo, ou o motorista; cartão-frete; centro 03.08; conta 20.
+--                           Contratado pessoa física: o saldo já desconta as retenções do autônomo (INSS 11% +
+--                           SEST 1,5% + SENAT 1,0% sobre 20% do frete, as mesmas de fiscal_retencoes), em
+--                           fin_pagar.parte_retencao (coluna criada na 0200) — o NILT recolhe na guia do mês.
+--                           Com uma parcela já paga, a outra fecha a conta (devido − pago): zero cancela sozinha;
+--                           frete menor que o já pago é recusado (o admin desfaz o pagamento antes).
 --                           Antes do embarque vencem na contratação e 3 dias depois; no embarque, hoje e hoje + 3.
 --                           Valor mudou: parcela aprovada perde a aprovação; paga não muda. Sem frete, frota própria
 --                           ou viagem cancelada: as não pagas são canceladas sozinhas (cancelado_automatico) e voltam
 --                           se o frete voltar. A que o admin cancelou à mão não volta.
--- fin_pagar_conta / fin_desfazer_pagamento  (substituídas) marcam e desmarcam a viagem.
+-- fin_pagar_conta / fin_desfazer_pagamento  (substituídas) marcam e desmarcam a viagem. Travam a viagem antes da
+--                           conta, na mesma ordem do gatilho da viagem (sem impasse entre as duas).
 -- confirmar_pagamento_saida / confirmar_saldo  (substituídas) recusam quando a parcela está no financeiro.
 -- parcelas_no_financeiro / viagem_parcelas    o que o Quadro e a ficha da viagem mostram a quem lê viagens.
 -- v_quadro                  ganha adiantamento_no_financeiro e saldo_no_financeiro no fim.
 
-alter table public.fin_pagar add column cancelado_automatico boolean not null default false;
+-- ---------------------------------------------------------------------------
+-- Interruptor da virada
+-- ---------------------------------------------------------------------------
+create table public.fin_config (
+  id smallint primary key default 1,
+  parcelas_frete_ativas boolean not null default false,
+  parcelas_frete_mudado_em timestamptz,
+  parcelas_frete_mudado_por uuid references auth.users (id) on delete set null,
+  constraint fin_config_uma_linha check (id = 1)
+);
 
--- Corte: só as viagens contratadas daqui em diante têm o pagamento pelo financeiro. As que já existiam ficam com a
--- confirmação manual no Quadro (sem parcelas retroativas, que encheriam o contas a pagar de viagens antigas).
+comment on table public.fin_config is
+  'Configuração do financeiro (uma linha). parcelas_frete_ativas: viagens novas têm o adiantamento e o saldo no contas a pagar.';
+
+insert into public.fin_config (id) values (1);
+
+revoke insert, update, delete, truncate, references, trigger on public.fin_config from authenticated;
+revoke select, insert, update, delete, truncate, references, trigger on public.fin_config from anon;
+grant select on public.fin_config to authenticated;
+
+alter table public.fin_config enable row level security;
+
+create policy fin_config_ver on public.fin_config
+  for select to authenticated using ((select public.pode_ler()));
+
+select public.auditar('public.fin_config');
+
+create function public.fin_definir_parcelas_frete(p_ativo boolean)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.eh_admin() then
+    raise exception 'Só o administrador liga ou desliga o pagamento do frete pelo financeiro.' using errcode = '42501';
+  end if;
+  update public.fin_config
+     set parcelas_frete_ativas = coalesce(p_ativo, false), parcelas_frete_mudado_em = now(),
+         parcelas_frete_mudado_por = auth.uid()
+   where id = 1;
+end $$;
+
+revoke execute on function public.fin_definir_parcelas_frete(boolean) from public, anon;
+grant execute on function public.fin_definir_parcelas_frete(boolean) to authenticated;
+
 alter table public.viagem add column pagamento_pelo_financeiro boolean not null default false;
-alter table public.viagem alter column pagamento_pelo_financeiro set default true;
 
 comment on column public.viagem.pagamento_pelo_financeiro is
-  'Viagem contratada depois do contas a pagar (migration 20261101000300): o adiantamento e o saldo são contas a pagar.';
+  'Viagem contratada com o interruptor fin_config.parcelas_frete_ativas ligado: o adiantamento e o saldo são contas a pagar.';
 
-comment on column public.fin_pagar.cancelado_automatico is
-  'Parcela do frete cancelada pelo NILT (viagem cancelada, sem frete, frota própria): volta se a causa sumir.';
+create function public.fn_viagem_pagamento_financeiro()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  new.pagamento_pelo_financeiro := coalesce((select c.parcelas_frete_ativas from public.fin_config c where c.id = 1), false);
+  return new;
+end $$;
+
+revoke execute on function public.fn_viagem_pagamento_financeiro() from public, anon, authenticated;
+
+create trigger trg_viagem_pagamento_financeiro
+  before insert on public.viagem
+  for each row execute function public.fn_viagem_pagamento_financeiro();
 
 -- ---------------------------------------------------------------------------
 -- Sincronizar as parcelas com a viagem
@@ -46,15 +110,23 @@ declare
   fr jsonb;
   v_total numeric;
   v_pedagio numeric;
+  v_base numeric;
+  v_retencao numeric := 0;
+  v_devido numeric;
   v_motivo text;
   v_hoje date := public.hoje_brasilia();
   v_fav uuid;
   v_fav_nome text;
-  v_adiantamento numeric;
+  a public.fin_pagar%rowtype;
+  s public.fin_pagar%rowtype;
   c public.fin_pagar%rowtype;
   t text;
+  v_valor_a numeric;
+  v_ped_a numeric;
+  v_valor_s numeric;
   v_valor numeric;
   v_ped numeric;
+  v_ret numeric;
 begin
   select * into v from public.viagem where id = p_viagem;
   if not found or not v.pagamento_pelo_financeiro then
@@ -76,40 +148,96 @@ begin
     return;
   end if;
 
-  select coalesce(cav.proprietario_documento_id, v.motorista_id) into v_fav from public.veiculo cav where cav.id = v.cavalo_id;
+  v_fav := coalesce((select cav.proprietario_documento_id from public.veiculo cav where cav.id = v.cavalo_id), v.motorista_id);
   select p.nome into v_fav_nome from public.pessoa p where p.id = v_fav;
-  v_adiantamento := round(v_total * 0.70, 2);
+
+  -- Autônomo pessoa física: retenções sobre 20% do frete, arredondadas uma a uma (como em fiscal_retencoes).
+  if coalesce((fr ->> 'contratado_pf')::boolean, false) then
+    v_base := round(v_total * 0.2, 2);
+    v_retencao := round(v_base * 0.11, 2) + round(v_base * 0.015, 2) + round(v_base * 0.01, 2);
+  end if;
+  v_devido := v_total + v_pedagio - v_retencao;
+
+  select * into a from public.fin_pagar where viagem_id = p_viagem and origem = 'frete_adiantamento' for update;
+  select * into s from public.fin_pagar where viagem_id = p_viagem and origem = 'frete_saldo' for update;
+
+  if a.pago_em is not null and s.pago_em is not null then
+    if a.valor + s.valor <> v_devido then
+      raise exception 'O frete da viagem % ficou diferente do que já foi pago ao motorista (%). Para mudar, o administrador desfaz um dos pagamentos no Contas a pagar.',
+        v.numero, public.reais_texto(a.valor + s.valor);
+    end if;
+    return;
+  elsif a.pago_em is not null then
+    -- adiantamento pago: o saldo é o que falta
+    v_valor_a := a.valor;
+    v_ped_a := a.parte_pedagio;
+    v_valor_s := v_devido - a.valor;
+  elsif s.pago_em is not null then
+    -- saldo pago antes (antecipação): o adiantamento é o que falta
+    v_valor_s := s.valor;
+    v_valor_a := v_devido - s.valor;
+    v_ped_a := least(v_pedagio, greatest(v_valor_a, 0));
+  else
+    v_valor_a := round(v_total * 0.70, 2) + v_pedagio;
+    v_ped_a := v_pedagio;
+    v_valor_s := v_devido - v_valor_a;
+  end if;
+
+  if v_valor_a < 0 or v_valor_s < 0 then
+    raise exception 'O frete da viagem % ficou menor que o já pago ao motorista (%). Para diminuir, o administrador desfaz o pagamento no Contas a pagar.',
+      v.numero, public.reais_texto(case when a.pago_em is not null then a.valor else s.valor end);
+  end if;
 
   foreach t in array array['frete_adiantamento', 'frete_saldo'] loop
-    v_valor := case when t = 'frete_adiantamento' then v_adiantamento + v_pedagio else v_total - v_adiantamento end;
-    v_ped := case when t = 'frete_adiantamento' then v_pedagio else 0 end;
-    select * into c from public.fin_pagar where viagem_id = p_viagem and origem = t for update;
+    if t = 'frete_adiantamento' then
+      c := a;
+      v_valor := v_valor_a;
+      v_ped := v_ped_a;
+      v_ret := 0;
+    else
+      c := s;
+      v_valor := v_valor_s;
+      v_ped := 0;
+      v_ret := v_retencao;
+    end if;
 
-    if not found then
-      insert into public.fin_pagar (origem, viagem_id, descricao, favorecido_id, favorecido_nome, plano_id, centro_custo_id,
-                                    forma, vencimento, valor, parte_pedagio, lancado_por)
-      values (t, p_viagem,
-              case when t = 'frete_adiantamento' then format('Adiantamento (70%% + pedágio) da viagem %s', v.numero)
-                   else format('Saldo (30%%) da viagem %s', v.numero) end,
-              v_fav, coalesce(v_fav_nome, format('Motorista da viagem %s', v.numero)), 20,
-              (select id from public.centro_custo where codigo = '03.08'), 'cartao_frete',
-              case when t = 'frete_adiantamento' then v_hoje else v_hoje + 3 end,
-              v_valor, v_ped, auth.uid());
-    elsif c.pago_em is null and (c.cancelado_em is null or c.cancelado_automatico) then
-      if c.cancelado_em is not null
-         or (c.valor, c.parte_pedagio, c.favorecido_id) is distinct from (v_valor, v_ped, v_fav) then
-        -- reaberta ou com valor/favorecido novo: precisa de aprovação de novo, e quem mudou a viagem não aprova
-        update public.fin_pagar
-           set valor = v_valor, parte_pedagio = v_ped, favorecido_id = v_fav,
-               favorecido_nome = coalesce(v_fav_nome, favorecido_nome),
-               cancelado_em = null, cancelado_por = null, cancelamento_motivo = null, cancelado_automatico = false,
-               aprovado_em = null, aprovado_por = null, editado_por = auth.uid()
-         where id = c.id;
+    if c.id is null then
+      if v_valor > 0 then
+        insert into public.fin_pagar (origem, viagem_id, descricao, favorecido_id, favorecido_nome, plano_id, centro_custo_id,
+                                      forma, vencimento, valor, parte_pedagio, parte_retencao, lancado_por)
+        values (t, p_viagem,
+                case when t = 'frete_adiantamento' then format('Adiantamento (70%% + pedágio) da viagem %s', v.numero)
+                     else format('Saldo (30%%) da viagem %s', v.numero) end,
+                v_fav, coalesce(v_fav_nome, format('Motorista da viagem %s', v.numero)), 20,
+                (select id from public.centro_custo where codigo = '03.08'), 'cartao_frete',
+                case when t = 'frete_adiantamento' then v_hoje else v_hoje + 3 end,
+                v_valor, v_ped, v_ret, auth.uid());
       end if;
-      if p_embarcou_agora then
-        update public.fin_pagar
-           set vencimento = case when t = 'frete_adiantamento' then v_hoje else v_hoje + 3 end
-         where id = c.id;
+    elsif c.pago_em is null and (c.cancelado_em is null or c.cancelado_automatico) then
+      if v_valor = 0 then
+        -- o que já foi pago cobre o frete: cancela sozinha (volta se o frete aumentar)
+        if c.cancelado_em is null then
+          update public.fin_pagar
+             set cancelado_em = now(), cancelado_por = auth.uid(), cancelado_automatico = true,
+                 cancelamento_motivo = 'O que já foi pago ao motorista cobre o frete.'
+           where id = c.id;
+        end if;
+      else
+        if c.cancelado_em is not null
+           or (c.valor, c.parte_pedagio, c.parte_retencao, c.favorecido_id) is distinct from (v_valor, v_ped, v_ret, v_fav) then
+          -- reaberta ou com valor/favorecido novo: precisa de aprovação de novo, e quem mudou a viagem não aprova
+          update public.fin_pagar
+             set valor = v_valor, parte_pedagio = v_ped, parte_retencao = v_ret, favorecido_id = v_fav,
+                 favorecido_nome = coalesce(v_fav_nome, favorecido_nome),
+                 cancelado_em = null, cancelado_por = null, cancelamento_motivo = null, cancelado_automatico = false,
+                 aprovado_em = null, aprovado_por = null, editado_por = auth.uid()
+           where id = c.id;
+        end if;
+        if p_embarcou_agora then
+          update public.fin_pagar
+             set vencimento = case when t = 'frete_adiantamento' then v_hoje else v_hoje + 3 end
+           where id = c.id;
+        end if;
       end if;
     end if;
   end loop;
@@ -134,7 +262,7 @@ revoke execute on function public.fn_viagem_parcelas() from public, anon, authen
 
 create trigger trg_viagem_parcelas
   after insert or update of frete_motorista_valor, frete_motorista_tipo, pedagio_valor, peso_previsto_kg, peso_saida_kg,
-                            cavalo_id, cancelada_em
+                            cavalo_id, motorista_id, cancelada_em
   on public.viagem
   for each row execute function public.fn_viagem_parcelas();
 
@@ -154,6 +282,8 @@ begin
   if not public.pode_financeiro() then
     raise exception 'Só o administrador e o financeiro pagam contas.' using errcode = '42501';
   end if;
+  -- trava a viagem antes da conta: a mesma ordem do gatilho da viagem (que trava a viagem e depois as parcelas)
+  select vi.* into v from public.viagem vi where vi.id = (select p.viagem_id from public.fin_pagar p where p.id = p_id) for update;
   select * into c from public.fin_pagar where id = p_id for update;
   if not found then
     raise exception 'Conta não encontrada. Atualize a página.' using errcode = 'P0002';
@@ -178,7 +308,6 @@ begin
   end if;
 
   if c.viagem_id is not null then
-    select * into v from public.viagem where id = c.viagem_id for update;
     if v.cancelada_em is not null then
       raise exception 'A viagem % foi cancelada: cancele esta conta em vez de pagar.', v.numero;
     end if;
@@ -221,6 +350,8 @@ begin
   if not public.eh_admin() then
     raise exception 'Só o administrador desfaz um pagamento.' using errcode = '42501';
   end if;
+  -- trava a viagem antes da conta (mesma ordem do gatilho da viagem)
+  select vi.* into v from public.viagem vi where vi.id = (select p.viagem_id from public.fin_pagar p where p.id = p_id) for update;
   select * into c from public.fin_pagar where id = p_id for update;
   if not found then
     raise exception 'Conta não encontrada. Atualize a página.' using errcode = 'P0002';
@@ -230,7 +361,6 @@ begin
   end if;
 
   if c.viagem_id is not null then
-    select * into v from public.viagem where id = c.viagem_id for update;
     if c.origem = 'frete_adiantamento' then
       select pa.coluna_origem into v_origem_pausa
       from public.viagem_pausa pa where pa.viagem_id = v.id and pa.fim is null;
@@ -276,6 +406,7 @@ as $$
             where p.viagem_id = p_viagem and p.origem = 'frete_adiantamento' and p.cancelado_em is null),
     exists (select 1 from public.fin_pagar p
             where p.viagem_id = p_viagem and p.origem = 'frete_saldo' and p.cancelado_em is null)
+  where (select public.pode_ler())
 $$;
 
 revoke execute on function public.parcelas_no_financeiro(uuid) from public, anon;
@@ -287,6 +418,7 @@ returns table (
   numero bigint,
   valor numeric,
   parte_pedagio numeric,
+  parte_retencao numeric,
   vencimento date,
   situacao text,
   pago_em date,
@@ -297,7 +429,7 @@ stable
 security definer
 set search_path = ''
 as $$
-  select p.origem, p.numero, p.valor, p.parte_pedagio, p.vencimento, p.situacao, p.pago_em,
+  select p.origem, p.numero, p.valor, p.parte_pedagio, p.parte_retencao, p.vencimento, p.situacao, p.pago_em,
          p.antecipacao_liberada_em is not null
   from public.v_fin_pagar p
   where p.viagem_id = p_viagem

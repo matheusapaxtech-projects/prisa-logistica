@@ -391,6 +391,28 @@ export type Database = {
           },
         ]
       }
+      fin_config: {
+        Row: {
+          id: number
+          parcelas_frete_ativas: boolean
+          parcelas_frete_mudado_em: string | null
+          parcelas_frete_mudado_por: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          id?: number
+          parcelas_frete_ativas?: boolean
+          parcelas_frete_mudado_em?: string | null
+          parcelas_frete_mudado_por?: string | null
+        }
+        Update: {
+          id?: number
+          parcelas_frete_ativas?: boolean
+          parcelas_frete_mudado_em?: string | null
+          parcelas_frete_mudado_por?: string | null
+        }
+        Relationships: []
+      }
       fin_conta: {
         Row: {
           agencia: string
@@ -578,6 +600,7 @@ export type Database = {
           pago_por: string | null
           pago_registrado_em: string | null
           parte_pedagio: number
+          parte_retencao: number
           plano_id: number
           updated_at: string
           updated_by: string | null
@@ -614,6 +637,7 @@ export type Database = {
           pago_por?: string | null
           pago_registrado_em?: string | null
           parte_pedagio?: number
+          parte_retencao?: number
           plano_id: number
           updated_at?: string
           updated_by?: string | null
@@ -649,6 +673,7 @@ export type Database = {
           pago_por?: string | null
           pago_registrado_em?: string | null
           parte_pedagio?: number
+          parte_retencao?: number
           plano_id?: number
           updated_at?: string
           updated_by?: string | null
@@ -2959,6 +2984,7 @@ export type Database = {
           antecipacao_motivo: string | null
           aprovado_em: string | null
           aprovado_por: string | null
+          cancelado_automatico: boolean
           cancelado_em: string | null
           cancelado_por: string | null
           cancelamento_motivo: string | null
@@ -2982,6 +3008,7 @@ export type Database = {
           pago_por: string | null
           pago_registrado_em: string | null
           parte_pedagio: number
+          parte_retencao: number
           plano_grupo: Database["public"]["Enums"]["fin_grupo_plano"]
           plano_id: number
           plano_nome: string
@@ -3413,7 +3440,10 @@ export type Database = {
         Returns: boolean
       }
       faixa_margem: { Args: { p: number }; Returns: string }
-      fin_aprovar_pagar: { Args: { p_id: string }; Returns: undefined }
+      fin_aprovar_pagar: {
+        Args: { p_id: string; p_versao?: string }
+        Returns: undefined
+      }
       fin_cancelar_pagar: {
         Args: { p_id: string; p_motivo: string }
         Returns: undefined
@@ -3452,6 +3482,10 @@ export type Database = {
       }
       fin_conferir_classificacao: {
         Args: { p_centro: number; p_plano: number; p_saida: boolean }
+        Returns: undefined
+      }
+      fin_definir_parcelas_frete: {
+        Args: { p_ativo: boolean }
         Returns: undefined
       }
       fin_desaprovar_pagar: { Args: { p_id: string }; Returns: undefined }
@@ -3677,6 +3711,7 @@ export type Database = {
           origem: string
           pago_em: string
           parte_pedagio: number
+          parte_retencao: number
           situacao: string
           valor: number
           vencimento: string

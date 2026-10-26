@@ -17,14 +17,16 @@ begin
   return v_id;
 end $$;
 
--- Cliente, motorista PF dono do cavalo, conjunto e pedido. p_unidade = unidade operacional do cavalo (2 = frota própria).
-create function tests.cenario(p_unidade smallint default null)
+-- Cliente, motorista PF dono do cavalo, conjunto e pedido. p_unidade = unidade operacional do cavalo (2 = frota própria);
+-- p_ligado = interruptor das parcelas do frete (fin_config), ligado por padrão nos testes.
+create function tests.cenario(p_unidade smallint default null, p_ligado boolean default true)
 returns table (cliente uuid, motorista uuid, cavalo uuid, conjunto uuid, pedido uuid)
 language plpgsql as $$
 declare
   v_coleta uuid;
   v_descarga uuid;
 begin
+  update public.fin_config set parcelas_frete_ativas = p_ligado where id = 1;
   insert into public.pessoa (tipo, nome, cnpj, situacao_cadastro)
   values ('pj', 'Cliente Teste', '11222333000181', 'normal') returning id into cliente;
   insert into public.cliente (pessoa_id) values (cliente);
@@ -88,7 +90,8 @@ begin
   s := tests.parcela(v, 'frete_saldo');
   return next is(a.valor, 7500.00, 'adiantamento = 70% do frete + pedágio');
   return next is(a.parte_pedagio, 500.00, 'o pedágio fica marcado no adiantamento');
-  return next is(s.valor, 3000.00, 'saldo = 30% do frete');
+  return next is(s.valor, 2730.00, 'saldo = 30% do frete menos as retenções do autônomo PF');
+  return next is(s.parte_retencao, 270.00, 'retenções: INSS 220 + SEST 30 + SENAT 20 (sobre 20% do frete)');
   return next is(a.lancado_por, op, 'lançada em nome de quem contratou');
   return next is((a.forma::text, a.plano_id, (select codigo from public.centro_custo where id = a.centro_custo_id)),
     ('cartao_frete'::text, 20, '03.08'::text), 'cartão-frete, frete de motoristas, centro 03.08');
@@ -106,7 +109,22 @@ begin
   select * into r from tests.cenario();
   v := tests.contratar(op, r, 95, 'por_tonelada', null, 37033);
   return next is((tests.parcela(v, 'frete_adiantamento')).valor, 2462.70, '70% de 3.518,14 arredondado');
-  return next is((tests.parcela(v, 'frete_saldo')).valor, 1055.44, 'saldo fecha a soma no centavo');
+  return next is((tests.parcela(v, 'frete_saldo')).valor, 960.45, 'saldo fecha a soma no centavo (1.055,44 − 94,99 de retenções)');
+end $$;
+
+create function tests.test_sem_retencao_pj() returns setof text language plpgsql as $$
+declare
+  op uuid := tests.criar_usuario('op@exemplo.test', 'operacao');
+  r record;
+  v uuid;
+begin
+  select * into r from tests.cenario();
+  insert into public.proprietario (pessoa_id) values (r.cliente) on conflict do nothing;
+  update public.veiculo set proprietario_documento_id = r.cliente where id = r.cavalo;
+  v := tests.contratar(op, r, 10000);
+  return next is(((tests.parcela(v, 'frete_saldo')).valor, (tests.parcela(v, 'frete_saldo')).parte_retencao), (3000.00, 0.00),
+    'contratado pessoa jurídica: saldo cheio, sem retenção');
+  return next is((tests.parcela(v, 'frete_adiantamento')).favorecido_id, r.cliente, 'favorecido = a empresa dona do cavalo');
 end $$;
 
 create function tests.test_sem_frete_ou_frota_propria() returns setof text language plpgsql as $$
@@ -121,13 +139,41 @@ begin
   update public.veiculo set unidade_operacional_id = 2 where id = r.cavalo;
   update public.viagem set frete_motorista_valor = 5000, frete_motorista_tipo = 'total' where id = v;
   return next is((select count(*)::int from public.fin_pagar where viagem_id = v), 0, 'frota própria não gera parcelas');
-  update public.veiculo set unidade_operacional_id = null where id = r.cavalo;
-  insert into public.viagem (pedido_id, conjunto_id, cavalo_id, motorista_id, peso_previsto_kg,
-                             frete_motorista_valor, frete_motorista_tipo, pagamento_pelo_financeiro)
-  values (r.pedido, r.conjunto, r.cavalo, r.motorista, 37000, 5000, 'total', false) returning id into v;
-  update public.viagem set frete_motorista_valor = 5200 where id = v;
-  return next is((select count(*)::int from public.fin_pagar where viagem_id = v), 0,
-    'viagem de antes do contas a pagar não ganha parcelas');
+end $$;
+
+create function tests.test_interruptor() returns setof text language plpgsql as $$
+declare
+  op uuid := tests.criar_usuario('op@exemplo.test', 'operacao');
+  fin uuid := tests.criar_usuario('fin@exemplo.test', 'financeiro');
+  adm uuid := tests.criar_usuario('adm@exemplo.test', 'admin');
+  r record;
+  v1 uuid;
+  v2 uuid;
+  v3 uuid;
+begin
+  select * into r from tests.cenario(null, false);
+  v1 := tests.contratar(op, r, 10000, 'total', null, 20000);
+  return next is((select (pagamento_pelo_financeiro, (select count(*)::int from public.fin_pagar where viagem_id = v1))
+                  from public.viagem where id = v1)::text, (false, 0)::text,
+    'interruptor desligado: viagem nova sem parcelas (confirmação manual no Quadro)');
+  return next throws_ok(tests.chamar(fin, 'select public.fin_definir_parcelas_frete(true)'), '42501', null,
+    'só o administrador liga o interruptor');
+  perform tests.executar_como(adm, 'select public.fin_definir_parcelas_frete(true)');
+  return next is((select (parcelas_frete_ativas, parcelas_frete_mudado_por) from public.fin_config)::text, (true, adm)::text,
+    'o administrador liga (e fica quem ligou)');
+
+  v2 := tests.contratar(op, r, 10000, 'total', null, 20000);
+  return next is((select count(*)::int from public.fin_pagar where viagem_id = v2), 2, 'ligado: a viagem nova ganha as duas parcelas');
+  perform tests.executar_como(op, format('update public.viagem set frete_motorista_valor = 11000 where id = %L', v1));
+  return next is((select count(*)::int from public.fin_pagar where viagem_id = v1), 0,
+    'a viagem contratada antes de ligar continua sem parcelas');
+
+  perform tests.executar_como(adm, 'select public.fin_definir_parcelas_frete(false)');
+  v3 := tests.contratar(op, r, 10000, 'total', null, 20000);
+  return next is((select count(*)::int from public.fin_pagar where viagem_id = v3), 0, 'desligado de novo: viagem nova sem parcelas');
+  perform tests.executar_como(op, format('update public.viagem set frete_motorista_valor = 12000 where id = %L', v2));
+  return next is((tests.parcela(v2, 'frete_adiantamento')).valor, 8400.00,
+    'a viagem contratada com ele ligado continua no financeiro');
 end $$;
 
 create function tests.test_frete_muda() returns setof text language plpgsql as $$
@@ -141,7 +187,7 @@ begin
   v := tests.contratar(op, r, 10000);
   perform tests.executar_como(op, format('update public.viagem set frete_motorista_valor = 12000 where id = %L', v));
   return next is(((tests.parcela(v, 'frete_adiantamento')).valor, (tests.parcela(v, 'frete_saldo')).valor),
-    (8400.00, 3600.00), 'frete mudou antes de aprovar: parcelas atualizadas');
+    (8400.00, 3276.00), 'frete mudou antes de aprovar: parcelas atualizadas (saldo sem 324 de retenções)');
 
   perform tests.executar_como(fin, format('select public.fin_aprovar_pagar(%L)', (tests.parcela(v, 'frete_adiantamento')).id));
   perform tests.executar_como(op, format('update public.viagem set frete_motorista_valor = 13000 where id = %L', v));
@@ -151,7 +197,40 @@ begin
 
   update public.fin_pagar set aprovado_em = now(), pago_em = tests.hoje() where viagem_id = v and origem = 'frete_saldo';
   perform tests.executar_como(op, format('update public.viagem set frete_motorista_valor = 15000 where id = %L', v));
-  return next is((tests.parcela(v, 'frete_saldo')).valor, 3900.00, 'saldo já pago não muda');
+  return next is((tests.parcela(v, 'frete_saldo')).valor, 3549.00, 'saldo já pago não muda');
+  return next is((tests.parcela(v, 'frete_adiantamento')).valor, 11046.00,
+    'o adiantamento fecha a conta: 15.000 − 405 de retenções − 3.549 já pagos');
+end $$;
+
+create function tests.test_soma_depois_de_pagar() returns setof text language plpgsql as $$
+declare
+  op uuid := tests.criar_usuario('op@exemplo.test', 'operacao');
+  fin uuid := tests.criar_usuario('fin@exemplo.test', 'financeiro');
+  r record;
+  v uuid;
+  a uuid;
+begin
+  select * into r from tests.cenario();
+  v := tests.contratar(op, r, 10000);
+  a := (tests.parcela(v, 'frete_adiantamento')).id;
+  update public.viagem set peso_saida_kg = 37000 where id = v;
+  perform tests.executar_como(fin, format('select public.fin_aprovar_pagar(%L)', a));
+  perform tests.executar_como(fin, format('select public.fin_pagar_conta(%L, %L)', a, tests.hoje()));
+
+  perform tests.executar_como(op, format('update public.viagem set frete_motorista_valor = 8000 where id = %L', v));
+  return next is(((tests.parcela(v, 'frete_adiantamento')).valor, (tests.parcela(v, 'frete_saldo')).valor), (7000.00, 784.00),
+    'adiantamento pago: o saldo vira o que falta (8.000 − 216 de retenções − 7.000 pagos)');
+
+  perform tests.executar_como(op, format('update public.viagem set frete_motorista_valor = 7194.24 where id = %L', v));
+  return next is(((tests.parcela(v, 'frete_saldo')).cancelado_automatico, (tests.parcela(v, 'frete_saldo')).cancelamento_motivo),
+    (true, 'O que já foi pago ao motorista cobre o frete.'::text), 'o já pago cobre o frete: o saldo é cancelado sozinho');
+
+  return next throws_like(tests.chamar(op, format('update public.viagem set frete_motorista_valor = 7000 where id = %L', v)),
+    '%ficou menor que o já pago ao motorista (R$ 7.000,00)%', 'frete menor que o já pago é recusado');
+
+  perform tests.executar_como(op, format('update public.viagem set frete_motorista_valor = 8000 where id = %L', v));
+  return next is(((tests.parcela(v, 'frete_saldo')).cancelado_em, (tests.parcela(v, 'frete_saldo')).valor), (null::timestamptz, 784.00),
+    'o frete voltou a subir: o saldo volta');
 end $$;
 
 create function tests.test_cancelar_viagem() returns setof text language plpgsql as $$
@@ -265,6 +344,21 @@ begin
   update public.viagem set pedagio_valor = 120 where id = v;
   return next ok((tests.parcela(v, 'frete_adiantamento')).cancelado_em is not null,
     'mudar a viagem não reabre a parcela que o admin cancelou');
+end $$;
+
+create function tests.test_confirmar_saldo_recusado() returns setof text language plpgsql as $$
+declare
+  op uuid := tests.criar_usuario('op@exemplo.test', 'operacao');
+  r record;
+  v uuid;
+begin
+  select * into r from tests.cenario();
+  v := tests.contratar(op, r, 10000);
+  update public.viagem set status_campo = 'aguardando_saldo', status_desde = now(), peso_saida_kg = 37000 where id = v;
+  return next throws_ok(tests.chamar(op, format('select public.confirmar_saldo(%L)', v)), null,
+    format('O saldo da viagem %s é pago pelo financeiro (Contas a pagar): a viagem fica paga sozinha quando ele pagar.',
+           (select numero from public.viagem where id = v)),
+    'com o saldo no financeiro, a confirmação manual do saldo é recusada');
 end $$;
 
 create function tests.test_operacao_ve_as_parcelas() returns setof text language plpgsql as $$

@@ -6,7 +6,8 @@
 -- teste como quem lançou/aprovou/pagou. Datas relativas a hoje (Brasília), para a semente não envelhecer.
 --
 -- Ids fixos (para a limpeza): conta bancária ...1501; contas a pagar manuais ...1601 a ...1610; contas a
--- receber ...1701 a ...1706. As parcelas do frete nascem sozinhas quando o frete é gravado nas viagens da seed.
+-- receber ...1701 a ...1706. O interruptor das parcelas do frete fica ligado aqui (em produção nasce desligado e o
+-- admin liga na tela); as parcelas nascem sozinhas quando o frete é gravado nas viagens da seed.
 -- Favorecidos e clientes são fictícios.
 
 do $$
@@ -56,6 +57,13 @@ begin
 
   -- Frete do motorista nas viagens da seed (já começadas). A trava "frete só muda na viagem planejada" fica
   -- desligada só durante esta carga; as parcelas 70/30 nascem pela mesma função do gatilho da viagem.
+  update public.fin_config
+     set parcelas_frete_ativas = true, parcelas_frete_mudado_em = now(), parcelas_frete_mudado_por = v_admin
+   where id = 1;
+  update public.viagem set pagamento_pelo_financeiro = true
+   where id in ('00000000-0000-4000-8000-000000001204', '00000000-0000-4000-8000-000000001205',
+                '00000000-0000-4000-8000-000000001207', '00000000-0000-4000-8000-000000001208',
+                '00000000-0000-4000-8000-000000001209');
   alter table public.viagem disable trigger frete_so_planejada;
   update public.viagem set frete_motorista_valor = 96, frete_motorista_tipo = 'por_tonelada', pedagio_valor = 418.60
    where id in ('00000000-0000-4000-8000-000000001204', '00000000-0000-4000-8000-000000001205',

@@ -116,6 +116,7 @@ create table public.fin_pagar (
   vencimento date not null,
   valor numeric(14, 2) not null,
   parte_pedagio numeric(14, 2) not null default 0,
+  parte_retencao numeric(14, 2) not null default 0,
   observacao text,
   viagem_id uuid references public.viagem (id) on delete restrict,
   competencia date,
@@ -133,6 +134,7 @@ create table public.fin_pagar (
   cancelado_em timestamptz,
   cancelado_por uuid,
   cancelamento_motivo text,
+  cancelado_automatico boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   updated_by uuid,
@@ -141,6 +143,7 @@ create table public.fin_pagar (
   constraint fin_pagar_favorecido check (length(btrim(favorecido_nome)) between 1 and 160),
   constraint fin_pagar_valor check (valor > 0 and valor < 1000000000),
   constraint fin_pagar_pedagio check (parte_pedagio >= 0 and parte_pedagio <= valor),
+  constraint fin_pagar_retencao check (parte_retencao >= 0 and (parte_retencao = 0 or origem = 'frete_saldo')),
   constraint fin_pagar_observacao check (observacao is null or length(observacao) <= 500),
   constraint fin_pagar_viagem check ((origem in ('frete_adiantamento', 'frete_saldo')) = (viagem_id is not null)),
   constraint fin_pagar_competencia check ((origem = 'taxa_cartao') = (competencia is not null)),
@@ -154,6 +157,10 @@ create table public.fin_pagar (
 
 comment on table public.fin_pagar is
   'Contas a pagar. Quem lança não aprova; sem aprovação o pagamento é recusado; sem exclusão (cancela).';
+comment on column public.fin_pagar.parte_retencao is
+  'Saldo do frete de autônomo PF: INSS + SEST + SENAT retidos (já descontados do valor; recolhidos na guia do mês). Migration 0300.';
+comment on column public.fin_pagar.cancelado_automatico is
+  'Parcela do frete cancelada pelo NILT (viagem cancelada, sem frete, frota própria, já coberta pela outra): volta se a causa sumir.';
 
 create unique index fin_pagar_viagem_origem_uq on public.fin_pagar (viagem_id, origem) where viagem_id is not null;
 create unique index fin_pagar_taxa_uq on public.fin_pagar (competencia) where origem = 'taxa_cartao';
@@ -258,8 +265,8 @@ select
   case
     when p.cancelado_em is not null then 'cancelada'
     when p.pago_em is not null then 'paga'
-    when p.vencimento < public.hoje_brasilia() then 'vencida'
     when p.aprovado_em is null then 'falta_aprovar'
+    when p.vencimento < public.hoje_brasilia() then 'vencida'
     else 'a_vencer'
   end as situacao
 from public.fin_pagar p
@@ -273,7 +280,9 @@ grant select on public.v_fin_pagar to authenticated;
 -- ---------------------------------------------------------------------------
 -- Aprovar e desfazer a aprovação
 -- ---------------------------------------------------------------------------
-create function public.fin_aprovar_pagar(p_id uuid)
+-- p_versao = updated_at da conta que a tela mostrou: se a conta mudou depois (valor, favorecido, vencimento…), recusa,
+-- para ninguém aprovar um valor que não viu. Sem versão (chamada interna), não confere.
+create function public.fin_aprovar_pagar(p_id uuid, p_versao timestamptz default null)
 returns void
 language plpgsql
 security definer
@@ -299,6 +308,9 @@ begin
   if c.aprovado_em is not null then
     raise exception 'Esta conta já está aprovada.';
   end if;
+  if p_versao is not null and c.updated_at is distinct from p_versao then
+    raise exception 'A conta mudou desde que você abriu a página. Atualize e confira o valor antes de aprovar.';
+  end if;
   if v_uid = c.lancado_por then
     raise exception 'Quem lançou a conta não pode aprová-la: peça a outra pessoa do financeiro ou ao administrador.';
   end if;
@@ -308,8 +320,8 @@ begin
   update public.fin_pagar set aprovado_por = v_uid, aprovado_em = now() where id = p_id;
 end $$;
 
-revoke execute on function public.fin_aprovar_pagar(uuid) from public, anon;
-grant execute on function public.fin_aprovar_pagar(uuid) to authenticated;
+revoke execute on function public.fin_aprovar_pagar(uuid, timestamptz) from public, anon;
+grant execute on function public.fin_aprovar_pagar(uuid, timestamptz) to authenticated;
 
 create function public.fin_desaprovar_pagar(p_id uuid)
 returns void
