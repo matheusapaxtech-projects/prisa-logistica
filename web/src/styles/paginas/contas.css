@@ -89,3 +89,34 @@ dialog.dlg-conta { width: min(640px, calc(100vw - 32px)); }
   .contas .contas-seg { margin-left: 0; width: 100%; overflow-x: auto; }
   .contas .contas-taxa > .btn { margin-left: 0; }
 }
+
+/* ---------- contas a receber: coluna "Antecipar" e simulador de antecipação ---------- */
+.fin.contas .tabela .contas-marcar { width: 76px; padding-right: 12px; text-align: left; }
+.contas .contas-marcar input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--verde); cursor: pointer; }
+.contas .contas-marcar input:disabled { cursor: not-allowed; opacity: 0.4; }
+.contas .contas-marcar input:focus-visible { outline: 2px solid var(--verde); outline-offset: 2px; }
+
+/* painel colado no pé da janela (desktop) enquanto houver título marcado; no celular fica abaixo da lista */
+.contas .contas-simulador {
+  position: sticky; bottom: 12px; z-index: 5; margin-top: 16px; padding: 16px 18px; display: grid; gap: 14px;
+  border: 1px solid var(--painel-borda); border-radius: var(--radius-painel); background: var(--sheet); box-shadow: var(--sombra-flutua);
+  max-height: calc(100vh - 24px); overflow-y: auto;
+}
+.contas .contas-sim-topo { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; }
+.contas .contas-sim-topo h2 { margin: 0; font-size: 16px; font-weight: 600; line-height: 22px; }
+.contas .contas-sim-qtd { color: var(--muted); font-size: 13px; }
+.contas .contas-sim-topo .btn { margin-left: auto; }
+.contas .contas-sim-params { display: grid; grid-template-columns: repeat(2, minmax(0, 200px)); gap: 12px var(--gap); }
+.contas .contas-sim-tabela { min-width: 560px; font-variant-numeric: tabular-nums; }
+.contas .contas-sim-tabela td { padding-top: 8px; padding-bottom: 8px; }
+.contas .contas-sim-tabela td.num, .contas .contas-sim-tabela th.num { white-space: nowrap; }
+.contas .contas-sim-totais { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px var(--gap); margin: 0; font-variant-numeric: tabular-nums; }
+.contas .contas-sim-totais dt { color: var(--muted); font-size: 12.5px; line-height: 16px; }
+.contas .contas-sim-totais dd { margin: 2px 0 0; font-size: 16px; font-weight: 600; line-height: 22px; }
+.contas .contas-simulador > .nota { margin: 0; }
+
+@media (max-width: 640px) {
+  .contas .contas-simulador { position: static; max-height: none; box-shadow: none; padding: 14px; }
+  .contas .contas-sim-params { grid-template-columns: 1fr; }
+  .contas .contas-sim-topo .btn { margin-left: 0; }
+}
