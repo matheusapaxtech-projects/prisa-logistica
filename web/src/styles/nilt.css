@@ -134,12 +134,8 @@ td.num, th.num { text-align: right; }
 }
 .marca { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; }
 .marca:hover { text-decoration: none; }
-.marca-sinal {
-  width: 38px; height: 38px; flex: none; border-radius: 11px;
-  background: var(--noite); display: grid; place-items: center;
-  box-shadow: var(--sombra-cartao);
-}
-.marca-sinal svg { width: 19px; height: 19px; }
+/* a placa verde da marca (components/Logo.tsx); o desenho já traz fundo e cantos */
+.marca-sinal { width: 38px; height: 38px; flex: none; display: block; border-radius: 7px; box-shadow: var(--sombra-cartao); }
 .marca-nome { font-size: 21px; font-weight: 600; letter-spacing: -0.01em; }
 
 /* seções em pílulas: a pílula preta desliza até o item atual */
