@@ -45,6 +45,7 @@ export type LinhaProprietario = {
   veic: ContagemVeiculos;
   responsavel: { nome: string | null; telefone: string | null; whatsapp: boolean } | null;
   tambemMotorista: boolean;
+  agregado: boolean;
 };
 
 export type ListaProprietarios = { linhas: LinhaProprietario[]; arrendadosTotal: number };
@@ -54,7 +55,7 @@ export async function listarProprietarios(db: Banco): Promise<ListaProprietarios
     db
       .from("proprietario")
       .select(
-        "pessoa_id, situacao_cadastro, rntrc, enquadramento_antt, rntrc_validade, responsavel_nome, responsavel_telefone, responsavel_whatsapp, pessoa(tipo, nome, nome_fantasia, apelido, cpf, cnpj)",
+        "pessoa_id, situacao_cadastro, agregado, rntrc, enquadramento_antt, rntrc_validade, responsavel_nome, responsavel_telefone, responsavel_whatsapp, pessoa(tipo, nome, nome_fantasia, apelido, cpf, cnpj)",
       ),
     db.from("veiculo").select("proprietario_posse_id, proprietario_documento_id, arrendado"),
     db.from("motorista").select("pessoa_id"),
@@ -88,6 +89,7 @@ export async function listarProprietarios(db: Banco): Promise<ListaProprietarios
         veic: contagem(p.pessoa_id),
         responsavel: pe.tipo === "pj" ? { nome: p.responsavel_nome, telefone: p.responsavel_telefone, whatsapp: !!p.responsavel_whatsapp } : null,
         tambemMotorista: motoristas.has(p.pessoa_id),
+        agregado: p.agregado,
       };
     })
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));

@@ -1505,6 +1505,8 @@ export type Database = {
       }
       proprietario: {
         Row: {
+          agregado: boolean
+          agregado_desde: string | null
           alto_desempenho: boolean
           autoriza_desconto_inss: Database["public"]["Enums"]["desconto_inss"]
           created_at: string
@@ -1536,6 +1538,8 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          agregado?: boolean
+          agregado_desde?: string | null
           alto_desempenho?: boolean
           autoriza_desconto_inss?: Database["public"]["Enums"]["desconto_inss"]
           created_at?: string
@@ -1567,6 +1571,8 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          agregado?: boolean
+          agregado_desde?: string | null
           alto_desempenho?: boolean
           autoriza_desconto_inss?: Database["public"]["Enums"]["desconto_inss"]
           created_at?: string
