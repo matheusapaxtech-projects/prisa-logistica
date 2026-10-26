@@ -15,12 +15,13 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(TAREFA_POSICAO,
   const ultima = data.locations.reduce((a, b) => (b.timestamp > a.timestamp ? b : a));
   const { data: s } = await supabase.auth.getSession();
   if (!s.session) return;
-  await supabase.rpc("registrar_posicao", {
+  const { error: erroEnvio } = await supabase.rpc("registrar_posicao", {
     p_latitude: Number(ultima.coords.latitude.toFixed(6)),
     p_longitude: Number(ultima.coords.longitude.toFixed(6)),
     p_precisao_m: ultima.coords.accuracy ?? undefined,
     p_em: new Date(ultima.timestamp).toISOString(),
   });
+  if (erroEnvio) console.warn("posição não enviada:", erroEnvio.message);
 });
 
 export type EstadoLocalizacao = "ativa" | "sem_permissao" | "so_com_app_aberto" | "gps_desligado" | "indisponivel";
@@ -45,13 +46,13 @@ export async function ativarLocalizacao(): Promise<EstadoLocalizacao> {
   return "ativa";
 }
 
-/** Liga o serviço se as permissões já existem (ao abrir o app). */
+/** Liga o serviço (ou atualiza as opções) se as permissões já existem; roda ao abrir o app. */
 export async function ligarEnvio(): Promise<void> {
   if ((await Location.getBackgroundPermissionsAsync()).status !== "granted") return;
-  if (await Location.hasStartedLocationUpdatesAsync(TAREFA_POSICAO)) return;
+  // Chamar de novo com o serviço ligado só troca as opções (ex.: depois de uma atualização do app).
   await Location.startLocationUpdatesAsync(TAREFA_POSICAO, {
-    accuracy: Location.Accuracy.Balanced,
-    // Economia de bateria: a cada 1 km rodado ou 10 min, o que vier antes.
+    // GPS (na estrada a rede de celular falha), ligado só a cada 1 km rodado ou 10 min: economia de bateria.
+    accuracy: Location.Accuracy.High,
     distanceInterval: 1000,
     timeInterval: 10 * 60 * 1000,
     deferredUpdatesInterval: 10 * 60 * 1000,
