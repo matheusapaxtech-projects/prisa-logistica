@@ -22,19 +22,68 @@
 .ped .local-detalhe { font-size: 12px; color: var(--muted); line-height: 16px; }
 
 /* ---------- ficha ---------- */
-.ped .resumo-pedido { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 24px; align-items: start; }
-.ped .resumo-pedido .kv dd .linha2 { display: block; font-size: 13px; color: var(--muted); line-height: 18px; }
-.ped .saldo {
-  display: grid; gap: 12px; padding: 16px 18px;
-  border: 1px solid var(--border); border-radius: var(--radius-card);
+/* Duas colunas: a rota e as partes à esquerda; o saldo e a observação à direita. */
+.ped .ficha-ped { grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); gap: 24px; margin-bottom: 32px; }
+.ped .ficha-ped .coluna { display: grid; gap: 24px; align-content: start; min-width: 0; }
+.ped .ficha-ped .linha2 { display: block; font-size: 13px; line-height: 18px; color: var(--muted); }
+
+/* rota desenhada como a estrada: cidade de coleta, a pista com o prazo, cidade de descarga */
+.ped .rota-ped { padding: 26px 26px 0; }
+.ped .rota { display: grid; grid-template-columns: minmax(0, 1fr) minmax(96px, 0.7fr) minmax(0, 1fr); align-items: start; gap: 20px; }
+.ped .ponta { display: grid; gap: 4px; min-width: 0; }
+.ped .ponta.destino { text-align: right; justify-items: end; }
+.ped .ponta .cidade { font-size: 30px; line-height: 36px; font-weight: 600; letter-spacing: -0.02em; text-wrap: balance; }
+.ped .ponta .cidade .uf { font-weight: 400; color: var(--muted); }
+.ped .ponta .quando { font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.ped .ponta .end { font-size: 13px; line-height: 18px; color: var(--muted); }
+.ped .estrada { position: relative; display: grid; justify-items: center; gap: 6px; padding-top: 6px; }
+.ped .estrada .prazo { font-size: 12px; line-height: 16px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ped .estrada:not(:has(.prazo)) { padding-top: 28px; }
+/* asfalto noite com a faixa central tracejada; um círculo vazado na saída e um cheio na chegada */
+.ped .estrada .pista { position: relative; display: block; width: 100%; height: 10px; border-radius: 999px; background: var(--noite); }
+.ped .estrada .faixa {
+  position: absolute; inset: 4px 16px; border-radius: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.85) 0 8px, transparent 8px 14px) left center / 14px 2px repeat-x;
 }
-.ped .saldo .rotulo { color: var(--muted); }
-.ped .saldo .kpi { font-size: 28px; font-weight: 700; line-height: 32px; font-variant-numeric: tabular-nums; }
-.ped .saldo .trilho { height: 8px; border-radius: 4px; background: var(--raised); overflow: hidden; }
-.ped .saldo .trilho i { display: block; height: 100%; background: var(--verde); }
-.ped .saldo .linhas { display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 4px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.ped .saldo .linhas b { color: var(--ink); font-weight: 600; text-align: right; }
-.ped .observacao { white-space: pre-line; }
+.ped .estrada .pista::before, .ped .estrada .pista::after {
+  content: ""; position: absolute; top: 50%; width: 18px; height: 18px; margin-top: -9px; border-radius: 50%;
+  box-sizing: border-box; border: 3px solid var(--noite); box-shadow: 0 0 0 3px var(--sheet);
+}
+.ped .estrada .pista::before { left: -4px; background: var(--sheet); }
+.ped .estrada .pista::after { right: -4px; background: var(--noite); }
+
+/* a carga, numa faixa embaixo da rota */
+.ped .carga { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1.2fr); margin: 24px -26px 0; border-top: 1px solid rgba(22, 24, 24, 0.08); }
+.ped .carga > div { display: grid; gap: 4px; align-content: start; padding: 16px 26px 20px; min-width: 0; }
+.ped .carga > div + div { border-left: 1px solid rgba(22, 24, 24, 0.08); }
+.ped .carga dt { font-size: 13px; color: var(--muted); }
+.ped .carga dd { margin: 0; }
+.ped .carga b { font-size: 17px; line-height: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* partes: uma linha por empresa, com os papéis juntos */
+.ped .partes { list-style: none; margin: 0; display: grid; padding-top: 8px; }
+.ped .partes li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 56px; padding: 8px 0; }
+.ped .partes li + li { border-top: 1px solid rgba(22, 24, 24, 0.08); }
+.ped .partes .avatar { width: 34px; height: 34px; }
+.ped .partes .quem { min-width: 0; }
+.ped .partes .quem a { font-weight: 500; color: var(--ink); text-decoration: underline; text-decoration-color: rgba(22, 24, 24, 0.25); text-underline-offset: 3px; }
+.ped .partes .quem a:hover { text-decoration-color: currentColor; }
+.ped .partes .papeis { font-size: 13px; color: var(--muted); text-align: right; }
+
+/* saldo: o número, a frase e a barra com um trecho por viagem */
+.ped .saldo-ped .bloco-corpo { display: grid; gap: 4px; padding-top: 10px; }
+.ped .saldo-ped .valor-medio { font-size: 36px; line-height: 40px; }
+.ped .saldo-ped .valor-medio.negativo { color: var(--vermelho-tinta); }
+.ped .nota-saldo { margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+.ped .carregamento { display: flex; gap: 3px; height: 12px; }
+.ped .carregamento i { display: block; flex-basis: 0; min-width: 6px; border-radius: 999px; background: var(--verde); transform-origin: left; animation: crescer 700ms var(--ease-mola) 200ms backwards; }
+.ped .carregamento i.falta { background: none; border: 1.5px dashed var(--control); animation: none; }
+.ped .carregamento:empty { border: 1.5px dashed var(--control); border-radius: 999px; }
+.ped .saldo-ped .linhas { display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 8px; margin: 18px 0 0; padding-top: 14px; border-top: 1px solid rgba(22, 24, 24, 0.08); font-size: 13px; font-variant-numeric: tabular-nums; }
+.ped .saldo-ped .linhas dt { color: var(--muted); }
+.ped .saldo-ped .linhas dd { margin: 0; text-align: right; font-weight: 600; }
+.ped .observacao { margin: 0; padding-top: 10px; white-space: pre-line; color: var(--neutro-tinta, var(--ink)); }
+
 .ped .tabela .viagem-cel { display: flex; align-items: center; gap: 12px; }
 .ped .tabela tr.cancelada td { color: var(--muted); }
 
@@ -58,8 +107,32 @@
 .dlg-viagem .explica, .dlg-cancelar .explica { font-size: 12px; color: var(--muted); line-height: 16px; }
 .dlg-cancelar textarea { width: 100%; min-height: 88px; }
 
-@media (max-width: 900px) {
-  .ped .resumo-pedido { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 1100px) {
+  .ped .ficha-ped { grid-template-columns: minmax(0, 1fr); }
+  .ped .ficha-ped .coluna:last-child { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); align-items: start; }
+}
+@media (max-width: 640px) {
+  .ped .ficha-ped, .ped .ficha-ped .coluna { gap: 16px; }
+  .ped .rota-ped { padding: 20px 18px 0; }
+  /* a estrada fica de pé: coleta em cima, descarga embaixo */
+  .ped .rota { grid-template-columns: 24px minmax(0, 1fr); gap: 0 14px; }
+  .ped .ponta.destino { text-align: left; justify-items: start; }
+  .ped .ponta.origem { grid-column: 2; grid-row: 1; padding-bottom: 22px; }
+  .ped .ponta.destino { grid-column: 2; grid-row: 2; }
+  .ped .estrada { grid-column: 1; grid-row: 1 / 3; align-self: stretch; display: flex; flex-direction: column; align-items: center; padding: 10px 0 12px; }
+  .ped .estrada:not(:has(.prazo)) { padding-top: 10px; }
+  .ped .estrada .prazo { display: none; }
+  .ped .estrada .pista { flex: 1; width: 10px; height: auto; }
+  .ped .estrada .faixa { inset: 16px 4px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0 8px, transparent 8px 14px) center top / 2px 14px repeat-y; }
+  .ped .estrada .pista::before, .ped .estrada .pista::after { left: 50%; margin: 0 0 0 -9px; }
+  .ped .estrada .pista::before { top: -4px; }
+  .ped .estrada .pista::after { top: auto; bottom: -4px; right: auto; }
+  .ped .ponta .cidade { font-size: 24px; line-height: 30px; }
+  .ped .carga { grid-template-columns: minmax(0, 1fr); margin: 20px -18px 0; }
+  .ped .carga > div { padding: 14px 18px; }
+  .ped .carga > div + div { border-left: 0; border-top: 1px solid rgba(22, 24, 24, 0.08); }
+  .ped .partes li { grid-template-columns: auto minmax(0, 1fr); }
+  .ped .partes .papeis { grid-column: 2; text-align: left; }
 }
 
 /* despacho do pedido (motor de despacho: ranking e composição do lote) */
