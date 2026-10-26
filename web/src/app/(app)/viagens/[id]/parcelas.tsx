@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Sinal, type TipoSinal } from "@/components/Sinal";
+import { fraseRetencao } from "@/lib/contas";
+import { hojeISO } from "@/lib/datas";
 import { formato } from "@/lib/formato";
 import { rotuloDaParcela, sinalDaParcela, type ParcelaViagem } from "../parcelas";
 
@@ -10,6 +12,7 @@ import { rotuloDaParcela, sinalDaParcela, type ParcelaViagem } from "../parcelas
 
 export function BlocoParcelas({ parcelas, verFinanceiro }: { parcelas: ParcelaViagem[]; verFinanceiro: boolean }) {
   if (parcelas.length === 0) return null;
+  const hoje = hojeISO();
   return (
     <section className="subsecao parcelas-via" aria-labelledby="h-parcelas">
       <div className="painel-cab">
@@ -24,7 +27,7 @@ export function BlocoParcelas({ parcelas, verFinanceiro }: { parcelas: ParcelaVi
       </div>
       <dl className="kv">
         {parcelas.map((p) => {
-          const s = sinalDaParcela(p);
+          const s = sinalDaParcela(p, hoje);
           return <ParcelaLinha key={p.origem} p={p} tipo={s.tipo} texto={s.texto} />;
         })}
       </dl>
@@ -39,6 +42,7 @@ function ParcelaLinha({ p, tipo, texto }: { p: ParcelaViagem; tipo: TipoSinal; t
       <dd>
         {formato.reais(p.valor)}
         {p.partePedagio > 0 && <span className="linha2">inclui {formato.reais(p.partePedagio)} de pedágio</span>}
+        {p.parteRetencao > 0 && <span className="linha2">{fraseRetencao(p.parteRetencao)}</span>}
         <span className="linha2">vence {formato.data(p.vencimento)}</span>
         <Sinal tipo={tipo} texto={texto} />
         {p.antecipacaoLiberada && <span className="linha2">Antecipação liberada</span>}

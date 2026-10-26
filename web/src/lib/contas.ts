@@ -2,6 +2,7 @@
    Puro (sem servidor): pode ser usado em Client Components. As regras de verdade (quem aprova, quando paga)
    estão no banco (migrations 20261101000200 e 0300); aqui só o que a tela mostra. */
 import type { TipoSinal } from "@/components/Sinal";
+import { formato } from "@/lib/formato";
 
 export type FormaPagamento =
   | "pix"
@@ -46,15 +47,26 @@ export const ROTULO_ORIGEM: Record<OrigemPagar, string> = {
 export type SituacaoPagar = "cancelada" | "paga" | "vencida" | "falta_aprovar" | "a_vencer";
 export type SituacaoReceber = "cancelada" | "recebida" | "vencida" | "a_vencer";
 
-/** Coluna "Aprovação" do contas a pagar: forma + cor (DESIGN.md). */
-export function sinalAprovacao(c: { canceladoEm: string | null; pagoEm: string | null; aprovadoEm: string | null }): {
+/** Coluna "Aprovação" do contas a pagar: forma + cor (DESIGN.md). `venceuHa` (dias de atraso, só quando a conta em
+   aberto já venceu) acrescenta o atraso a "Falta aprovar": o banco chama de `falta_aprovar` a conta vencida que ainda
+   não foi aprovada, e a pessoa precisa ver as duas coisas. `canceladoAutomatico`: o NILT cancelou sozinho. */
+export function sinalAprovacao(
+  c: { canceladoEm: string | null; pagoEm: string | null; aprovadoEm: string | null; canceladoAutomatico?: boolean },
+  venceuHa?: number | null,
+): {
   tipo: TipoSinal;
   texto: string;
 } {
-  if (c.canceladoEm) return { tipo: "neutro", texto: "Cancelada" };
+  if (c.canceladoEm) return { tipo: "neutro", texto: c.canceladoAutomatico ? "Cancelada pelo NILT" : "Cancelada" };
   if (c.pagoEm) return { tipo: "normal", texto: "Paga" };
   if (c.aprovadoEm) return { tipo: "normal", texto: "Aprovada" };
+  if (venceuHa !== null && venceuHa !== undefined && venceuHa < 0) return { tipo: "pendente", texto: `Falta aprovar · ${formato.dias(venceuHa)}` };
   return { tipo: "pendente", texto: "Falta aprovar" };
+}
+
+/** Frase da parte já descontada do saldo do frete de motorista autônomo (INSS, SEST e SENAT); o NILT recolhe na guia do mês. */
+export function fraseRetencao(valor: number): string {
+  return `Já descontadas as retenções do autônomo (INSS, SEST e SENAT): ${formato.reais(valor)}`;
 }
 
 /** Situação do título a receber, para o sinal. */

@@ -2,6 +2,7 @@
    Puro (sem servidor, sem React). A fonte é o RPC `viagem_parcelas` (migration 20261101000300): lê quem lê
    viagens, inclusive a operação, que não enxerga o resto do financeiro. O banco é a autoridade. */
 import type { TipoSinal } from "@/components/Sinal";
+import { diasEntre } from "@/lib/contas";
 import { formato } from "@/lib/formato";
 
 export type OrigemParcela = "frete_adiantamento" | "frete_saldo";
@@ -13,6 +14,8 @@ export type ParcelaViagem = {
   valor: number;
   /** Parte do valor que é o pedágio (vale-pedágio); só o adiantamento tem. */
   partePedagio: number;
+  /** Quanto do saldo já foi descontado de retenções do autônomo (INSS, SEST e SENAT); 0 sem retenção. */
+  parteRetencao: number;
   vencimento: string;
   situacao: SituacaoParcela;
   pagoEm: string | null;
@@ -25,6 +28,8 @@ export type LinhaParcela = {
   numero: number | string;
   valor: number | string;
   parte_pedagio: number | string | null;
+  /** Ausente em respostas antigas: conta como 0. */
+  parte_retencao?: number | string | null;
   vencimento: string;
   situacao: string;
   pago_em: string | null;
@@ -53,6 +58,7 @@ export function lerParcelas(linhas: readonly LinhaParcela[] | null | undefined):
       numero: Number(l.numero),
       valor: Number(l.valor),
       partePedagio: Number(l.parte_pedagio ?? 0),
+      parteRetencao: Number(l.parte_retencao ?? 0),
       vencimento: l.vencimento,
       situacao: l.situacao as SituacaoParcela,
       pagoEm: l.pago_em,
@@ -63,13 +69,19 @@ export function lerParcelas(linhas: readonly LinhaParcela[] | null | undefined):
 }
 
 /** Situação da parcela como sinal (forma + cor). "A vencer" aqui é "aprovada e ainda no prazo": o banco só
-   chama de `a_vencer` a conta que já foi aprovada (antes disso é `falta_aprovar`). */
-export function sinalDaParcela(p: Pick<ParcelaViagem, "situacao" | "pagoEm" | "vencimento">): { tipo: TipoSinal; texto: string } {
+   chama de `a_vencer` a conta que já foi aprovada (antes disso é `falta_aprovar`, mesmo vencida). Com `hoje`
+   ("aaaa-mm-dd"), a parcela que falta aprovar e já venceu diz também que venceu. */
+export function sinalDaParcela(
+  p: Pick<ParcelaViagem, "situacao" | "pagoEm" | "vencimento">,
+  hoje?: string,
+): { tipo: TipoSinal; texto: string } {
   switch (p.situacao) {
     case "paga":
       return { tipo: "normal", texto: p.pagoEm ? `Paga em ${formato.data(p.pagoEm)}` : "Paga" };
-    case "falta_aprovar":
-      return { tipo: "pendente", texto: "Falta aprovar" };
+    case "falta_aprovar": {
+      const dias = hoje ? diasEntre(hoje, p.vencimento) : 0;
+      return { tipo: "pendente", texto: dias < 0 ? `Falta aprovar · ${formato.dias(dias)}` : "Falta aprovar" };
+    }
     case "vencida":
       return { tipo: "bloqueado", texto: "Vencida" };
     case "a_vencer":

@@ -6,6 +6,7 @@ import {
   estadoVencimento,
   rotuloForma,
   simularAntecipacao,
+  fraseRetencao,
   sinalAprovacao,
   sinalReceber,
   somarValores,
@@ -56,6 +57,27 @@ describe("datas e situações", () => {
     expect(sinalAprovacao({ ...base, aprovadoEm: "x", pagoEm: "2026-10-26" }).texto).toBe("Paga");
     expect(sinalAprovacao({ ...base, canceladoEm: "x" }).tipo).toBe("neutro");
     expect(sinalReceber("vencida").tipo).toBe("bloqueado");
+  });
+
+  it("aprovação: conta vencida sem aprovação mostra também que venceu", () => {
+    const base = { canceladoEm: null, pagoEm: null, aprovadoEm: null };
+    expect(sinalAprovacao(base, -3)).toEqual({ tipo: "pendente", texto: "Falta aprovar · venceu há 3 dias" });
+    expect(sinalAprovacao(base, -1).texto).toBe("Falta aprovar · venceu ontem");
+    expect(sinalAprovacao(base, 0).texto).toBe("Falta aprovar");
+    expect(sinalAprovacao(base, 4).texto).toBe("Falta aprovar");
+    expect(sinalAprovacao(base, null).texto).toBe("Falta aprovar");
+    // aprovada, paga ou cancelada não repetem o atraso
+    expect(sinalAprovacao({ ...base, aprovadoEm: "x" }, -3).texto).toBe("Aprovada");
+  });
+
+  it("aprovação: parcela cancelada pelo NILT diz quem cancelou", () => {
+    const base = { canceladoEm: "2026-10-26T10:00:00Z", pagoEm: null, aprovadoEm: null };
+    expect(sinalAprovacao({ ...base, canceladoAutomatico: true })).toEqual({ tipo: "neutro", texto: "Cancelada pelo NILT" });
+    expect(sinalAprovacao({ ...base, canceladoAutomatico: false }).texto).toBe("Cancelada");
+  });
+
+  it("retenção do autônomo em uma frase", () => {
+    expect(fraseRetencao(270)).toBe("Já descontadas as retenções do autônomo (INSS, SEST e SENAT): R$ 270,00");
   });
 
   it("formas de pagamento", () => {

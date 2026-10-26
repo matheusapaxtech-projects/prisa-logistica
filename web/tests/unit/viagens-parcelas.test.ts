@@ -8,6 +8,7 @@ const linha = (extra: Partial<LinhaParcela> = {}): LinhaParcela => ({
   numero: 501,
   valor: 8400,
   parte_pedagio: 400,
+  parte_retencao: 0,
   vencimento: "2026-11-05",
   situacao: "falta_aprovar",
   pago_em: null,
@@ -19,13 +20,20 @@ describe("lerParcelas", () => {
   it("põe o adiantamento antes do saldo e converte os números", () => {
     const r = lerParcelas([linha({ origem: "frete_saldo", numero: "502", valor: "3000.5", parte_pedagio: null }), linha()]);
     expect(r.map((p) => p.origem)).toEqual(["frete_adiantamento", "frete_saldo"]);
-    expect(r[1]).toMatchObject({ numero: 502, valor: 3000.5, partePedagio: 0, antecipacaoLiberada: false });
+    expect(r[1]).toMatchObject({ numero: 502, valor: 3000.5, partePedagio: 0, parteRetencao: 0, antecipacaoLiberada: false });
     expect(r[0]).toMatchObject({ numero: 501, valor: 8400, partePedagio: 400 });
   });
   it("sem linhas (viagem antiga) devolve lista vazia; origem ou situação desconhecida fica de fora", () => {
     expect(lerParcelas(null)).toEqual([]);
     expect(lerParcelas([])).toEqual([]);
     expect(lerParcelas([linha({ origem: "manual" }), linha({ situacao: "outra" })])).toEqual([]);
+  });
+  it("retenção do autônomo: lê o número; ausente ou nula conta como zero", () => {
+    expect(lerParcelas([linha({ origem: "frete_saldo", parte_retencao: "270.00" })])[0].parteRetencao).toBe(270);
+    expect(lerParcelas([linha({ parte_retencao: null })])[0].parteRetencao).toBe(0);
+    const semCampo = linha();
+    delete semCampo.parte_retencao;
+    expect(lerParcelas([semCampo])[0].parteRetencao).toBe(0);
   });
   it("antecipação liberada só quando é verdadeira", () => {
     expect(lerParcelas([linha({ origem: "frete_saldo", antecipacao_liberada: true })])[0].antecipacaoLiberada).toBe(true);
@@ -43,6 +51,12 @@ describe("sinalDaParcela", () => {
   });
   it("falta aprovar: laranja", () => {
     expect(sinal("falta_aprovar")).toEqual({ tipo: "pendente", texto: "Falta aprovar" });
+  });
+  it("falta aprovar e já venceu: laranja, com o atraso quando se sabe o dia de hoje", () => {
+    const [p] = lerParcelas([linha({ vencimento: "2026-11-05" })]);
+    expect(sinalDaParcela(p, "2026-11-08")).toEqual({ tipo: "pendente", texto: "Falta aprovar · venceu há 3 dias" });
+    expect(sinalDaParcela(p, "2026-11-05")).toEqual({ tipo: "pendente", texto: "Falta aprovar" });
+    expect(sinalDaParcela(p, "2026-11-01")).toEqual({ tipo: "pendente", texto: "Falta aprovar" });
   });
   it("vencida: ferrugem", () => {
     expect(sinal("vencida")).toEqual({ tipo: "bloqueado", texto: "Vencida" });
