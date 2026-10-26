@@ -51,7 +51,8 @@ export async function updateSession(request: NextRequest) {
 
   const caminho = request.nextUrl.pathname;
   // /auth/… (volta do link de senha do e-mail e o aviso de link inválido) abre sem sessão.
-  const publica = caminho === "/login" || caminho.startsWith("/auth/");
+  // /privacidade/…: política do app do motorista, aberta a todos (link da loja e do app).
+  const publica = caminho === "/login" || caminho.startsWith("/auth/") || caminho.startsWith("/privacidade/");
   if (!logado && !publica) return redirecionar(request, "/login", supabaseResponse);
   if (logado && caminho === "/login") return redirecionar(request, "/", supabaseResponse);
 

@@ -18,6 +18,9 @@ AppState.addEventListener("change", (estado) => {
 /** Entrada de teste (motorista fictício do banco local). Só aparece com EXPO_PUBLIC_LOGIN_TESTE=1. */
 export const LOGIN_TESTE = process.env.EXPO_PUBLIC_LOGIN_TESTE === "1";
 
+/** Política de privacidade do app (página pública do NILT; o mesmo link vai na ficha da Play Store). */
+export const POLITICA_URL = process.env.EXPO_PUBLIC_POLITICA_URL ?? "https://nilt-lemon.vercel.app/privacidade/app-motorista";
+
 export type Frete = {
   oferta_id: string;
   pedido_numero: number;

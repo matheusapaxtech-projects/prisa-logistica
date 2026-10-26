@@ -34,7 +34,8 @@
           "isIosBackgroundLocationEnabled": true
         }
       ],
-      "expo-dev-client"
+      "expo-dev-client",
+      "expo-font"
     ]
   }
 }

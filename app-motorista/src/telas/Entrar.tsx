@@ -1,7 +1,9 @@
-import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { LOGIN_TESTE, mensagem, supabase } from "../supabase";
-import { cor } from "../tema";
+import { useEffect, useRef, useState, type ComponentRef } from "react";
+import { KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ChevronLeft, MessageCircle } from "lucide-react-native";
+import { LOGIN_TESTE, mensagem, POLITICA_URL, supabase } from "../supabase";
+import { cor, fonte, numeros } from "../tema";
+import { Aviso, Fundo, Pilula, Placa } from "../ui";
 
 /** (43) 99999-8888 → +5543999998888 */
 function celularE164(texto: string): string | null {
@@ -10,10 +12,19 @@ function celularE164(texto: string): string | null {
   return /^55[1-9][0-9]9[0-9]{8}$/.test(d) ? `+${d}` : null;
 }
 
+/** 43999990001 → (43) 99999-0001 enquanto digita. */
+function mascara(texto: string): string {
+  const d = texto.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 2) return d.length ? `(${d}` : "";
+  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+
+const ESPERA_REENVIO = 60;
+
 /* Entrada: o motorista digita o celular liberado pela Prisa e recebe o código no WhatsApp. */
 export function Entrar() {
   const [celular, setCelular] = useState("");
-  const [codigo, setCodigo] = useState("");
   const [enviado, setEnviado] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -33,16 +44,10 @@ export function Entrar() {
   const pedirCodigo = () =>
     rodar(async () => {
       const phone = celularE164(celular);
-      if (!phone) throw new Error("Digite o celular com DDD, com o 9 na frente.");
+      if (!phone) throw new Error("Digite o celular com DDD e o 9 na frente.");
       const { error } = await supabase.auth.signInWithOtp({ phone, options: { channel: "whatsapp" } });
       if (error) throw error;
       setEnviado(phone);
-    });
-
-  const confirmar = () =>
-    rodar(async () => {
-      const { error } = await supabase.auth.verifyOtp({ phone: enviado!, token: codigo.trim(), type: "sms" });
-      if (error) throw new Error("Código errado ou vencido. Peça outro.");
     });
 
   const entrarTeste = () =>
@@ -51,91 +56,136 @@ export function Entrar() {
       if (error) throw error;
     });
 
+  if (enviado) return <Codigo celular={enviado} celularTela={celular} aoVoltar={() => setEnviado(null)} aoReenviar={pedirCodigo} />;
+
   return (
-    <View style={s.tela}>
-      <View style={s.marca}>
-        <Text style={s.marcaNome}>PRISA</Text>
-        <Text style={s.marcaSub}>App do motorista</Text>
-      </View>
+    <Fundo>
+      <KeyboardAvoidingView style={s.tela} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <View style={{ marginTop: 40 }}>
+          <Placa placa="PRISA" grande />
+        </View>
+        <Text style={s.titulo}>Fretes perto de você, direto da Prisa</Text>
+        <Text style={s.sub}>Avise quando estiver livre e veja as cargas que cabem no seu caminhão, com o valor do seu frete.</Text>
 
-      <View style={s.cartao}>
-        {!enviado ? (
-          <>
-            <Text style={s.titulo}>Entrar</Text>
-            <Text style={s.texto}>Use o celular que você passou para a Prisa. O código chega no seu WhatsApp.</Text>
-            <Text style={s.rotulo}>Celular com WhatsApp</Text>
+        <View style={s.base}>
+          <Text style={s.rotulo}>Seu celular com WhatsApp</Text>
+          <View style={s.caixa}>
+            <Text style={s.ddi}>+55</Text>
             <TextInput
-              style={s.campo}
+              style={s.entrada}
               value={celular}
-              onChangeText={setCelular}
+              onChangeText={(t) => setCelular(mascara(t))}
               keyboardType="phone-pad"
-              placeholder="(43) 99999-8888"
-              placeholderTextColor={cor.apagado}
+              placeholder="(43) 99999-0001"
+              placeholderTextColor={cor.fraco}
+              accessibilityLabel="Seu celular com WhatsApp"
             />
-            <Botao texto="Receber código no WhatsApp" onPress={pedirCodigo} ocupado={ocupado} />
-          </>
-        ) : (
-          <>
-            <Text style={s.titulo}>Digite o código</Text>
-            <Text style={s.texto}>Mandamos um código de 6 números para o WhatsApp do celular {enviado.slice(3)}.</Text>
-            <TextInput
-              style={[s.campo, s.codigo]}
-              value={codigo}
-              onChangeText={setCodigo}
-              keyboardType="number-pad"
-              maxLength={6}
-              placeholder="000000"
-              placeholderTextColor={cor.apagado}
-            />
-            <Botao texto="Entrar" onPress={confirmar} ocupado={ocupado} />
-            <Pressable onPress={() => setEnviado(null)} style={s.link}>
-              <Text style={s.linkTexto}>Trocar o celular</Text>
-            </Pressable>
-          </>
-        )}
-        {erro && <Text style={s.erro}>{erro}</Text>}
-      </View>
-
-      {LOGIN_TESTE && (
-        <Pressable onPress={entrarTeste} style={s.teste} disabled={ocupado}>
-          <Text style={s.testeTexto}>Entrar como motorista de teste (só no banco local)</Text>
-        </Pressable>
-      )}
-    </View>
+          </View>
+          <Text style={s.ajuda}>O mesmo número que você passou para a operação.</Text>
+          {erro && (
+            <View style={{ marginBottom: 12 }}>
+              <Aviso tipo="erro" texto={erro} />
+            </View>
+          )}
+          <Pilula texto="Receber código" onPress={pedirCodigo} ocupado={ocupado} icone={<MessageCircle size={18} color={cor.folha} strokeWidth={2} />} />
+          {LOGIN_TESTE && <Pilula texto="Entrar como motorista de teste" tipo="secundaria" onPress={entrarTeste} desativado={ocupado} />}
+          <Pressable onPress={() => Linking.openURL(POLITICA_URL)} style={s.politica} accessibilityRole="link">
+            <Text style={s.politicaTexto}>Política de privacidade</Text>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+    </Fundo>
   );
 }
 
-export function Botao({ texto, onPress, ocupado, tipo = "primario" }: { texto: string; onPress: () => void; ocupado?: boolean; tipo?: "primario" | "secundario" }) {
-  const prim = tipo === "primario";
+/* Código de 6 números: casas grandes, teclado de números e reenvio depois de 1 minuto. */
+function Codigo({ celular, celularTela, aoVoltar, aoReenviar }: { celular: string; celularTela: string; aoVoltar: () => void; aoReenviar: () => void }) {
+  const [codigo, setCodigo] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+  const [espera, setEspera] = useState(ESPERA_REENVIO);
+  const campo = useRef<ComponentRef<typeof TextInput>>(null);
+
+  useEffect(() => {
+    const t = setInterval(() => setEspera((n) => Math.max(0, n - 1)), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  async function confirmar(c = codigo) {
+    if (c.length !== 6) return;
+    setErro(null);
+    setOcupado(true);
+    const { error } = await supabase.auth.verifyOtp({ phone: celular, token: c, type: "sms" });
+    setOcupado(false);
+    if (error) setErro("Código errado ou vencido. Confira ou peça outro.");
+  }
+
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={ocupado}
-      style={({ pressed }) => [s.botao, prim ? s.botaoPrim : s.botaoSec, (pressed || ocupado) && { opacity: 0.7 }]}
-    >
-      {ocupado ? <ActivityIndicator color={prim ? "#fff" : cor.verde} /> : <Text style={[s.botaoTexto, !prim && { color: cor.verde }]}>{texto}</Text>}
-    </Pressable>
+    <Fundo>
+      <View style={s.tela}>
+        <Pressable onPress={aoVoltar} style={s.voltar} accessibilityRole="button" accessibilityLabel="Trocar o celular">
+          <ChevronLeft size={22} color={cor.tinta} strokeWidth={2} />
+        </Pressable>
+        <Text style={s.titulo}>Digite o código do WhatsApp</Text>
+        <Text style={s.sub}>Mandamos 6 números para {celularTela}.</Text>
+
+        <Pressable style={s.casas} onPress={() => campo.current?.focus()}>
+          {Array.from({ length: 6 }, (_, i) => (
+            <View key={i} style={[s.casa, i === codigo.length && s.casaFoco]}>
+              <Text style={[s.casaTexto, numeros]}>{codigo[i] ?? ""}</Text>
+            </View>
+          ))}
+        </Pressable>
+        <TextInput
+          ref={campo}
+          value={codigo}
+          onChangeText={(t) => {
+            const c = t.replace(/\D/g, "").slice(0, 6);
+            setCodigo(c);
+            if (c.length === 6) confirmar(c);
+          }}
+          keyboardType="number-pad"
+          textContentType="oneTimeCode"
+          autoComplete="sms-otp"
+          autoFocus
+          maxLength={6}
+          style={s.oculto}
+          accessibilityLabel="Código de 6 números"
+        />
+        {erro && <Aviso tipo="erro" texto={erro} />}
+        <Pilula
+          tipo="texto"
+          texto={espera > 0 ? `Não chegou? Mandar de novo em 0:${String(espera).padStart(2, "0")}` : "Mandar o código de novo"}
+          desativado={espera > 0}
+          onPress={() => {
+            setEspera(ESPERA_REENVIO);
+            aoReenviar();
+          }}
+        />
+        <View style={s.base}>
+          <Pilula texto="Entrar" onPress={() => confirmar()} ocupado={ocupado} desativado={codigo.length !== 6} />
+        </View>
+      </View>
+    </Fundo>
   );
 }
 
 const s = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: cor.fundo, padding: 20, justifyContent: "center" },
-  marca: { backgroundColor: cor.verde, borderRadius: 14, padding: 18, marginBottom: 20 },
-  marcaNome: { color: "#fff", fontSize: 28, fontWeight: "800", letterSpacing: 2 },
-  marcaSub: { color: "#e1ebe4", fontSize: 13, letterSpacing: 1, textTransform: "uppercase" },
-  cartao: { backgroundColor: cor.folha, borderRadius: 14, padding: 20, borderWidth: 1, borderColor: cor.borda },
-  titulo: { fontSize: 22, fontWeight: "700", color: cor.tinta, marginBottom: 6 },
-  texto: { fontSize: 15, color: cor.apagado, marginBottom: 16, lineHeight: 21 },
-  rotulo: { fontSize: 13, fontWeight: "600", color: cor.tinta, marginBottom: 6 },
-  campo: { borderWidth: 1, borderColor: "#cdc5b6", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 18, color: cor.tinta, backgroundColor: "#fff", marginBottom: 16 },
-  codigo: { fontSize: 26, letterSpacing: 8, textAlign: "center" },
-  botao: { borderRadius: 10, paddingVertical: 14, alignItems: "center", justifyContent: "center", minHeight: 50 },
-  botaoPrim: { backgroundColor: cor.verde },
-  botaoSec: { backgroundColor: cor.verdeClaro },
-  botaoTexto: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  link: { alignItems: "center", paddingTop: 14 },
-  linkTexto: { color: cor.verde, fontSize: 15, fontWeight: "600" },
-  erro: { marginTop: 14, color: cor.vermelhoTinta, backgroundColor: cor.vermelhoClaro, padding: 12, borderRadius: 8, fontSize: 14 },
-  teste: { marginTop: 18, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: "#b8901a", backgroundColor: cor.amareloClaro },
-  testeTexto: { color: cor.amareloTinta, textAlign: "center", fontWeight: "600" },
+  tela: { flex: 1, paddingHorizontal: 20, paddingTop: 56, paddingBottom: 28 },
+  titulo: { ...fonte(500), fontSize: 34, lineHeight: 39, letterSpacing: -0.6, color: cor.tinta, marginTop: 28 },
+  sub: { ...fonte(400), fontSize: 16, lineHeight: 23, color: cor.apagado, marginTop: 10, maxWidth: 320 },
+  base: { marginTop: "auto", gap: 10 },
+  rotulo: { ...fonte(500), fontSize: 14, color: cor.tinta },
+  caixa: { flexDirection: "row", alignItems: "center", height: 58, borderRadius: 18, backgroundColor: "#fff", borderWidth: 1, borderColor: cor.meioFio, paddingHorizontal: 16 },
+  ddi: { ...fonte(400), fontSize: 16, color: cor.apagado, paddingRight: 12, marginRight: 12, borderRightWidth: 1, borderRightColor: cor.borda },
+  entrada: { flex: 1, ...fonte(400), fontSize: 20, color: cor.tinta, ...numeros },
+  ajuda: { ...fonte(400), fontSize: 13, color: cor.apagado, marginBottom: 6 },
+  politica: { alignItems: "center", paddingVertical: 8 },
+  politicaTexto: { ...fonte(500), fontSize: 13, color: cor.apagado, textDecorationLine: "underline" },
+  voltar: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.62)", borderWidth: 1, borderColor: "rgba(22,24,24,0.14)", alignItems: "center", justifyContent: "center" },
+  casas: { flexDirection: "row", gap: 8, marginTop: 28, marginBottom: 12 },
+  casa: { flex: 1, height: 62, borderRadius: 16, backgroundColor: "#fff", borderWidth: 1, borderColor: cor.meioFio, alignItems: "center", justifyContent: "center" },
+  casaFoco: { borderWidth: 2, borderColor: cor.noite },
+  casaTexto: { ...fonte(600), fontSize: 26, color: cor.tinta },
+  oculto: { position: "absolute", opacity: 0, height: 1, width: 1 },
 });
