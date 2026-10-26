@@ -7,25 +7,18 @@ import { FORMAS, ROTULO_ORIGEM } from "@/lib/contas";
 import { hojeISO } from "@/lib/datas";
 import { partesDaConta } from "@/lib/financeiro";
 import { formato } from "@/lib/formato";
+import { CampoDialogo } from "../contas-comum/campo-dialogo";
+import { DialogoMotivo, type TextosMotivo } from "../contas-comum/dialogo-motivo";
+import { ResumoConta } from "../contas-comum/resumo-conta";
 import { cancelar, liberarAntecipacao, pagar } from "./actions";
 import type { ContaPagar } from "./consultas";
-import { CampoDialogo } from "./dialogo-conta";
-import { lerMotivo, lerPagamento, MAX_MOTIVO, type CampoPagamento } from "./regras";
+import { lerPagamento, type CampoPagamento } from "./regras";
 
 type ContaBancaria = { id: string; banco: string; agencia: string; numero: string; apelido: string | null };
 
-/** Resumo da conta no alto do diálogo: número, descrição, favorecido e valor. */
+/** Resumo da conta a pagar no alto do diálogo: número, descrição, favorecido e valor. */
 function Resumo({ conta }: { conta: ContaPagar }) {
-  return (
-    <p className="contas-resumo">
-      <b>
-        Conta {conta.numero} · {conta.descricao}
-      </b>
-      <span className="linha2">
-        {conta.favorecidoNome} · vence em {formato.data(conta.vencimento)} · {formato.reais(conta.valor)}
-      </span>
-    </p>
-  );
+  return <ResumoConta numero={conta.numero} titulo={conta.descricao} quem={conta.favorecidoNome} vencimento={formato.data(conta.vencimento)} valor={formato.reais(conta.valor)} />;
 }
 
 /* Diálogo "Pagar": a data do pagamento (hoje ou antes), a conta bancária de onde saiu (o cartão-frete e o dinheiro
@@ -135,6 +128,7 @@ const TEXTOS = {
     enviar: "Cancelar a conta",
     sucesso: "Conta cancelada.",
     para: "cancelamento",
+    perigo: true,
   },
   liberar: {
     titulo: "Liberar a antecipação do saldo",
@@ -144,75 +138,18 @@ const TEXTOS = {
     enviar: "Liberar a antecipação",
     sucesso: "Antecipação liberada. O saldo já pode ser pago depois de aprovado.",
     para: "liberação",
+    perigo: false,
   },
-} as const;
+} as const satisfies Record<string, TextosMotivo>;
 
-/* Diálogo que pede o motivo: cancelar a conta ou liberar a antecipação do saldo do frete (só o administrador). */
-export function DialogoMotivo({ tipo, conta, aoFechar }: { tipo: "cancelar" | "liberar"; conta: ContaPagar; aoFechar: () => void }) {
-  const id = useId();
-  const t = TEXTOS[tipo];
-  const [erro, setErro] = useState<string | null>(null);
-  const [erroAcao, setErroAcao] = useState<string | null>(null);
-  const [gravando, iniciar] = useTransition();
-
-  function aoEnviar(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const motivo = String(new FormData(e.currentTarget).get("motivo") ?? "");
-    setErroAcao(null);
-    const lido = lerMotivo(motivo, t.para);
-    if (!lido.ok) {
-      setErro(lido.erro);
-      e.currentTarget.querySelector<HTMLElement>('[name="motivo"]')?.focus();
-      return;
-    }
-    setErro(null);
-    iniciar(async () => {
-      const r = tipo === "cancelar" ? await cancelar(conta.id, lido.motivo) : await liberarAntecipacao(conta.id, lido.motivo);
-      if (!r.ok) {
-        setErroAcao(r.erro);
-        return;
-      }
-      toast(t.sucesso);
-      aoFechar();
-    });
-  }
-
+/* Pede o motivo para cancelar a conta ou liberar a antecipação do saldo do frete (só o administrador). */
+export function DialogoMotivoPagar({ tipo, conta, aoFechar }: { tipo: "cancelar" | "liberar"; conta: ContaPagar; aoFechar: () => void }) {
   return (
-    <Dialogo
-      aberto
+    <DialogoMotivo
+      textos={TEXTOS[tipo]}
+      resumo={<Resumo conta={conta} />}
+      acao={(motivo) => (tipo === "cancelar" ? cancelar(conta.id, motivo) : liberarAntecipacao(conta.id, motivo))}
       aoFechar={aoFechar}
-      titulo={t.titulo}
-      onSubmit={aoEnviar}
-      pe={
-        <>
-          <button className="btn" type="button" data-fechar>
-            {t.voltar}
-          </button>
-          <button className={`btn ${tipo === "cancelar" ? "btn-perigo" : "btn-primario"}`} type="submit" disabled={gravando} aria-busy={gravando}>
-            {t.enviar}
-          </button>
-        </>
-      }
-    >
-      <Resumo conta={conta} />
-      <p className="nota">{t.explica}</p>
-      <div className="campos" onInput={() => erro && setErro(null)}>
-        <CampoDialogo classe="f12" id={`${id}-motivo`} rotulo={t.rotulo} erro={erro ?? undefined}>
-          <textarea
-            id={`${id}-motivo`}
-            name="motivo"
-            rows={3}
-            maxLength={MAX_MOTIVO}
-            aria-invalid={!!erro || undefined}
-            aria-describedby={erro ? `${id}-motivo-erro` : undefined}
-          />
-        </CampoDialogo>
-      </div>
-      {erroAcao && (
-        <div className="aviso aviso-bloqueado" role="alert">
-          <p>{erroAcao}</p>
-        </div>
-      )}
-    </Dialogo>
+    />
   );
 }

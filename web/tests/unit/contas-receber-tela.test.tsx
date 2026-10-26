@@ -200,6 +200,18 @@ describe("simulador de antecipação", () => {
     expect(caixa("CT-e 1002")).not.toBeChecked();
   });
 
+  it("taxa e tarifa digitadas continuam quando o último título é desmarcado e outro é marcado", () => {
+    tabela(dois());
+    fireEvent.click(caixa("CT-e 1001"));
+    fireEvent.change(screen.getByLabelText("Taxa ao mês (%)"), { target: { value: "3,0" } });
+    fireEvent.change(screen.getByLabelText("Tarifa por título (R$)"), { target: { value: "10,00" } });
+    fireEvent.click(caixa("CT-e 1001"));
+    expect(screen.queryByRole("region", { name: "Simulador de antecipação" })).not.toBeInTheDocument();
+    fireEvent.click(caixa("CT-e 1002"));
+    expect(screen.getByLabelText("Taxa ao mês (%)")).toHaveValue("3,0");
+    expect(screen.getByLabelText("Tarifa por título (R$)")).toHaveValue("10,00");
+  });
+
   it("título marcado que some da lista (recarga) sai da simulação", () => {
     const { rerender } = tabela(dois());
     fireEvent.click(caixa("CT-e 1001"));

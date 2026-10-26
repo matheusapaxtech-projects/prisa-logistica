@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { comSessao, type ResultadoAcao } from "@/lib/acao";
 import { tipado } from "@/lib/banco";
 import { hojeISO } from "@/lib/datas";
-import { ehIdConta, lerMotivo } from "../pagar/regras";
+import { ehIdConta, lerMotivo } from "../contas-comum/leitura";
 import { lerRecebimento, lerTitulo } from "./regras";
 
 /* Gravações do contas a receber. Toda escrita passa por `comSessao` (a sessão é conferida antes de qualquer

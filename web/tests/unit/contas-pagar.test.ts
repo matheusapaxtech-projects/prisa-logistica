@@ -25,6 +25,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn(async () => client
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 import { agrupar } from "@/lib/contas";
+import { lerMotivo } from "@/app/(app)/financeiro/contas-comum/leitura";
 import { hojeISO } from "@/lib/datas";
 import {
   acoesDaConta,
@@ -34,7 +35,6 @@ import {
   lerAgrupar,
   lerConta,
   lerFiltro,
-  lerMotivo,
   lerPagamento,
 } from "@/app/(app)/financeiro/pagar/regras";
 import {

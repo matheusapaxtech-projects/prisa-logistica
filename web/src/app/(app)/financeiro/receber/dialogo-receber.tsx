@@ -6,8 +6,9 @@ import { toast } from "@/components/Toast";
 import { hojeISO } from "@/lib/datas";
 import { partesDaConta } from "@/lib/financeiro";
 import { formato } from "@/lib/formato";
-import { CampoDialogo } from "../pagar/dialogo-conta";
-import { lerMotivo, MAX_MOTIVO } from "../pagar/regras";
+import { CampoDialogo } from "../contas-comum/campo-dialogo";
+import { DialogoMotivo, type TextosMotivo } from "../contas-comum/dialogo-motivo";
+import { ResumoConta } from "../contas-comum/resumo-conta";
 import { cancelarReceber, desfazerRecebimento, receberTitulo } from "./actions";
 import type { TituloReceber } from "./consultas";
 import { lerRecebimento, type CampoRecebimento } from "./regras";
@@ -16,16 +17,7 @@ type ContaBancaria = { id: string; banco: string; agencia: string; numero: strin
 
 /** Resumo do título no alto do diálogo: número, título, cliente, vencimento e valor. */
 function Resumo({ titulo }: { titulo: TituloReceber }) {
-  return (
-    <p className="contas-resumo">
-      <b>
-        Conta {titulo.numero} · {titulo.titulo}
-      </b>
-      <span className="linha2">
-        {titulo.clienteNome} · vence em {formato.data(titulo.vencimento)} · {formato.reais(titulo.valor)}
-      </span>
-    </p>
-  );
+  return <ResumoConta numero={titulo.numero} titulo={titulo.titulo} quem={titulo.clienteNome} vencimento={formato.data(titulo.vencimento)} valor={formato.reais(titulo.valor)} />;
 }
 
 /* Diálogo "Receber": a data do recebimento (hoje ou antes) e a conta bancária onde o dinheiro caiu (dinheiro em mãos
@@ -109,73 +101,20 @@ export function DialogoReceber({ titulo, contas, aoFechar }: { titulo: TituloRec
   );
 }
 
-/* Diálogo que pede o motivo do cancelamento. O título continua na lista como cancelado, com o motivo. */
+const TEXTOS_CANCELAR: TextosMotivo = {
+  titulo: "Cancelar a conta a receber",
+  explica: "A conta continua na lista como cancelada, com o motivo, e não muda mais.",
+  rotulo: "Motivo do cancelamento",
+  voltar: "Voltar",
+  enviar: "Cancelar a conta",
+  sucesso: "Conta cancelada.",
+  para: "cancelamento",
+  perigo: true,
+};
+
+/* Pede o motivo do cancelamento. O título continua na lista como cancelado, com o motivo. */
 export function DialogoCancelarTitulo({ titulo, aoFechar }: { titulo: TituloReceber; aoFechar: () => void }) {
-  const id = useId();
-  const [erro, setErro] = useState<string | null>(null);
-  const [erroAcao, setErroAcao] = useState<string | null>(null);
-  const [gravando, iniciar] = useTransition();
-
-  function aoEnviar(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const motivo = String(new FormData(e.currentTarget).get("motivo") ?? "");
-    setErroAcao(null);
-    const lido = lerMotivo(motivo, "cancelamento");
-    if (!lido.ok) {
-      setErro(lido.erro);
-      e.currentTarget.querySelector<HTMLElement>('[name="motivo"]')?.focus();
-      return;
-    }
-    setErro(null);
-    iniciar(async () => {
-      const r = await cancelarReceber(titulo.id, lido.motivo);
-      if (!r.ok) {
-        setErroAcao(r.erro);
-        return;
-      }
-      toast("Conta cancelada.");
-      aoFechar();
-    });
-  }
-
-  return (
-    <Dialogo
-      aberto
-      aoFechar={aoFechar}
-      titulo="Cancelar a conta a receber"
-      onSubmit={aoEnviar}
-      pe={
-        <>
-          <button className="btn" type="button" data-fechar>
-            Voltar
-          </button>
-          <button className="btn btn-perigo" type="submit" disabled={gravando} aria-busy={gravando}>
-            Cancelar a conta
-          </button>
-        </>
-      }
-    >
-      <Resumo titulo={titulo} />
-      <p className="nota">A conta continua na lista como cancelada, com o motivo, e não muda mais.</p>
-      <div className="campos" onInput={() => erro && setErro(null)}>
-        <CampoDialogo classe="f12" id={`${id}-motivo`} rotulo="Motivo do cancelamento" erro={erro ?? undefined}>
-          <textarea
-            id={`${id}-motivo`}
-            name="motivo"
-            rows={3}
-            maxLength={MAX_MOTIVO}
-            aria-invalid={!!erro || undefined}
-            aria-describedby={erro ? `${id}-motivo-erro` : undefined}
-          />
-        </CampoDialogo>
-      </div>
-      {erroAcao && (
-        <div className="aviso aviso-bloqueado" role="alert">
-          <p>{erroAcao}</p>
-        </div>
-      )}
-    </Dialogo>
-  );
+  return <DialogoMotivo textos={TEXTOS_CANCELAR} resumo={<Resumo titulo={titulo} />} acao={(motivo) => cancelarReceber(titulo.id, motivo)} aoFechar={aoFechar} />;
 }
 
 /* Confirmação de "Desfazer recebimento": o título volta para em aberto e perde a data e a conta do recebimento. */

@@ -4,7 +4,7 @@
 
 import { ehForma, type FormaPagamento } from "@/lib/contas";
 import { lerNumeroBr } from "@/lib/formato";
-import { MAX_OBSERVACAO, VALOR_MAXIMO, type Leitura } from "../pagar/regras";
+import { dataReal, inteiro, MAX_OBSERVACAO, RE_UUID, texto, VALOR_MAXIMO, type Erros, type Leitura } from "../contas-comum/leitura";
 
 export const MAX_TITULO = 120;
 /** Teto da taxa de antecipação ao mês, em %: pega uma vírgula fora do lugar. */
@@ -29,21 +29,6 @@ export function lerFiltro(v: unknown): FiltroReceber {
 }
 
 /* ---------- leitura dos formulários ---------- */
-
-type Erros<C extends string> = Partial<Record<C, string>>;
-
-const RE_DATA = /^(\d{4})-(\d{2})-(\d{2})$/;
-const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function dataReal(v: string): boolean {
-  const m = RE_DATA.exec(v);
-  if (!m) return false;
-  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
-  return d.getUTCFullYear() === +m[1] && d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3];
-}
-
-const texto = (form: FormData, campo: string) => String(form.get(campo) ?? "").trim();
-const inteiro = (v: string): number | null => (/^\d{1,9}$/.test(v) && Number(v) > 0 ? Number(v) : null);
 
 /** Campos do formulário "Lançar conta a receber" (nomes dos inputs). */
 export type CampoTitulo = "cliente" | "titulo" | "plano" | "centro" | "forma" | "vencimento" | "valor" | "observacao";

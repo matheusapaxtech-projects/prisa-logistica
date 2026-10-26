@@ -1,63 +1,21 @@
 "use client";
 
-import { useId, useState, useTransition, type FormEvent, type ReactNode } from "react";
+import { useId, useState, useTransition, type FormEvent } from "react";
 import { Plus } from "lucide-react";
 import { Dialogo } from "@/components/Dialogo";
 import { toast } from "@/components/Toast";
 import { FORMAS } from "@/lib/contas";
 import { hojeISO } from "@/lib/datas";
+import { CampoDialogo } from "../contas-comum/campo-dialogo";
+import { MAX_OBSERVACAO } from "../contas-comum/leitura";
 import { editarConta, lancarConta } from "./actions";
 import type { CentroCusto, ContaPagar, TipoDespesa } from "./consultas";
-import { GRUPOS_PLANO, lerAjusteGerada, lerConta, MAX_DESCRICAO, MAX_FAVORECIDO, MAX_OBSERVACAO, ROTULO_GRUPO_PLANO, type CampoConta } from "./regras";
+import { GRUPOS_PLANO, lerAjusteGerada, lerConta, MAX_DESCRICAO, MAX_FAVORECIDO, ROTULO_GRUPO_PLANO, type CampoConta } from "./regras";
 
 const CENTRO_PADRAO = "01.01";
 
 /** "1.234,56" (para o campo de valor ao editar). */
 const valorDigitado = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-/** Campo do diálogo: rótulo, controle e a frase de erro ligada a ele (mesma marcação do diálogo de lançamento). */
-export function CampoDialogo({
-  classe,
-  id,
-  rotulo,
-  opcional,
-  erro,
-  ajuda,
-  children,
-}: {
-  classe: string;
-  id: string;
-  rotulo: string;
-  opcional?: boolean;
-  erro?: string;
-  ajuda?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <div className={`campo ${classe}`} data-invalido={erro ? "" : undefined}>
-      <label htmlFor={id}>
-        {rotulo}
-        {opcional && (
-          <>
-            {" "}
-            <span className="opcional">(opcional)</span>
-          </>
-        )}
-      </label>
-      {children}
-      {ajuda && (
-        <span className="ajuda" id={`${id}-ajuda`}>
-          {ajuda}
-        </span>
-      )}
-      {erro && (
-        <span className="erro" id={`${id}-erro`} role="alert">
-          {erro}
-        </span>
-      )}
-    </div>
-  );
-}
 
 type Props = {
   /** A conta a editar; sem ela, o diálogo lança uma nova. */

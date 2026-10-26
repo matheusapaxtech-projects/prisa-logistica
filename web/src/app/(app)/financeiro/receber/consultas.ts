@@ -4,6 +4,7 @@ import { sanitizarTermo } from "@/lib/busca";
 import type { FormaPagamento, SituacaoReceber } from "@/lib/contas";
 import { limitesDoMes } from "@/lib/financeiro";
 import { formato } from "@/lib/formato";
+import { nomesDe, todas } from "../contas-comum/consulta";
 import type { GrupoPlano } from "../pagar/regras";
 import type { FiltroReceber } from "./regras";
 
@@ -34,27 +35,6 @@ export type TituloReceber = {
   /** Nome de quem registrou o recebimento (nulo quando a pessoa não tem mais cadastro). */
   recebidoPorNome: string | null;
 };
-
-/** A API devolve no máximo 1.000 linhas por vez: busca em páginas até acabar. */
-async function todas<T>(pagina: (de: number, ate: number) => PromiseLike<{ data: T[] | null; error: unknown }>): Promise<T[]> {
-  const TAM = 1000;
-  const saida: T[] = [];
-  for (let de = 0; ; de += TAM) {
-    const { data, error } = await pagina(de, de + TAM - 1);
-    if (error) throw error;
-    saida.push(...(data ?? []));
-    if (!data || data.length < TAM) return saida;
-  }
-}
-
-/** Nome de cada usuário citado (quem registrou o recebimento). */
-async function nomesDe(db: Banco, ids: (string | null)[]): Promise<Map<string, string>> {
-  const unicos = [...new Set(ids.filter((i): i is string => !!i))];
-  if (unicos.length === 0) return new Map();
-  const r = await db.rpc("nomes_usuarios", { p_ids: unicos });
-  if (r.error) throw r.error;
-  return new Map((r.data ?? []).map((n) => [n.user_id, n.nome]));
-}
 
 /**
  * Títulos da aba escolhida (o filtro é feito no banco). Em aberto e vencidos por vencimento (os mais antigos

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId } from "react";
 import { simularAntecipacao } from "@/lib/contas";
 import { formato } from "@/lib/formato";
 import { lerParametrosSimulacao } from "./regras";
@@ -10,12 +10,29 @@ export type TituloMarcado = { id: string; titulo: string; clienteNome: string; v
 const pct = (n: number) => `${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 const prazo = (n: number) => `${Math.round(n).toLocaleString("pt-BR")} ${Math.round(n) === 1 ? "dia" : "dias"}`;
 
+/** Taxa e tarifa como digitadas (a lista guarda, para não perder quando o painel some ao desmarcar o último título). */
+export type ParametrosTexto = { taxa: string; tarifa: string };
+export const PARAMETROS_PADRAO: ParametrosTexto = { taxa: "2,0", tarifa: "5,00" };
+
 /* Simulador de antecipação: quanto o fomento descontaria dos títulos marcados na lista. Taxa ao mês (padrão 2,0%) e
-   tarifa por título (padrão R$ 5,00) são digitadas em formato brasileiro. Só simula: nada é gravado. */
-export function Simulador({ titulos, hoje, aoLimpar }: { titulos: TituloMarcado[]; hoje: string; aoLimpar: () => void }) {
+   tarifa por título (padrão R$ 5,00) são digitadas em formato brasileiro. Só simula: nada é gravado. Os textos dos
+   dois campos moram em quem monta o painel. */
+export function Simulador({
+  titulos,
+  hoje,
+  parametros,
+  aoMudar,
+  aoLimpar,
+}: {
+  titulos: TituloMarcado[];
+  hoje: string;
+  parametros: ParametrosTexto;
+  aoMudar: (p: ParametrosTexto) => void;
+  aoLimpar: () => void;
+}) {
   const id = useId();
-  const [taxaTexto, setTaxaTexto] = useState("2,0");
-  const [tarifaTexto, setTarifaTexto] = useState("5,00");
+  const taxaTexto = parametros.taxa;
+  const tarifaTexto = parametros.tarifa;
 
   const params = lerParametrosSimulacao(taxaTexto, tarifaTexto);
   const sim = params.ok ? simularAntecipacao(titulos, params.taxa, params.tarifa, hoje) : null;
@@ -43,7 +60,7 @@ export function Simulador({ titulos, hoje, aoLimpar }: { titulos: TituloMarcado[
             inputMode="decimal"
             autoComplete="off"
             value={taxaTexto}
-            onChange={(e) => setTaxaTexto(e.target.value)}
+            onChange={(e) => aoMudar({ ...parametros, taxa: e.target.value })}
             aria-invalid={!!erros.taxa || undefined}
             aria-describedby={erros.taxa ? `${id}-taxa-erro` : undefined}
           />
@@ -61,7 +78,7 @@ export function Simulador({ titulos, hoje, aoLimpar }: { titulos: TituloMarcado[
             inputMode="decimal"
             autoComplete="off"
             value={tarifaTexto}
-            onChange={(e) => setTarifaTexto(e.target.value)}
+            onChange={(e) => aoMudar({ ...parametros, tarifa: e.target.value })}
             aria-invalid={!!erros.tarifa || undefined}
             aria-describedby={erros.tarifa ? `${id}-tarifa-erro` : undefined}
           />

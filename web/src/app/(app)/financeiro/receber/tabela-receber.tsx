@@ -1,20 +1,20 @@
 "use client";
 
-import { useId, useRef, useState, type ToggleEvent } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { Ellipsis } from "lucide-react";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import { Ponto } from "@/components/Ponto";
 import { Sinal } from "@/components/Sinal";
 import { estadoVencimento, rotuloForma, sinalReceber, somarValores } from "@/lib/contas";
 import { formato } from "@/lib/formato";
 import type { Conta } from "../consultas";
+import { MenuLinha, type ItemMenu } from "../contas-comum/menu-linha";
 import type { CentroCusto } from "../pagar/consultas";
 import type { OpcaoCliente, TipoReceita, TituloReceber } from "./consultas";
 import { DialogoTitulo } from "./dialogo-conta";
 import { DialogoCancelarTitulo, DialogoDesfazerRecebimento, DialogoReceber } from "./dialogo-receber";
 import { acoesDoTitulo } from "./regras";
-import { Simulador } from "./simulador";
+import { PARAMETROS_PADRAO, Simulador, type ParametrosTexto } from "./simulador";
 
 type Props = {
   titulos: TituloReceber[];
@@ -33,64 +33,6 @@ type Aberto = { tipo: "editar" | "receber" | "cancelar" | "desfazer"; titulo: Ti
 const COLUNAS = 7;
 const curta = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 const semCancelados = (itens: TituloReceber[]) => somarValores(itens.filter((t) => !t.canceladoEm));
-
-type ItemMenu = { rotulo: string; aoEscolher: () => void; perigo?: boolean };
-
-/* Menu "…" da linha. Usa o popover do navegador (camada de cima): a tabela rola para os lados e cortaria um menu
-   comum. Fecha sozinho com Esc, clique fora ou ao escolher; ao rolar a página ele fecha também. (Mesmo menu da
-   tela de contas a pagar.) */
-function MenuLinha({ rotulo, itens }: { rotulo: string; itens: ItemMenu[] }) {
-  const id = useId();
-  const botao = useRef<HTMLButtonElement>(null);
-  const lista = useRef<HTMLDivElement>(null);
-  const ouvintes = useRef<AbortController | null>(null);
-
-  function aoAlternar(e: ToggleEvent<HTMLDivElement>) {
-    const el = e.currentTarget;
-    ouvintes.current?.abort();
-    if (e.newState !== "open") {
-      delete el.dataset.pronto;
-      return;
-    }
-    const b = botao.current;
-    if (b) {
-      const r = b.getBoundingClientRect();
-      const esquerda = Math.max(8, Math.min(r.right - el.offsetWidth, window.innerWidth - el.offsetWidth - 8));
-      const abaixo = r.bottom + 4;
-      el.style.left = `${esquerda}px`;
-      el.style.top = `${abaixo + el.offsetHeight > window.innerHeight - 8 ? Math.max(8, r.top - el.offsetHeight - 4) : abaixo}px`;
-    }
-    el.dataset.pronto = "";
-    const ctl = new AbortController();
-    ouvintes.current = ctl;
-    const fechar = () => el.hidePopover();
-    window.addEventListener("scroll", fechar, { capture: true, signal: ctl.signal });
-    window.addEventListener("resize", fechar, { signal: ctl.signal });
-  }
-
-  return (
-    <>
-      <button ref={botao} className="btn btn-icone btn-texto btn-pequeno" type="button" popoverTarget={id} aria-label={rotulo} title="Mais ações">
-        <Ellipsis size={16} strokeWidth={1.8} aria-hidden="true" />
-      </button>
-      <div ref={lista} id={id} popover="auto" className="contas-menu" onToggle={aoAlternar}>
-        {itens.map((i) => (
-          <button
-            key={i.rotulo}
-            type="button"
-            className={i.perigo ? "perigo" : undefined}
-            onClick={() => {
-              lista.current?.hidePopover();
-              i.aoEscolher();
-            }}
-          >
-            {i.rotulo}
-          </button>
-        ))}
-      </div>
-    </>
-  );
-}
 
 function Linha({
   t,
@@ -186,6 +128,8 @@ function Linha({
 export function TabelaReceber({ titulos, hoje, contasBancarias, clientes, tipos, centros, vazio }: Props) {
   const [aberto, setAberto] = useState<Aberto>(null);
   const [marcadosIds, setMarcadosIds] = useState<ReadonlySet<string>>(new Set());
+  // Taxa e tarifa ficam aqui: sobrevivem ao painel sumir quando o último título é desmarcado.
+  const [parametros, setParametros] = useState<ParametrosTexto>(PARAMETROS_PADRAO);
   const abrir = (tipo: NonNullable<Aberto>["tipo"], titulo: TituloReceber) => setAberto({ tipo, titulo });
   const fechar = () => setAberto(null);
 
@@ -246,7 +190,7 @@ export function TabelaReceber({ titulos, hoje, contasBancarias, clientes, tipos,
         </table>
       </div>
 
-      {marcados.length > 0 && <Simulador titulos={marcados} hoje={hoje} aoLimpar={() => setMarcadosIds(new Set())} />}
+      {marcados.length > 0 && <Simulador titulos={marcados} hoje={hoje} parametros={parametros} aoMudar={setParametros} aoLimpar={() => setMarcadosIds(new Set())} />}
 
       {aberto?.tipo === "editar" && <DialogoTitulo key={aberto.titulo.id} titulo={aberto.titulo} clientes={clientes} tipos={tipos} centros={centros} aoFechar={fechar} />}
       {aberto?.tipo === "receber" && <DialogoReceber key={aberto.titulo.id} titulo={aberto.titulo} contas={contasBancarias} aoFechar={fechar} />}

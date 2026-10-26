@@ -175,7 +175,7 @@ export default async function PagarPage({ searchParams }: { searchParams: Promis
       <Abas
         rotulo="Situação das contas"
         ativa={filtro}
-        abas={FILTROS.map((f) => ({ id: f, rotulo: ROTULO_FILTRO[f], n: contagens[f], href: href({ ...escolha, filtro: f, mes }) }))}
+        abas={FILTROS.map((f) => ({ id: f, rotulo: ROTULO_FILTRO[f], n: contagens[f], href: href({ ...escolha, filtro: f, mes: f === "pagas" || f === "todas" ? mes : undefined }) }))}
       />
 
       {comMes && (

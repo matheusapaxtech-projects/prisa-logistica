@@ -9,6 +9,8 @@ import { hojeISO } from "@/lib/datas";
 const aprovar = vi.fn();
 const pagar = vi.fn();
 const editarConta = vi.fn();
+const cancelar = vi.fn();
+const liberarAntecipacao = vi.fn();
 vi.mock("@/app/(app)/financeiro/pagar/actions", () => ({
   aprovar: (...a: unknown[]) => aprovar(...a),
   desaprovar: vi.fn(),
@@ -16,8 +18,8 @@ vi.mock("@/app/(app)/financeiro/pagar/actions", () => ({
   pagar: (...a: unknown[]) => pagar(...a),
   editarConta: (...a: unknown[]) => editarConta(...a),
   lancarConta: vi.fn(),
-  cancelar: vi.fn(),
-  liberarAntecipacao: vi.fn(),
+  cancelar: (...a: unknown[]) => cancelar(...a),
+  liberarAntecipacao: (...a: unknown[]) => liberarAntecipacao(...a),
   lancarTaxaCartao: vi.fn(),
 }));
 
@@ -45,6 +47,8 @@ beforeEach(() => {
   aprovar.mockReset();
   pagar.mockReset();
   editarConta.mockReset();
+  cancelar.mockReset();
+  liberarAntecipacao.mockReset();
 });
 afterEach(cleanup);
 
@@ -239,6 +243,32 @@ describe("menu e diálogos", () => {
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
     expect(await screen.findByText("Informe um valor maior que zero.")).toBeInTheDocument();
     expect(editarConta).not.toHaveBeenCalled();
+  });
+});
+
+describe("diálogo de motivo (cancelar e liberar)", () => {
+  const clicar = (rotulo: string) => fireEvent.click(Array.from(document.querySelectorAll<HTMLButtonElement>(".contas-menu button")).find((b) => b.textContent === rotulo)!);
+
+  it("Cancelar a conta pede o motivo e chama o banco com ele", async () => {
+    cancelar.mockResolvedValue({ ok: true, dados: undefined });
+    tabela([conta()]);
+    clicar("Cancelar a conta");
+    expect(screen.getByText(/Troca de pneus/, { selector: "b" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Motivo do cancelamento"), { target: { value: "Fornecedor trocado" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar a conta" }));
+    await waitFor(() => expect(cancelar).toHaveBeenCalledWith("c1", "Fornecedor trocado"));
+    expect(await screen.findByText("Conta cancelada.")).toBeInTheDocument();
+  });
+
+  it("Liberar antecipação (administrador) pede o motivo da liberação", async () => {
+    liberarAntecipacao.mockResolvedValue({ ok: true, dados: undefined });
+    tabela([conta({ origem: "frete_saldo", viagemId: "v1", viagemNumero: 7, lancadoPor: null })], { usuario: { userId: EU, admin: true } });
+    clicar("Liberar antecipação");
+    const enviar = screen.getByRole("button", { name: "Liberar a antecipação" });
+    expect(enviar).not.toHaveClass("btn-perigo");
+    fireEvent.change(screen.getByLabelText("Motivo da liberação"), { target: { value: "Cliente pagou adiantado" } });
+    fireEvent.click(enviar);
+    await waitFor(() => expect(liberarAntecipacao).toHaveBeenCalledWith("c1", "Cliente pagou adiantado"));
   });
 });
 

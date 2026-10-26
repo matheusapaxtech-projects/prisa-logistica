@@ -5,7 +5,8 @@ import { comSessao, type ResultadoAcao } from "@/lib/acao";
 import { tipado } from "@/lib/banco";
 import { hojeISO } from "@/lib/datas";
 import { mesValido } from "@/lib/financeiro";
-import { ehIdConta, lerAjusteGerada, lerConta, lerMotivo, lerPagamento } from "./regras";
+import { ehIdConta, lerMotivo } from "../contas-comum/leitura";
+import { lerAjusteGerada, lerConta, lerPagamento } from "./regras";
 
 /* Gravações do contas a pagar. Toda escrita passa por `comSessao` (a sessão é conferida antes de qualquer
    trabalho). Quem pode o quê é do banco: o lançamento e a edição vão pela API (RLS e gatilhos conferem as

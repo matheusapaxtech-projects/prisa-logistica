@@ -5,13 +5,10 @@
 import type { Database } from "@/lib/banco";
 import { ehForma, type FormaPagamento, type OrigemPagar } from "@/lib/contas";
 import { lerNumeroBr } from "@/lib/formato";
+import { dataReal, inteiro, MAX_OBSERVACAO, RE_UUID, texto, VALOR_MAXIMO, type Erros, type Leitura } from "../contas-comum/leitura";
 
 export const MAX_DESCRICAO = 200;
 export const MAX_FAVORECIDO = 160;
-export const MAX_OBSERVACAO = 500;
-export const MAX_MOTIVO = 300;
-/** Teto de uma conta (o banco aceita menos de 1 bilhão; isto pega um zero a mais digitado). */
-export const VALOR_MAXIMO = 100_000_000;
 /** Anos à frente que o vencimento pode ter (conta parcelada longa, financiamento). */
 const ANOS_A_FRENTE = 5;
 
@@ -82,22 +79,6 @@ export function chaveTipo(c: { planoGrupo: GrupoPlano; planoNome: string }): { i
 }
 
 /* ---------- leitura dos formulários ---------- */
-
-type Erros<C extends string> = Partial<Record<C, string>>;
-export type Leitura<T, C extends string> = { ok: true; dados: T } | { ok: false; erros: Erros<C> };
-
-const RE_DATA = /^(\d{4})-(\d{2})-(\d{2})$/;
-const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function dataReal(v: string): boolean {
-  const m = RE_DATA.exec(v);
-  if (!m) return false;
-  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
-  return d.getUTCFullYear() === +m[1] && d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3];
-}
-
-const texto = (form: FormData, campo: string) => String(form.get(campo) ?? "").trim();
-const inteiro = (v: string): number | null => (/^\d{1,9}$/.test(v) && Number(v) > 0 ? Number(v) : null);
 
 /** Campos do formulário "Lançar conta a pagar" (nomes dos inputs). */
 export type CampoConta = "descricao" | "favorecido" | "plano" | "centro" | "forma" | "vencimento" | "valor" | "observacao";
@@ -219,17 +200,6 @@ export function lerPagamento(form: FormData, hoje: string): Leitura<PagamentoLid
   if (Object.keys(erros).length) return { ok: false, erros };
   return { ok: true, dados: { data, contaId: conta || null, forma: forma as FormaPagamento } };
 }
-
-/** Motivo de um cancelamento ou da liberação da antecipação (o banco exige ao menos 3 caracteres). */
-export function lerMotivo(valor: unknown, para: "cancelamento" | "liberação"): { ok: true; motivo: string } | { ok: false; erro: string } {
-  const motivo = String(valor ?? "").trim();
-  if (motivo.length < 3) return { ok: false, erro: `Diga o motivo ${para === "cancelamento" ? "do cancelamento" : "da liberação"}.` };
-  if (motivo.length > MAX_MOTIVO) return { ok: false, erro: `Use até ${MAX_MOTIVO} caracteres.` };
-  return { ok: true, motivo };
-}
-
-/** Confere o id de uma conta (uuid) antes de ir ao banco. */
-export const ehIdConta = (v: unknown): v is string => typeof v === "string" && RE_UUID.test(v);
 
 /* ---------- o que cada linha oferece ---------- */
 
