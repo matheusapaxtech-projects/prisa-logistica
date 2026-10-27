@@ -125,7 +125,7 @@ describe("linha da conta a pagar", () => {
   it("falta aprovar: outra pessoa lançou, então o botão Aprovar aparece e chama o banco", async () => {
     aprovar.mockResolvedValue({ ok: true, dados: undefined });
     tabela([conta()]);
-    expect(screen.getByText("Falta aprovar")).toBeInTheDocument();
+    expect(screen.getAllByText("Falta aprovar")[0]).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Aprovar" }));
     await waitFor(() => expect(aprovar).toHaveBeenCalledWith("c1", VERSAO));
     expect(await screen.findByText("Conta aprovada.")).toBeInTheDocument();
@@ -149,7 +149,7 @@ describe("linha da conta a pagar", () => {
     expect(screen.queryByRole("button", { name: "Aprovar" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pagar" })).toBeInTheDocument();
     expect(screen.getByText(/aprovada por Bia/)).toBeInTheDocument();
-    expect(screen.getByText("Aprovada")).toBeInTheDocument();
+    expect(screen.getAllByText("Aprovada")[0]).toBeInTheDocument();
   });
 
   it("vencida mostra o sinal de bloqueio com os dias; vencendo em até 7 dias mostra o de advertência", () => {
@@ -163,12 +163,12 @@ describe("linha da conta a pagar", () => {
 
   it("vencida e sem aprovação: o selo diz que falta aprovar e que venceu", () => {
     tabela([conta({ vencimento: "2000-01-01" })]);
-    expect(screen.getByText(/^Falta aprovar · venceu há \d+ dias$/)).toHaveClass("sinal-pendente");
+    expect(screen.getAllByText(/^Falta aprovar · venceu há \d+ dias$/)[0]).toHaveClass("sinal-pendente");
   });
 
   it("vencida mas aprovada: o selo é de aprovada (o vencimento aparece na outra coluna)", () => {
     tabela([conta({ vencimento: "2000-01-01", aprovadoEm: "2026-10-20T10:00:00Z", aprovadoPor: "u-x" })]);
-    expect(screen.getByText("Aprovada")).toBeInTheDocument();
+    expect(screen.getAllByText("Aprovada")[0]).toBeInTheDocument();
     expect(screen.queryByText(/Falta aprovar/)).not.toBeInTheDocument();
   });
 
@@ -184,7 +184,7 @@ describe("linha da conta a pagar", () => {
     tabela([
       conta({ origem: "frete_saldo", canceladoEm: "2026-10-26T10:00:00Z", canceladoAutomatico: true, cancelamentoMotivo: "O que já foi pago ao motorista cobre o frete." }),
     ]);
-    expect(screen.getByText("Cancelada pelo NILT")).toBeInTheDocument();
+    expect(screen.getAllByText("Cancelada pelo NILT")[0]).toBeInTheDocument();
     expect(screen.getByText(/O que já foi pago ao motorista cobre o frete\./)).toBeInTheDocument();
   });
 
@@ -211,10 +211,10 @@ describe("agrupamento e total", () => {
 
   it("por centro: uma linha de cabeçalho por grupo, com o subtotal, e o total no pé", () => {
     tabela(lista, { agrupar: "centro" });
-    const cabecalhos = screen.getAllByRole("rowheader").map((c) => c.textContent);
+    const cabecalhos = Array.from(document.querySelectorAll("tr.contas-grupo th.some-celular")).map((c) => c.textContent);
     expect(cabecalhos[0]).toContain("01.01 · Frete");
     expect(cabecalhos[1]).toContain("03.08 · Manutenção");
-    const grupo = screen.getByText(/03\.08 · Manutenção/).closest("tr")!;
+    const grupo = screen.getAllByText(/03\.08 · Manutenção/)[0]!.closest("tr")!;
     expect(within(grupo).getByText("R$ 125,00")).toBeInTheDocument();
     const pe = document.querySelector("tfoot")!;
     expect(within(pe).getByText("R$ 175,00")).toBeInTheDocument();
@@ -230,7 +230,7 @@ describe("agrupamento e total", () => {
     expect(screen.getByText(/Fornecedor trocado/)).toBeInTheDocument();
     const pe = document.querySelector("tfoot")!;
     expect(within(pe).getByText("R$ 175,00")).toBeInTheDocument();
-    expect(within(pe).getByText(/sem as canceladas/)).toBeInTheDocument();
+    expect(within(pe).getAllByText(/sem as canceladas/)[0]).toBeInTheDocument();
   });
 
   it("lista vazia mostra a frase e não mostra o total", () => {

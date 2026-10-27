@@ -30,7 +30,7 @@ type Props = {
 
 type Aberto = { tipo: "editar" | "receber" | "cancelar" | "desfazer"; titulo: TituloReceber } | null;
 
-const COLUNAS = 7;
+const COLUNAS = 7; // no celular sobram 4 (antecipar, cliente, valor, ações): ver `some-celular`
 const curta = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 const semCancelados = (itens: TituloReceber[]) => somarValores(itens.filter((t) => !t.canceladoEm));
 
@@ -89,16 +89,25 @@ function Linha({
             </>
           )}
         </span>
+        <span className="contas-mini so-celular">
+          <span className="contas-mini-venc">
+            {formato.data(t.vencimento)}
+            <Ponto />
+            {formato.dias(dias)}
+          </span>
+          <Sinal {...sinalReceber(t.situacao)} />
+          <span>{rotuloForma(t.forma)}</span>
+        </span>
       </td>
-      <td>{rotuloForma(t.forma)}</td>
-      <td className="contas-venc">
+      <td className="some-celular">{rotuloForma(t.forma)}</td>
+      <td className="contas-venc some-celular">
         <span className="contas-data">{formato.data(t.vencimento)}</span>
         {estado === "vencida" && <Sinal tipo="bloqueado" texto={formato.dias(dias)} />}
         {estado === "vencendo" && <Sinal tipo="vencendo" texto={formato.dias(dias)} />}
         {estado === "normal" && <span className="linha2">{formato.dias(dias)}</span>}
       </td>
       <td className="num contas-valor">{formato.reais(t.valor)}</td>
-      <td>
+      <td className="some-celular">
         <Sinal {...sinalReceber(t.situacao)} />
         {t.recebidoEm && (
           <span className="linha2">
@@ -143,6 +152,7 @@ export function TabelaReceber({ titulos, hoje, contasBancarias, clientes, tipos,
       return depois;
     });
   const temCancelado = titulos.some((t) => t.canceladoEm);
+  const rotuloTotal = `Total da lista${temCancelado ? " (sem os cancelados)" : ""}`;
 
   return (
     <>
@@ -151,15 +161,21 @@ export function TabelaReceber({ titulos, hoje, contasBancarias, clientes, tipos,
           <thead>
             <tr>
               <th scope="col" className="contas-marcar">
-                Antecipar
+                <span className="contas-marcar-rot">Antecipar</span>
               </th>
               <th scope="col">Cliente</th>
-              <th scope="col">Forma</th>
-              <th scope="col">Vencimento</th>
+              <th scope="col" className="some-celular">
+                Forma
+              </th>
+              <th scope="col" className="some-celular">
+                Vencimento
+              </th>
               <th scope="col" className="num">
                 Valor
               </th>
-              <th scope="col">Situação</th>
+              <th scope="col" className="some-celular">
+                Situação
+              </th>
               <th scope="col">
                 <span className="sr-only">Ações</span>
               </th>
@@ -179,11 +195,15 @@ export function TabelaReceber({ titulos, hoje, contasBancarias, clientes, tipos,
           {titulos.length > 0 && (
             <tfoot>
               <tr className="total">
-                <th scope="row" colSpan={4}>
-                  Total da lista{temCancelado && " (sem os cancelados)"}
+                <th scope="row" colSpan={4} className="some-celular">
+                  {rotuloTotal}
+                </th>
+                <th scope="row" colSpan={2} className="so-celular">
+                  {rotuloTotal}
                 </th>
                 <td className="num">{formato.reais(semCancelados(titulos))}</td>
-                <td colSpan={2} />
+                <td className="some-celular" />
+                <td />
               </tr>
             </tfoot>
           )}

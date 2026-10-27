@@ -227,14 +227,14 @@ describe("simulador de antecipação", () => {
 describe("linha da conta a receber", () => {
   it("em aberto: botão Receber e menu com Editar e Cancelar a conta", () => {
     tabela([titulo()]);
-    expect(screen.getByText("A vencer", { selector: ".sinal" })).toBeInTheDocument();
+    expect(screen.getAllByText("A vencer", { selector: ".sinal" })[0]).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Receber" })).toBeInTheDocument();
     expect(itensDoMenu()).toEqual(["Editar", "Cancelar a conta"]);
   });
 
   it("vencida: sinal de bloqueio com os dias", () => {
     tabela([titulo({ vencimento: emDias(-3), situacao: "vencida" })]);
-    expect(screen.getByText("Vencido", { selector: ".sinal" })).toBeInTheDocument();
+    expect(screen.getAllByText("Vencido", { selector: ".sinal" })[0]).toBeInTheDocument();
     expect(screen.getByText("venceu há 3 dias")).toHaveClass("sinal-bloqueado");
   });
 
@@ -253,7 +253,7 @@ describe("linha da conta a receber", () => {
     expect(screen.getByText(/Cliente desistiu/)).toBeInTheDocument();
     const pe = document.querySelector("tfoot")!;
     expect(within(pe).getByText("R$ 100,00")).toBeInTheDocument();
-    expect(within(pe).getByText(/sem os cancelados/)).toBeInTheDocument();
+    expect(within(pe).getAllByText(/sem os cancelados/)[0]).toBeInTheDocument();
   });
 
   it("mostra o link da viagem quando o título veio de uma viagem", () => {

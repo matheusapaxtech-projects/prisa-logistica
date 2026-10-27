@@ -31,7 +31,7 @@ type Props = {
 
 type Aberto = { tipo: "editar" | "pagar" | "cancelar" | "liberar" | "desfazer"; conta: ContaPagar } | null;
 
-const COLUNAS = 6;
+const COLUNAS = 6; // no celular sobram 3 (descrição, valor, ações): ver `some-celular`
 const curta = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 const semCanceladas = (itens: ContaPagar[]) => somarValores(itens.filter((c) => !c.canceladoEm));
 
@@ -104,16 +104,25 @@ function Linha({
             </>
           )}
         </span>
+        <span className="contas-mini so-celular">
+          <span className="contas-mini-venc">
+            {formato.data(c.vencimento)}
+            <Ponto />
+            {formato.dias(dias)}
+          </span>
+          <Sinal {...sinalAprovacao(c, estado === "vencida" ? dias : null)} />
+          <span>{rotuloForma(c.forma)}</span>
+        </span>
       </td>
-      <td>{rotuloForma(c.forma)}</td>
-      <td className="contas-venc">
+      <td className="some-celular">{rotuloForma(c.forma)}</td>
+      <td className="contas-venc some-celular">
         <span className="contas-data">{formato.data(c.vencimento)}</span>
         {estado === "vencida" && <Sinal tipo="bloqueado" texto={formato.dias(dias)} />}
         {estado === "vencendo" && <Sinal tipo="vencendo" texto={formato.dias(dias)} />}
         {estado === "normal" && <span className="linha2">{formato.dias(dias)}</span>}
       </td>
       <td className="num contas-valor">{formato.reais(c.valor)}</td>
-      <td>
+      <td className="some-celular">
         <Sinal {...sinalAprovacao(c, estado === "vencida" ? dias : null)} />
         <span className="linha2">
           {c.pagoEm ? (
@@ -165,6 +174,7 @@ export function TabelaPagar({ contas, agrupar, hoje, usuario, contasBancarias, t
 
   const grupos = agrupar === "nenhum" ? null : agruparContas(contas, agrupar === "centro" ? chaveCentro : chaveTipo);
   const temCancelada = contas.some((c) => c.canceladoEm);
+  const rotuloTotal = `Total da lista${temCancelada ? " (sem as canceladas)" : ""}`;
   const linha = (c: ContaPagar) => <Linha key={c.id} c={c} hoje={hoje} usuario={usuario} abrir={abrir} />;
 
   return (
@@ -174,12 +184,18 @@ export function TabelaPagar({ contas, agrupar, hoje, usuario, contasBancarias, t
           <thead>
             <tr>
               <th scope="col">Descrição</th>
-              <th scope="col">Forma</th>
-              <th scope="col">Vencimento</th>
+              <th scope="col" className="some-celular">
+                Forma
+              </th>
+              <th scope="col" className="some-celular">
+                Vencimento
+              </th>
               <th scope="col" className="num">
                 Valor
               </th>
-              <th scope="col">Aprovação</th>
+              <th scope="col" className="some-celular">
+                Aprovação
+              </th>
               <th scope="col">
                 <span className="sr-only">Ações</span>
               </th>
@@ -193,21 +209,32 @@ export function TabelaPagar({ contas, agrupar, hoje, usuario, contasBancarias, t
                 </td>
               </tr>
             ) : grupos ? (
-              grupos.map((g) => (
-                <Fragment key={g.id}>
-                  <tr className="contas-grupo sem-link">
-                    <th scope="rowgroup" colSpan={3}>
-                      {g.rotulo}
-                      <span className="contas-grupo-qtd">
-                        {g.itens.length} {g.itens.length === 1 ? "conta" : "contas"}
-                      </span>
-                    </th>
-                    <td className="num">{formato.reais(semCanceladas(g.itens))}</td>
-                    <td colSpan={2} />
-                  </tr>
-                  {g.itens.map(linha)}
-                </Fragment>
-              ))
+              grupos.map((g) => {
+                const rotuloGrupo = (
+                  <>
+                    {g.rotulo}
+                    <span className="contas-grupo-qtd">
+                      {g.itens.length} {g.itens.length === 1 ? "conta" : "contas"}
+                    </span>
+                  </>
+                );
+                return (
+                  <Fragment key={g.id}>
+                    <tr className="contas-grupo sem-link">
+                      <th scope="rowgroup" colSpan={3} className="some-celular">
+                        {rotuloGrupo}
+                      </th>
+                      <th scope="rowgroup" className="so-celular">
+                        {rotuloGrupo}
+                      </th>
+                      <td className="num">{formato.reais(semCanceladas(g.itens))}</td>
+                      <td className="some-celular" />
+                      <td />
+                    </tr>
+                    {g.itens.map(linha)}
+                  </Fragment>
+                );
+              })
             ) : (
               contas.map(linha)
             )}
@@ -215,11 +242,15 @@ export function TabelaPagar({ contas, agrupar, hoje, usuario, contasBancarias, t
           {contas.length > 0 && (
             <tfoot>
               <tr className="total">
-                <th scope="row" colSpan={3}>
-                  Total da lista{temCancelada && " (sem as canceladas)"}
+                <th scope="row" colSpan={3} className="some-celular">
+                  {rotuloTotal}
+                </th>
+                <th scope="row" className="so-celular">
+                  {rotuloTotal}
                 </th>
                 <td className="num">{formato.reais(semCanceladas(contas))}</td>
-                <td colSpan={2} />
+                <td className="some-celular" />
+                <td />
               </tr>
             </tfoot>
           )}

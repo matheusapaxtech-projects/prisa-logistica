@@ -120,3 +120,26 @@ dialog.dlg-conta { width: min(640px, calc(100vw - 32px)); }
   .contas .contas-sim-params { grid-template-columns: 1fr; }
   .contas .contas-sim-topo .btn { margin-left: 0; }
 }
+
+/* ---------- celular (<= 640px): a linha cabe em 390px, sem rolagem de lado ---------- */
+/* No desktop a forma, o vencimento e a aprovação têm coluna; no celular essas colunas somem (`some-celular`) e o
+   mesmo conteúdo aparece em `.contas-mini`, embaixo da descrição. Valor e ação principal continuam visíveis. */
+.contas .tabela .so-celular { display: none; }
+@media (max-width: 640px) {
+  .contas .tabela .so-celular { display: revert; }
+  .contas .tabela .contas-mini { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 4px; font-size: 12px; line-height: 16px; color: var(--muted); }
+  .contas .contas-mini-venc { white-space: nowrap; }
+  .fin.contas .tabela-contas { min-width: 0; }
+  .fin.contas .tabela-contas td, .fin.contas .tabela-contas th { padding-left: 6px; padding-right: 6px; }
+  .fin.contas .tabela-contas td:first-child, .fin.contas .tabela-contas th:first-child { padding-left: 0; }
+  .fin.contas .tabela-contas td:last-child, .fin.contas .tabela-contas th:last-child { padding-right: 0; }
+  .fin.contas .tabela-contas th[scope="row"], .fin.contas .tabela-contas th[scope="rowgroup"] { padding-left: 0; }
+  .contas .contas-acoes { gap: 4px; }
+  .contas .contas-acoes .btn-pequeno { height: 44px; }
+  .contas .contas-acoes .btn-icone.btn-pequeno { width: 44px; }
+  .contas .contas-acoes .nota { white-space: normal; max-width: 84px; text-align: right; }
+  /* receber: coluna da caixa "Antecipar" estreita, com alvo de toque de 44px; o rótulo vira só leitura de tela */
+  .fin.contas .tabela .contas-marcar { width: 44px; padding-right: 6px; }
+  .contas .contas-marcar input { width: 24px; height: 24px; margin: 8px 0 0; }
+  .contas .contas-marcar-rot { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
