@@ -9,6 +9,7 @@ import {
   filtrarCartoes,
   formularioDaPassagem,
   nivelDoTempo,
+  pagamentoNoFinanceiro,
   rotuloDe,
   somenteDigitos,
   type Cartao,
@@ -62,6 +63,8 @@ function cartao(extra: Partial<Cartao> = {}): Cartao {
     peso_saida_kg: null,
     peso_chegada_kg: null,
     tolerancia_quebra_pct: null,
+    adiantamento_no_financeiro: false,
+    saldo_no_financeiro: false,
     ...extra,
   };
 }
@@ -345,5 +348,33 @@ describe("estado da conexão", () => {
     expect(proximoEstado(des, { tipo: "recarga_falhou", em: as1500 })).toEqual(des);
     // com o canal fora do ar, nem a recarga seguinte volta a ao vivo
     expect(proximoEstado(proximoEstado(des, { tipo: "recarga_falhou", em: as1500 }), { tipo: "recarregou", em: as1500 })).toEqual(des);
+  });
+});
+
+describe("pagamentoNoFinanceiro", () => {
+  it("adiantamento: parcela no financeiro, sem pagamento de saída, em Aguardando NF e pagamento", () => {
+    expect(pagamentoNoFinanceiro(cartao({ status_campo: "aguardando_nf_pagamento", adiantamento_no_financeiro: true }))).toEqual({
+      qual: "adiantamento",
+      texto: "Adiantamento: pago pelo financeiro (Contas a pagar)",
+    });
+  });
+  it("saldo: parcela no financeiro, sem saldo pago, em Aguardando saldo", () => {
+    expect(pagamentoNoFinanceiro(cartao({ status_campo: "aguardando_saldo", saldo_no_financeiro: true }))).toEqual({
+      qual: "saldo",
+      texto: "Saldo: pago pelo financeiro (Contas a pagar)",
+    });
+  });
+  it("viagem antiga (sem parcelas) segue com o botão de confirmar", () => {
+    expect(pagamentoNoFinanceiro(cartao({ status_campo: "aguardando_nf_pagamento" }))).toBeNull();
+    expect(pagamentoNoFinanceiro(cartao({ status_campo: "aguardando_saldo" }))).toBeNull();
+  });
+  it("já pago, ou em outra coluna, não mostra o aviso", () => {
+    expect(pagamentoNoFinanceiro(cartao({ status_campo: "aguardando_nf_pagamento", adiantamento_no_financeiro: true, pagamento_saida: true }))).toBeNull();
+    expect(pagamentoNoFinanceiro(cartao({ status_campo: "aguardando_saldo", saldo_no_financeiro: true, saldo_pago: true }))).toBeNull();
+    expect(pagamentoNoFinanceiro(cartao({ status_campo: "em_rota", adiantamento_no_financeiro: true, saldo_no_financeiro: true }))).toBeNull();
+  });
+  it("a parcela de um pagamento não esconde o botão do outro", () => {
+    expect(pagamentoNoFinanceiro(cartao({ status_campo: "aguardando_nf_pagamento", saldo_no_financeiro: true }))).toBeNull();
+    expect(pagamentoNoFinanceiro(cartao({ status_campo: "aguardando_saldo", adiantamento_no_financeiro: true }))).toBeNull();
   });
 });

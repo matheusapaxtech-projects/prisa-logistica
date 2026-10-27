@@ -67,6 +67,15 @@ test.describe("shell", () => {
     await entrar(page);
     const shell = page.locator(".shell");
     await expect(page.getByRole("button", { name: "Abrir menu" })).toBeVisible();
+    // Espera a página hidratar: o React põe `__reactProps$…` nos elementos que ele já controla. Antes disso o clique
+    // não faz nada (ou abre o menu sem que o clique fora tenha ouvinte) e o teste falhava de vez em quando.
+    await page.waitForLoadState("load");
+    await page.waitForFunction(() => {
+      const botao = document.querySelector(".menu-btn");
+      const moldura = document.querySelector(".shell");
+      const hidratado = (el: Element | null) => !!el && Object.keys(el).some((k) => k.startsWith("__reactProps"));
+      return hidratado(botao) && hidratado(moldura);
+    });
     await page.getByRole("button", { name: "Abrir menu" }).click();
     await expect(shell).toHaveClass(/menu-aberto/);
     await page.mouse.click(370, 400);

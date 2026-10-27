@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarClock, ChevronLeft, ChevronRight, Receipt, Truck, Users, type LucideIcon } from "lucide-react";
-import { Abas } from "@/components/Abas";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import { Ponto } from "@/components/Ponto";
 import { tipado } from "@/lib/banco";
@@ -10,6 +9,7 @@ import { irrfPorContratado, somarRetencoes } from "@/lib/fiscal";
 import { formato } from "@/lib/formato";
 import { getPerfil, pode } from "@/lib/permissoes";
 import { createClient } from "@/lib/supabase/server";
+import { AbasFinanceiro } from "../abas";
 import { AcoesGuias } from "./acoes-guias";
 import { guiasDoMes, retencoesDoMes, vencimentoDoMes } from "./consultas";
 import "@/styles/paginas/proprietarios.css";
@@ -78,16 +78,7 @@ export default async function RetencoesPage({ searchParams }: { searchParams: Pr
         </div>
       </div>
 
-      <Abas
-        rotulo="Partes do financeiro"
-        ativa="retencoes"
-        abas={[
-          { id: "resultado", rotulo: "Resultado", href: `/financeiro?mes=${mes}` },
-          { id: "lancamentos", rotulo: "Lançamentos", href: `/financeiro?aba=lancamentos&mes=${mes}` },
-          { id: "regras", rotulo: "Regras", href: `/financeiro?aba=regras&mes=${mes}` },
-          { id: "retencoes", rotulo: "Retenções", href: href(mes) },
-        ]}
-      />
+      <AbasFinanceiro ativa="retencoes" mes={mes} />
 
       <nav className="mes-nav" aria-label="Mês">
         <Link className="btn btn-icone" href={href(somarMes(mes, -1))} aria-label="Mês anterior" scroll={false}>

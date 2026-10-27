@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.18"
-  }
   public: {
     Tables: {
       antt_coeficiente: {
@@ -23,6 +18,7 @@ export type Database = {
           tipo_carga: Database["public"]["Enums"]["tipo_carga_antt"]
           vigencia_inicio: string
         }
+        ComputedFields: never
         Insert: {
           cc: number
           ccd: number
@@ -62,6 +58,7 @@ export type Database = {
           veiculo_id: string | null
           viagem_id: string | null
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           created_by?: string | null
@@ -158,6 +155,7 @@ export type Database = {
           tabela: string
           usuario_id: string | null
         }
+        ComputedFields: never
         Insert: {
           acao: string
           dados_antes?: Json | null
@@ -185,6 +183,7 @@ export type Database = {
           codigo: string
           nome: string
         }
+        ComputedFields: never
         Insert: {
           codigo: string
           nome: string
@@ -197,22 +196,40 @@ export type Database = {
       }
       centro_custo: {
         Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          created_by: string | null
           id: number
           nome: string
+          updated_at: string
+          updated_by: string | null
         }
+        ComputedFields: never
         Insert: {
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          created_by?: string | null
           id?: number
           nome: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          created_by?: string | null
           id?: number
           nome?: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
       cliente: {
         Row: {
-          tolerancia_quebra_pct: number
           condicao_faturamento: Database["public"]["Enums"]["condicao_faturamento"]
           created_at: string
           created_by: string | null
@@ -223,11 +240,12 @@ export type Database = {
           exigencias: string | null
           gerenciadora: string | null
           pessoa_id: string
+          tolerancia_quebra_pct: number
           updated_at: string
           updated_by: string | null
         }
+        ComputedFields: never
         Insert: {
-          tolerancia_quebra_pct?: number
           condicao_faturamento?: Database["public"]["Enums"]["condicao_faturamento"]
           created_at?: string
           created_by?: string | null
@@ -238,11 +256,11 @@ export type Database = {
           exigencias?: string | null
           gerenciadora?: string | null
           pessoa_id: string
+          tolerancia_quebra_pct?: number
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
-          tolerancia_quebra_pct?: number
           condicao_faturamento?: Database["public"]["Enums"]["condicao_faturamento"]
           created_at?: string
           created_by?: string | null
@@ -253,6 +271,7 @@ export type Database = {
           exigencias?: string | null
           gerenciadora?: string | null
           pessoa_id?: string
+          tolerancia_quebra_pct?: number
           updated_at?: string
           updated_by?: string | null
         }
@@ -280,6 +299,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
         }
+        ComputedFields: never
         Insert: {
           aprovado_em?: string | null
           aprovado_por?: string | null
@@ -336,6 +356,7 @@ export type Database = {
           posicao: number
           veiculo_id: string
         }
+        ComputedFields: never
         Insert: {
           conjunto_id: string
           posicao: number
@@ -370,6 +391,28 @@ export type Database = {
           },
         ]
       }
+      fin_config: {
+        Row: {
+          id: number
+          parcelas_frete_ativas: boolean
+          parcelas_frete_mudado_em: string | null
+          parcelas_frete_mudado_por: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          id?: number
+          parcelas_frete_ativas?: boolean
+          parcelas_frete_mudado_em?: string | null
+          parcelas_frete_mudado_por?: string | null
+        }
+        Update: {
+          id?: number
+          parcelas_frete_ativas?: boolean
+          parcelas_frete_mudado_em?: string | null
+          parcelas_frete_mudado_por?: string | null
+        }
+        Relationships: []
+      }
       fin_conta: {
         Row: {
           agencia: string
@@ -382,6 +425,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
         }
+        ComputedFields: never
         Insert: {
           agencia?: string
           apelido?: string | null
@@ -420,6 +464,7 @@ export type Database = {
           saldo_em: string | null
           total: number
         }
+        ComputedFields: never
         Insert: {
           conta_id: string
           created_at?: string
@@ -474,6 +519,7 @@ export type Database = {
           updated_by: string | null
           valor: number
         }
+        ComputedFields: never
         Insert: {
           categoria?: Database["public"]["Enums"]["fin_categoria"] | null
           chave: string
@@ -525,6 +571,343 @@ export type Database = {
           },
         ]
       }
+      fin_pagar: {
+        Row: {
+          antecipacao_liberada_em: string | null
+          antecipacao_liberada_por: string | null
+          antecipacao_motivo: string | null
+          aprovado_em: string | null
+          aprovado_por: string | null
+          cancelado_automatico: boolean
+          cancelado_em: string | null
+          cancelado_por: string | null
+          cancelamento_motivo: string | null
+          centro_custo_id: number
+          competencia: string | null
+          conta_id: string | null
+          created_at: string
+          descricao: string
+          editado_por: string | null
+          favorecido_id: string | null
+          favorecido_nome: string
+          forma: Database["public"]["Enums"]["fin_forma"]
+          id: string
+          lancado_por: string | null
+          numero: number
+          observacao: string | null
+          origem: string
+          pago_em: string | null
+          pago_por: string | null
+          pago_registrado_em: string | null
+          parte_pedagio: number
+          parte_retencao: number
+          plano_id: number
+          updated_at: string
+          updated_by: string | null
+          valor: number
+          vencimento: string
+          viagem_id: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          antecipacao_liberada_em?: string | null
+          antecipacao_liberada_por?: string | null
+          antecipacao_motivo?: string | null
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          cancelado_automatico?: boolean
+          cancelado_em?: string | null
+          cancelado_por?: string | null
+          cancelamento_motivo?: string | null
+          centro_custo_id: number
+          competencia?: string | null
+          conta_id?: string | null
+          created_at?: string
+          descricao: string
+          editado_por?: string | null
+          favorecido_id?: string | null
+          favorecido_nome: string
+          forma: Database["public"]["Enums"]["fin_forma"]
+          id?: string
+          lancado_por?: string | null
+          numero?: never
+          observacao?: string | null
+          origem?: string
+          pago_em?: string | null
+          pago_por?: string | null
+          pago_registrado_em?: string | null
+          parte_pedagio?: number
+          parte_retencao?: number
+          plano_id: number
+          updated_at?: string
+          updated_by?: string | null
+          valor: number
+          vencimento: string
+          viagem_id?: string | null
+        }
+        Update: {
+          antecipacao_liberada_em?: string | null
+          antecipacao_liberada_por?: string | null
+          antecipacao_motivo?: string | null
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          cancelado_automatico?: boolean
+          cancelado_em?: string | null
+          cancelado_por?: string | null
+          cancelamento_motivo?: string | null
+          centro_custo_id?: number
+          competencia?: string | null
+          conta_id?: string | null
+          created_at?: string
+          descricao?: string
+          editado_por?: string | null
+          favorecido_id?: string | null
+          favorecido_nome?: string
+          forma?: Database["public"]["Enums"]["fin_forma"]
+          id?: string
+          lancado_por?: string | null
+          numero?: never
+          observacao?: string | null
+          origem?: string
+          pago_em?: string | null
+          pago_por?: string | null
+          pago_registrado_em?: string | null
+          parte_pedagio?: number
+          parte_retencao?: number
+          plano_id?: number
+          updated_at?: string
+          updated_by?: string | null
+          valor?: number
+          vencimento?: string
+          viagem_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_pagar_centro_custo_id_fkey"
+            columns: ["centro_custo_id"]
+            isOneToOne: false
+            referencedRelation: "centro_custo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_pagar_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "fin_conta"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_pagar_favorecido_id_fkey"
+            columns: ["favorecido_id"]
+            isOneToOne: false
+            referencedRelation: "pessoa"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_pagar_plano_id_fkey"
+            columns: ["plano_id"]
+            isOneToOne: false
+            referencedRelation: "fin_plano_conta"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_pagar_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "v_quadro"
+            referencedColumns: ["viagem_id"]
+          },
+          {
+            foreignKeyName: "fin_pagar_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "v_viagem_planejada"
+            referencedColumns: ["viagem_id"]
+          },
+          {
+            foreignKeyName: "fin_pagar_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "viagem"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_plano_conta: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          created_by: string | null
+          entrada: boolean
+          grupo: Database["public"]["Enums"]["fin_grupo_plano"]
+          id: number
+          nome: string
+          ordem: number
+          saida: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          entrada?: boolean
+          grupo: Database["public"]["Enums"]["fin_grupo_plano"]
+          id?: number
+          nome: string
+          ordem?: number
+          saida?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          entrada?: boolean
+          grupo?: Database["public"]["Enums"]["fin_grupo_plano"]
+          id?: number
+          nome?: string
+          ordem?: number
+          saida?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      fin_receber: {
+        Row: {
+          cancelado_em: string | null
+          cancelado_por: string | null
+          cancelamento_motivo: string | null
+          centro_custo_id: number
+          cliente_id: string
+          conta_id: string | null
+          created_at: string
+          editado_por: string | null
+          forma: Database["public"]["Enums"]["fin_forma"]
+          id: string
+          lancado_por: string | null
+          numero: number
+          observacao: string | null
+          origem: string
+          plano_id: number
+          recebido_em: string | null
+          recebido_por: string | null
+          recebido_registrado_em: string | null
+          titulo: string
+          updated_at: string
+          updated_by: string | null
+          valor: number
+          vencimento: string
+          viagem_id: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          cancelado_em?: string | null
+          cancelado_por?: string | null
+          cancelamento_motivo?: string | null
+          centro_custo_id: number
+          cliente_id: string
+          conta_id?: string | null
+          created_at?: string
+          editado_por?: string | null
+          forma?: Database["public"]["Enums"]["fin_forma"]
+          id?: string
+          lancado_por?: string | null
+          numero?: never
+          observacao?: string | null
+          origem?: string
+          plano_id: number
+          recebido_em?: string | null
+          recebido_por?: string | null
+          recebido_registrado_em?: string | null
+          titulo: string
+          updated_at?: string
+          updated_by?: string | null
+          valor: number
+          vencimento: string
+          viagem_id?: string | null
+        }
+        Update: {
+          cancelado_em?: string | null
+          cancelado_por?: string | null
+          cancelamento_motivo?: string | null
+          centro_custo_id?: number
+          cliente_id?: string
+          conta_id?: string | null
+          created_at?: string
+          editado_por?: string | null
+          forma?: Database["public"]["Enums"]["fin_forma"]
+          id?: string
+          lancado_por?: string | null
+          numero?: never
+          observacao?: string | null
+          origem?: string
+          plano_id?: number
+          recebido_em?: string | null
+          recebido_por?: string | null
+          recebido_registrado_em?: string | null
+          titulo?: string
+          updated_at?: string
+          updated_by?: string | null
+          valor?: number
+          vencimento?: string
+          viagem_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_receber_centro_custo_id_fkey"
+            columns: ["centro_custo_id"]
+            isOneToOne: false
+            referencedRelation: "centro_custo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_receber_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "cliente"
+            referencedColumns: ["pessoa_id"]
+          },
+          {
+            foreignKeyName: "fin_receber_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "fin_conta"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_receber_plano_id_fkey"
+            columns: ["plano_id"]
+            isOneToOne: false
+            referencedRelation: "fin_plano_conta"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_receber_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "v_quadro"
+            referencedColumns: ["viagem_id"]
+          },
+          {
+            foreignKeyName: "fin_receber_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "v_viagem_planejada"
+            referencedColumns: ["viagem_id"]
+          },
+          {
+            foreignKeyName: "fin_receber_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "viagem"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fin_regra: {
         Row: {
           categoria: Database["public"]["Enums"]["fin_categoria"]
@@ -535,6 +918,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
         }
+        ComputedFields: never
         Insert: {
           categoria: Database["public"]["Enums"]["fin_categoria"]
           chave: string
@@ -568,6 +952,7 @@ export type Database = {
           valor: number
           vencimento: string
         }
+        ComputedFields: never
         Insert: {
           competencia: string
           gerada_em?: string
@@ -599,6 +984,7 @@ export type Database = {
           id: number
           nome: string
         }
+        ComputedFields: never
         Insert: {
           id?: number
           nome: string
@@ -637,6 +1023,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
         }
+        ComputedFields: never
         Insert: {
           cnh_categoria?: Database["public"]["Enums"]["categoria_cnh"] | null
           cnh_cidade_emissao?: string | null
@@ -701,6 +1088,67 @@ export type Database = {
           },
         ]
       }
+      motorista_disponibilidade: {
+        Row: {
+          cidade: string
+          created_at: string
+          created_by: string | null
+          id: string
+          latitude: number
+          livre_ate: string
+          livre_desde: string
+          longitude: number
+          motorista_id: string
+          observacao: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          cidade: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          latitude: number
+          livre_ate?: string
+          livre_desde?: string
+          longitude: number
+          motorista_id: string
+          observacao?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          cidade?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          latitude?: number
+          livre_ate?: string
+          livre_desde?: string
+          longitude?: number
+          motorista_id?: string
+          observacao?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "motorista_disponibilidade_motorista_id_fkey"
+            columns: ["motorista_id"]
+            isOneToOne: false
+            referencedRelation: "motorista"
+            referencedColumns: ["pessoa_id"]
+          },
+          {
+            foreignKeyName: "motorista_disponibilidade_motorista_id_fkey"
+            columns: ["motorista_id"]
+            isOneToOne: false
+            referencedRelation: "v_motorista_situacao"
+            referencedColumns: ["pessoa_id"]
+          },
+        ]
+      }
       motorista_referencia: {
         Row: {
           created_at: string
@@ -715,6 +1163,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           created_by?: string | null
@@ -758,66 +1207,6 @@ export type Database = {
           },
         ]
       }
-      operadora_tag: {
-        Row: {
-          id: number
-          nome: string
-        }
-        Insert: {
-          id?: number
-          nome: string
-        }
-        Update: {
-          id?: number
-          nome?: string
-        }
-        Relationships: []
-      }
-      motorista_disponibilidade: {
-        Row: {
-          cidade: string
-          created_at: string
-          created_by: string | null
-          id: string
-          latitude: number
-          livre_ate: string
-          livre_desde: string
-          longitude: number
-          motorista_id: string
-          observacao: string | null
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          cidade: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          latitude: number
-          livre_ate?: string
-          livre_desde?: string
-          longitude: number
-          motorista_id: string
-          observacao?: string | null
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          cidade?: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          latitude?: number
-          livre_ate?: string
-          livre_desde?: string
-          longitude?: number
-          motorista_id?: string
-          observacao?: string | null
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: []
-      }
       negociacao_frete: {
         Row: {
           conjunto_id: string | null
@@ -847,6 +1236,7 @@ export type Database = {
           valor_pedido: number | null
           viagem_id: string | null
         }
+        ComputedFields: never
         Insert: {
           conjunto_id?: string | null
           created_at?: string
@@ -912,10 +1302,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "negociacao_frete_conjunto_id_fkey"
+            columns: ["conjunto_id"]
+            isOneToOne: false
+            referencedRelation: "v_conjunto_capacidade"
+            referencedColumns: ["conjunto_id"]
+          },
+          {
             foreignKeyName: "negociacao_frete_motorista_id_fkey"
             columns: ["motorista_id"]
             isOneToOne: false
             referencedRelation: "motorista"
+            referencedColumns: ["pessoa_id"]
+          },
+          {
+            foreignKeyName: "negociacao_frete_motorista_id_fkey"
+            columns: ["motorista_id"]
+            isOneToOne: false
+            referencedRelation: "v_motorista_situacao"
             referencedColumns: ["pessoa_id"]
           },
           {
@@ -924,6 +1328,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "pedido"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "negociacao_frete_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedido_saldo"
+            referencedColumns: ["pedido_id"]
+          },
+          {
+            foreignKeyName: "negociacao_frete_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "v_quadro"
+            referencedColumns: ["viagem_id"]
+          },
+          {
+            foreignKeyName: "negociacao_frete_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "v_viagem_planejada"
+            referencedColumns: ["viagem_id"]
           },
           {
             foreignKeyName: "negociacao_frete_viagem_id_fkey"
@@ -940,6 +1365,7 @@ export type Database = {
           negociacao_id: string
           resultado_liquido: number
         }
+        ComputedFields: never
         Insert: {
           margem_liquida: number
           negociacao_id: string
@@ -954,11 +1380,92 @@ export type Database = {
           {
             foreignKeyName: "negociacao_resultado_negociacao_id_fkey"
             columns: ["negociacao_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "negociacao_frete"
             referencedColumns: ["id"]
           },
         ]
+      }
+      operadora_tag: {
+        Row: {
+          id: number
+          nome: string
+        }
+        ComputedFields: never
+        Insert: {
+          id?: number
+          nome: string
+        }
+        Update: {
+          id?: number
+          nome?: string
+        }
+        Relationships: []
+      }
+      parametro_fiscal: {
+        Row: {
+          desconto_duplicata: number
+          irpj_csll: number
+          observacao: string | null
+          pan_card_pct: number
+          pan_card_transferencia: number
+          pan_card_transferencias: number
+          pis_cofins: number
+          seguro_rcdc: number
+          seguro_rctrc: number
+          vigencia_inicio: string
+        }
+        ComputedFields: never
+        Insert: {
+          desconto_duplicata: number
+          irpj_csll: number
+          observacao?: string | null
+          pan_card_pct: number
+          pan_card_transferencia: number
+          pan_card_transferencias: number
+          pis_cofins: number
+          seguro_rcdc: number
+          seguro_rctrc: number
+          vigencia_inicio: string
+        }
+        Update: {
+          desconto_duplicata?: number
+          irpj_csll?: number
+          observacao?: string | null
+          pan_card_pct?: number
+          pan_card_transferencia?: number
+          pan_card_transferencias?: number
+          pis_cofins?: number
+          seguro_rcdc?: number
+          seguro_rctrc?: number
+          vigencia_inicio?: string
+        }
+        Relationships: []
+      }
+      parametro_operacional: {
+        Row: {
+          espera_gratis_h: number
+          estadia_por_th: number
+          observacao: string | null
+          repasse_estadia_pct: number
+          vigencia_inicio: string
+        }
+        ComputedFields: never
+        Insert: {
+          espera_gratis_h: number
+          estadia_por_th: number
+          observacao?: string | null
+          repasse_estadia_pct: number
+          vigencia_inicio: string
+        }
+        Update: {
+          espera_gratis_h?: number
+          estadia_por_th?: number
+          observacao?: string | null
+          repasse_estadia_pct?: number
+          vigencia_inicio?: string
+        }
+        Relationships: []
       }
       pedido: {
         Row: {
@@ -984,6 +1491,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
         }
+        ComputedFields: never
         Insert: {
           coleta_prevista?: string | null
           created_at?: string
@@ -1078,6 +1586,7 @@ export type Database = {
           updated_by: string | null
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           ativo?: boolean
           created_at?: string
@@ -1142,6 +1651,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
         }
+        ComputedFields: never
         Insert: {
           apelido?: string | null
           cnae_principal?: string | null
@@ -1244,6 +1754,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
         }
+        ComputedFields: never
         Insert: {
           chave: string
           conta_id?: string | null
@@ -1307,6 +1818,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
         }
+        ComputedFields: never
         Insert: {
           agencia?: string | null
           agencia_digito?: string | null
@@ -1375,6 +1887,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           created_by?: string | null
@@ -1432,6 +1945,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
         }
+        ComputedFields: never
         Insert: {
           bairro?: string | null
           cep?: string | null
@@ -1502,6 +2016,7 @@ export type Database = {
           updated_by: string | null
           whatsapp: boolean
         }
+        ComputedFields: never
         Insert: {
           contato?: string | null
           created_at?: string
@@ -1576,6 +2091,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
         }
+        ComputedFields: never
         Insert: {
           agregado?: boolean
           agregado_desde?: string | null
@@ -1658,6 +2174,7 @@ export type Database = {
           minutos_ambar: number
           minutos_vermelho: number
         }
+        ComputedFields: never
         Insert: {
           chave: string
           minutos_ambar: number
@@ -1685,6 +2202,7 @@ export type Database = {
           updated_by: string | null
           vias: string[]
         }
+        ComputedFields: never
         Insert: {
           chave: string
           created_at?: string
@@ -1723,6 +2241,7 @@ export type Database = {
           id: number
           nome: string
         }
+        ComputedFields: never
         Insert: {
           aplica_pessoa?: boolean
           aplica_veiculo?: boolean
@@ -1749,6 +2268,7 @@ export type Database = {
           id: number
           nome: string
         }
+        ComputedFields: never
         Insert: {
           categoria: Database["public"]["Enums"]["categoria_veiculo"]
           configuracao_cavalo?:
@@ -1774,6 +2294,7 @@ export type Database = {
           id: number
           nome: string
         }
+        ComputedFields: never
         Insert: {
           id?: number
           nome: string
@@ -1852,14 +2373,16 @@ export type Database = {
           venc_ipva: string | null
           vl_compra: number | null
           vl_mercado: number | null
+          capacidade_carga: number | null
         }
+        ComputedFields: "capacidade_carga"
         Insert: {
           altura_m?: number | null
           ano_fabricacao?: number | null
           ano_modelo?: number | null
           apolice?: string | null
           aquisicao?: string | null
-          arrendado?: boolean | null
+          arrendado?: never
           capacidade_carga_t?: number | null
           centro_custo_id?: number | null
           chassi?: string | null
@@ -1927,7 +2450,7 @@ export type Database = {
           ano_modelo?: number | null
           apolice?: string | null
           aquisicao?: string | null
-          arrendado?: boolean | null
+          arrendado?: never
           capacidade_carga_t?: number | null
           centro_custo_id?: number | null
           chassi?: string | null
@@ -2058,19 +2581,16 @@ export type Database = {
       viagem: {
         Row: {
           averbacao_seguro: string | null
-          chave_nfe: string | null
-          checklist_veiculo_em: string | null
-          ciot: string | null
-          ciot_encerrado_em: string | null
-          mdfe_encerrado_em: string | null
-          saldo_pago_em: string | null
-          saldo_pago_por: string | null
           cancelada_em: string | null
           cancelada_por: string | null
           cancelamento_motivo: string | null
           cavalo_id: string
           chave_cte: string | null
           chave_mdfe: string | null
+          chave_nfe: string | null
+          checklist_veiculo_em: string | null
+          ciot: string | null
+          ciot_encerrado_em: string | null
           conjunto_id: string
           created_at: string
           created_by: string | null
@@ -2087,37 +2607,39 @@ export type Database = {
           km_viagem: number | null
           liberacao_aptidao: Json | null
           liberacao_justificativa: string | null
+          mdfe_encerrado_em: string | null
           motorista_id: string
           numero: number
           observacao: string | null
+          pagamento_pelo_financeiro: boolean
           pagamento_saida_em: string | null
           pagamento_saida_por: string | null
-          pedido_id: string
           pedagio_valor: number | null
+          pedido_id: string
           peso_chegada_kg: number | null
           peso_previsto_kg: number
           peso_saida_kg: number | null
           resolucao: string | null
+          saldo_pago_em: string | null
+          saldo_pago_por: string | null
           status_campo: Database["public"]["Enums"]["status_campo"] | null
           status_desde: string | null
           updated_at: string
           updated_by: string | null
         }
+        ComputedFields: never
         Insert: {
           averbacao_seguro?: string | null
-          chave_nfe?: string | null
-          checklist_veiculo_em?: string | null
-          ciot?: string | null
-          ciot_encerrado_em?: string | null
-          mdfe_encerrado_em?: string | null
-          saldo_pago_em?: string | null
-          saldo_pago_por?: string | null
           cancelada_em?: string | null
           cancelada_por?: string | null
           cancelamento_motivo?: string | null
           cavalo_id: string
           chave_cte?: string | null
           chave_mdfe?: string | null
+          chave_nfe?: string | null
+          checklist_veiculo_em?: string | null
+          ciot?: string | null
+          ciot_encerrado_em?: string | null
           conjunto_id: string
           created_at?: string
           created_by?: string | null
@@ -2134,17 +2656,21 @@ export type Database = {
           km_viagem?: number | null
           liberacao_aptidao?: Json | null
           liberacao_justificativa?: string | null
+          mdfe_encerrado_em?: string | null
           motorista_id: string
           numero?: never
           observacao?: string | null
+          pagamento_pelo_financeiro?: boolean
           pagamento_saida_em?: string | null
           pagamento_saida_por?: string | null
-          pedido_id: string
           pedagio_valor?: number | null
+          pedido_id: string
           peso_chegada_kg?: number | null
           peso_previsto_kg: number
           peso_saida_kg?: number | null
           resolucao?: string | null
+          saldo_pago_em?: string | null
+          saldo_pago_por?: string | null
           status_campo?: Database["public"]["Enums"]["status_campo"] | null
           status_desde?: string | null
           updated_at?: string
@@ -2152,19 +2678,16 @@ export type Database = {
         }
         Update: {
           averbacao_seguro?: string | null
-          chave_nfe?: string | null
-          checklist_veiculo_em?: string | null
-          ciot?: string | null
-          ciot_encerrado_em?: string | null
-          mdfe_encerrado_em?: string | null
-          saldo_pago_em?: string | null
-          saldo_pago_por?: string | null
           cancelada_em?: string | null
           cancelada_por?: string | null
           cancelamento_motivo?: string | null
           cavalo_id?: string
           chave_cte?: string | null
           chave_mdfe?: string | null
+          chave_nfe?: string | null
+          checklist_veiculo_em?: string | null
+          ciot?: string | null
+          ciot_encerrado_em?: string | null
           conjunto_id?: string
           created_at?: string
           created_by?: string | null
@@ -2181,17 +2704,21 @@ export type Database = {
           km_viagem?: number | null
           liberacao_aptidao?: Json | null
           liberacao_justificativa?: string | null
+          mdfe_encerrado_em?: string | null
           motorista_id?: string
           numero?: never
           observacao?: string | null
+          pagamento_pelo_financeiro?: boolean
           pagamento_saida_em?: string | null
           pagamento_saida_por?: string | null
-          pedido_id?: string
           pedagio_valor?: number | null
+          pedido_id?: string
           peso_chegada_kg?: number | null
           peso_previsto_kg?: number
           peso_saida_kg?: number | null
           resolucao?: string | null
+          saldo_pago_em?: string | null
+          saldo_pago_por?: string | null
           status_campo?: Database["public"]["Enums"]["status_campo"] | null
           status_desde?: string | null
           updated_at?: string
@@ -2251,7 +2778,7 @@ export type Database = {
       }
       viagem_evento: {
         Row: {
-          dados: Json
+          dados: NonNullable<Json>
           de: Database["public"]["Enums"]["status_campo"] | null
           em: string
           id: number
@@ -2260,8 +2787,9 @@ export type Database = {
           por: string | null
           viagem_id: string
         }
+        ComputedFields: never
         Insert: {
-          dados?: Json
+          dados?: NonNullable<Json>
           de?: Database["public"]["Enums"]["status_campo"] | null
           em?: string
           id?: never
@@ -2271,7 +2799,7 @@ export type Database = {
           viagem_id: string
         }
         Update: {
-          dados?: Json
+          dados?: NonNullable<Json>
           de?: Database["public"]["Enums"]["status_campo"] | null
           em?: string
           id?: never
@@ -2316,6 +2844,7 @@ export type Database = {
           tipo: Database["public"]["Enums"]["tipo_ocorrencia"]
           viagem_id: string
         }
+        ComputedFields: never
         Insert: {
           aberta_em?: string
           aberta_por?: string | null
@@ -2372,6 +2901,7 @@ export type Database = {
           tipo: Database["public"]["Enums"]["tipo_pausa"]
           viagem_id: string
         }
+        ComputedFields: never
         Insert: {
           coluna_origem: Database["public"]["Enums"]["status_campo"]
           fim?: string | null
@@ -2423,17 +2953,19 @@ export type Database = {
           quantidade: number | null
           valor: number | null
         }
+        ComputedFields: never
         Relationships: []
       }
       v_conjunto_capacidade: {
         Row: {
           capacidade_total_t: number | null
-          cavalo_id: string | null
+          cavalo_id: string
           cmt_t: number | null
-          conjunto_id: string | null
+          conjunto_id: string
           excede_cmt: boolean | null
           tara_total_t: number | null
         }
+        ComputedFields: never
         Relationships: [
           {
             foreignKeyName: "conjunto_cavalo_id_fkey"
@@ -2444,20 +2976,189 @@ export type Database = {
           },
         ]
       }
-      v_motorista_situacao: {
+      v_fin_pagar: {
         Row: {
-          cnh_validade: string | null
-          cpf: string | null
-          nome: string | null
-          pessoa_id: string | null
-          situacao_dados: string | null
+          aberta: boolean | null
+          antecipacao_liberada_em: string | null
+          antecipacao_liberada_por: string | null
+          antecipacao_motivo: string | null
+          aprovado_em: string | null
+          aprovado_por: string | null
+          cancelado_automatico: boolean
+          cancelado_em: string | null
+          cancelado_por: string | null
+          cancelamento_motivo: string | null
+          centro_codigo: string
+          centro_custo_id: number
+          centro_nome: string
+          competencia: string | null
+          conta_id: string | null
+          created_at: string
+          descricao: string
+          editado_por: string | null
+          favorecido_id: string | null
+          favorecido_nome: string
+          forma: Database["public"]["Enums"]["fin_forma"]
+          id: string
+          lancado_por: string | null
+          numero: number
+          observacao: string | null
+          origem: string
+          pago_em: string | null
+          pago_por: string | null
+          pago_registrado_em: string | null
+          parte_pedagio: number
+          parte_retencao: number
+          plano_grupo: Database["public"]["Enums"]["fin_grupo_plano"]
+          plano_id: number
+          plano_nome: string
+          situacao: string | null
+          updated_at: string
+          updated_by: string | null
+          valor: number
+          vencida: boolean | null
+          vencimento: string
+          viagem_id: string | null
+          viagem_numero: number | null
         }
+        ComputedFields: never
         Relationships: [
           {
-            foreignKeyName: "motorista_pessoa_id_fkey"
-            columns: ["pessoa_id"]
-            isOneToOne: true
+            foreignKeyName: "fin_pagar_centro_custo_id_fkey"
+            columns: ["centro_custo_id"]
+            isOneToOne: false
+            referencedRelation: "centro_custo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_pagar_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "fin_conta"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_pagar_favorecido_id_fkey"
+            columns: ["favorecido_id"]
+            isOneToOne: false
             referencedRelation: "pessoa"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_pagar_plano_id_fkey"
+            columns: ["plano_id"]
+            isOneToOne: false
+            referencedRelation: "fin_plano_conta"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_pagar_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "v_quadro"
+            referencedColumns: ["viagem_id"]
+          },
+          {
+            foreignKeyName: "fin_pagar_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "v_viagem_planejada"
+            referencedColumns: ["viagem_id"]
+          },
+          {
+            foreignKeyName: "fin_pagar_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "viagem"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_fin_receber: {
+        Row: {
+          aberta: boolean | null
+          cancelado_em: string | null
+          cancelado_por: string | null
+          cancelamento_motivo: string | null
+          centro_codigo: string
+          centro_custo_id: number
+          centro_nome: string
+          cliente_documento: string | null
+          cliente_id: string
+          cliente_nome: string | null
+          conta_id: string | null
+          created_at: string
+          editado_por: string | null
+          forma: Database["public"]["Enums"]["fin_forma"]
+          id: string
+          lancado_por: string | null
+          numero: number
+          observacao: string | null
+          origem: string
+          plano_id: number
+          plano_nome: string
+          recebido_em: string | null
+          recebido_por: string | null
+          recebido_registrado_em: string | null
+          situacao: string | null
+          titulo: string
+          updated_at: string
+          updated_by: string | null
+          valor: number
+          vencida: boolean | null
+          vencimento: string
+          viagem_id: string | null
+          viagem_numero: number | null
+        }
+        ComputedFields: never
+        Relationships: [
+          {
+            foreignKeyName: "fin_receber_centro_custo_id_fkey"
+            columns: ["centro_custo_id"]
+            isOneToOne: false
+            referencedRelation: "centro_custo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_receber_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "cliente"
+            referencedColumns: ["pessoa_id"]
+          },
+          {
+            foreignKeyName: "fin_receber_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "fin_conta"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_receber_plano_id_fkey"
+            columns: ["plano_id"]
+            isOneToOne: false
+            referencedRelation: "fin_plano_conta"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_receber_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "v_quadro"
+            referencedColumns: ["viagem_id"]
+          },
+          {
+            foreignKeyName: "fin_receber_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "v_viagem_planejada"
+            referencedColumns: ["viagem_id"]
+          },
+          {
+            foreignKeyName: "fin_receber_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: false
+            referencedRelation: "viagem"
             referencedColumns: ["id"]
           },
         ]
@@ -2474,35 +3175,72 @@ export type Database = {
           origem: string | null
           valor: number | null
         }
+        ComputedFields: never
         Relationships: []
       }
       v_motorista_livre: {
         Row: {
-          cidade: string | null
-          created_at: string | null
-          id: string | null
-          latitude: number | null
-          livre_ate: string | null
-          livre_desde: string | null
-          longitude: number | null
-          motorista_id: string | null
+          cidade: string
+          created_at: string
+          id: string
+          latitude: number
+          livre_ate: string
+          livre_desde: string
+          longitude: number
+          motorista_id: string
           observacao: string | null
           ocorrencias: number | null
           viagens_finalizadas: number | null
         }
-        Relationships: []
+        ComputedFields: never
+        Relationships: [
+          {
+            foreignKeyName: "motorista_disponibilidade_motorista_id_fkey"
+            columns: ["motorista_id"]
+            isOneToOne: false
+            referencedRelation: "motorista"
+            referencedColumns: ["pessoa_id"]
+          },
+          {
+            foreignKeyName: "motorista_disponibilidade_motorista_id_fkey"
+            columns: ["motorista_id"]
+            isOneToOne: false
+            referencedRelation: "v_motorista_situacao"
+            referencedColumns: ["pessoa_id"]
+          },
+        ]
+      }
+      v_motorista_situacao: {
+        Row: {
+          cnh_validade: string | null
+          cpf: string | null
+          nome: string
+          pessoa_id: string
+          situacao_dados: string | null
+        }
+        ComputedFields: never
+        Relationships: [
+          {
+            foreignKeyName: "motorista_pessoa_id_fkey"
+            columns: ["pessoa_id"]
+            isOneToOne: true
+            referencedRelation: "pessoa"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_pedido_saldo: {
         Row: {
-          numero: number | null
-          pedido_id: string | null
+          numero: number
+          pedido_id: string
           peso_alocado_kg: number | null
-          peso_total_kg: number | null
+          peso_total_kg: number
           saldo_kg: number | null
-          situacao: Database["public"]["Enums"]["situacao_pedido"] | null
-          tomador_id: string | null
+          situacao: Database["public"]["Enums"]["situacao_pedido"]
+          tomador_id: string
           viagens: number | null
         }
+        ComputedFields: never
         Relationships: [
           {
             foreignKeyName: "pedido_tomador_id_fkey"
@@ -2521,13 +3259,12 @@ export type Database = {
           tipo_pendencia: string | null
           veiculo_id: string | null
         }
+        ComputedFields: never
         Relationships: []
       }
       v_quadro: {
         Row: {
-          peso_chegada_kg: number | null
-          peso_saida_kg: number | null
-          tolerancia_quebra_pct: number | null
+          adiantamento_no_financeiro: boolean | null
           cavalo_placa: string | null
           cliente_nome: string | null
           destino_cidade: string | null
@@ -2535,23 +3272,28 @@ export type Database = {
           divergencia: Database["public"]["Enums"]["resultado_contagem"] | null
           iniciada_por: string | null
           motorista_nome: string | null
-          numero: number | null
+          numero: number
           ocorrencias_abertas: number | null
-          saldo_pago: boolean | null
           origem_cidade: string | null
           origem_uf: Database["public"]["Enums"]["uf"] | null
           pagamento_saida: boolean | null
           pausa_inicio: string | null
           pausa_programada: boolean | null
           pausa_tipo: Database["public"]["Enums"]["tipo_pausa"] | null
+          peso_chegada_kg: number | null
+          peso_saida_kg: number | null
+          saldo_no_financeiro: boolean | null
+          saldo_pago: boolean | null
           status_campo: Database["public"]["Enums"]["status_campo"] | null
           status_desde: string | null
           tem_canhoto: boolean | null
-          tem_documentos_saida: boolean | null
           tem_chaves: boolean | null
+          tem_documentos_saida: boolean | null
+          tolerancia_quebra_pct: number | null
           unidade_operacional_id: number | null
-          viagem_id: string | null
+          viagem_id: string
         }
+        ComputedFields: never
         Relationships: [
           {
             foreignKeyName: "veiculo_unidade_operacional_id_fkey"
@@ -2571,6 +3313,7 @@ export type Database = {
           tipo: string | null
           veiculo_id: string | null
         }
+        ComputedFields: never
         Relationships: []
       }
       v_viagem_planejada: {
@@ -2580,12 +3323,13 @@ export type Database = {
           cavalo_placa: string | null
           cliente_nome: string | null
           motorista_nome: string | null
-          numero: number | null
-          pedido_id: string | null
+          numero: number
+          pedido_id: string
           pedido_numero: number | null
           travas: number | null
-          viagem_id: string | null
+          viagem_id: string
         }
+        ComputedFields: never
         Relationships: [
           {
             foreignKeyName: "viagem_pedido_id_fkey"
@@ -2605,6 +3349,27 @@ export type Database = {
       }
     }
     Functions: {
+      aliquota_icms: {
+        Args: {
+          p_destino: Database["public"]["Enums"]["uf"]
+          p_origem: Database["public"]["Enums"]["uf"]
+        }
+        Returns: number
+      }
+      antt_coeficiente_para: {
+        Args: {
+          p_dia: string
+          p_eixos: number
+          p_tipo: Database["public"]["Enums"]["tipo_carga_antt"]
+        }
+        Returns: {
+          cc: number
+          ccd: number
+          eixos_tabela: number
+          portaria: string
+          vigencia_inicio: string
+        }[]
+      }
       aprovar_conjunto: {
         Args: { p_aprovar?: boolean; p_conjunto: string }
         Returns: undefined
@@ -2630,14 +3395,18 @@ export type Database = {
       arquivo_restrito: { Args: { p_path: string }; Returns: boolean }
       auditar: { Args: { p_tabela: unknown }; Returns: undefined }
       calcular_cte: { Args: { p: Json; p_dia?: string }; Returns: Json }
-      contratar_lote: { Args: { p_itens: Json; p_pedido: string }; Returns: string[] }
       cancelar_viagem: {
         Args: { p_motivo: string; p_viagem: string }
         Returns: undefined
       }
       canhoto_enviado: { Args: { p_viagem: string }; Returns: boolean }
       capacidade_carga: {
-        Args: { v: Database["public"]["Tables"]["veiculo"]["Row"] }
+        Args: {
+          v: Omit<
+            Database["public"]["Tables"]["veiculo"]["Row"],
+            Database["public"]["Tables"]["veiculo"]["ComputedFields"]
+          >
+        }
         Returns: number
       }
       chave_dfe_valida: {
@@ -2650,6 +3419,10 @@ export type Database = {
         Returns: undefined
       }
       confirmar_saldo: { Args: { p_viagem: string }; Returns: undefined }
+      contratar_lote: {
+        Args: { p_itens: Json; p_pedido: string }
+        Returns: string[]
+      }
       cpf_valido: { Args: { p: string }; Returns: boolean }
       definir_perfil: {
         Args: {
@@ -2660,11 +3433,24 @@ export type Database = {
         }
         Returns: undefined
       }
-      eh_admin: { Args: never; Returns: boolean }
+      eh_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
       encerrar_conjunto: { Args: { p_conjunto_id: string }; Returns: undefined }
       existe_arquivo_enviado: {
         Args: { p_pessoa_id: string; p_tipo: string; p_veiculo_id: string }
         Returns: boolean
+      }
+      faixa_margem: { Args: { p: number }; Returns: string }
+      fin_aprovar_pagar: {
+        Args: { p_id: string; p_versao?: string }
+        Returns: undefined
+      }
+      fin_cancelar_pagar: {
+        Args: { p_id: string; p_motivo: string }
+        Returns: undefined
+      }
+      fin_cancelar_receber: {
+        Args: { p_id: string; p_motivo: string }
+        Returns: undefined
       }
       fin_categoria_por_regra: {
         Args: { p_chave: string }
@@ -2694,7 +3480,37 @@ export type Database = {
         }
         Returns: Json
       }
+      fin_conferir_classificacao: {
+        Args: { p_centro: number; p_plano: number; p_saida: boolean }
+        Returns: undefined
+      }
+      fin_definir_parcelas_frete: {
+        Args: { p_ativo: boolean }
+        Returns: undefined
+      }
+      fin_desaprovar_pagar: { Args: { p_id: string }; Returns: undefined }
+      fin_desfazer_pagamento: { Args: { p_id: string }; Returns: undefined }
+      fin_desfazer_recebimento: { Args: { p_id: string }; Returns: undefined }
       fin_importar_extrato: { Args: { p: Json }; Returns: Json }
+      fin_indicadores_contas: { Args: { p_mes: string }; Returns: Json }
+      fin_lancar_taxa_cartao: { Args: { p_mes: string }; Returns: string }
+      fin_liberar_antecipacao: {
+        Args: { p_id: string; p_motivo: string }
+        Returns: undefined
+      }
+      fin_pagar_conta: {
+        Args: {
+          p_conta?: string
+          p_data: string
+          p_forma?: Database["public"]["Enums"]["fin_forma"]
+          p_id: string
+        }
+        Returns: undefined
+      }
+      fin_receber_conta: {
+        Args: { p_conta?: string; p_data: string; p_id: string }
+        Returns: undefined
+      }
       fin_saldos_ate: {
         Args: { p_fim: string }
         Returns: {
@@ -2705,6 +3521,26 @@ export type Database = {
           numero: string
           saldo: number
           saldo_em: string
+        }[]
+      }
+      fin_sincronizar_parcelas: {
+        Args: { p_embarcou_agora?: boolean; p_viagem: string }
+        Returns: undefined
+      }
+      fin_taxa_cartao: {
+        Args: { p_mes: string }
+        Returns: {
+          conta_id: string
+          conta_numero: number
+          conta_situacao: string
+          conta_valor: number
+          pagamentos: number
+          pct: number
+          por_transferencia: number
+          taxa: number
+          total_pago: number
+          valor_pct: number
+          valor_transferencias: number
         }[]
       }
       fiscal_gerar_guias: { Args: { p_competencia: string }; Returns: number }
@@ -2736,12 +3572,17 @@ export type Database = {
         Returns: string
       }
       frete_da_viagem: { Args: { p_viagem: string }; Returns: Json }
+      hoje_brasilia: { Args: Record<PropertyKey, never>; Returns: string }
+      informar_cte_negociacao: {
+        Args: { p_id: string; p_numero: string }
+        Returns: undefined
+      }
       iniciar_viagem: {
         Args: { p_justificativa?: string; p_viagem: string }
         Returns: undefined
       }
       listar_usuarios: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           ativo: boolean
           email: string
@@ -2760,6 +3601,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      nome_mes: { Args: { p: string }; Returns: string }
       nomes_usuarios: {
         Args: { p_ids: string[] }
         Returns: {
@@ -2768,11 +3610,19 @@ export type Database = {
         }[]
       }
       normalizar_placa: { Args: { p: string }; Returns: string }
+      normalizar_rota: { Args: { p: string }; Returns: string }
       papel_atual: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["app_papel"]
       }
       parametros_calculadora: { Args: { p_dia?: string }; Returns: Json }
+      parcelas_no_financeiro: {
+        Args: { p_viagem: string }
+        Returns: {
+          adiantamento: boolean
+          saldo: boolean
+        }[]
+      }
       piso_antt: {
         Args: {
           p_dia?: string
@@ -2783,30 +3633,48 @@ export type Database = {
         }
         Returns: number
       }
-      informar_cte_negociacao: {
-        Args: { p_id: string; p_numero: string }
-        Returns: undefined
-      }
       placa_valida: { Args: { p: string }; Returns: boolean }
-      pode_editar: { Args: never; Returns: boolean }
-      pode_financeiro: { Args: never; Returns: boolean }
-      pode_ler: { Args: never; Returns: boolean }
+      pode_editar: { Args: Record<PropertyKey, never>; Returns: boolean }
+      pode_financeiro: { Args: Record<PropertyKey, never>; Returns: boolean }
+      pode_ler: { Args: Record<PropertyKey, never>; Returns: boolean }
+      quebra_e_estadia: { Args: { p_viagem: string }; Returns: Json }
+      reais_texto: { Args: { p: number }; Returns: string }
+      registrar_negociacao: {
+        Args: {
+          p: Json
+          p_margem_liquida?: number
+          p_resultado_liquido?: number
+        }
+        Returns: string
+      }
       registrar_visualizacao: {
         Args: { p_arquivo: string }
         Returns: undefined
       }
+      responder_negociacao: {
+        Args: {
+          p_aceita: boolean
+          p_id: string
+          p_motivo?: string
+          p_valor_pedido?: number
+        }
+        Returns: string
+      }
       resultado_cte_da_viagem: { Args: { p_viagem: string }; Returns: Json }
-      quebra_e_estadia: { Args: { p_viagem: string }; Returns: Json }
+      rotulo_forma: {
+        Args: { p: Database["public"]["Enums"]["fin_forma"] }
+        Returns: string
+      }
+      rotulo_grupo_plano: {
+        Args: { p: Database["public"]["Enums"]["fin_grupo_plano"] }
+        Returns: string
+      }
       rotulo_status_campo: {
         Args: { p: Database["public"]["Enums"]["status_campo"] }
         Returns: string
       }
-      registrar_negociacao: {
-        Args: { p: Json; p_margem_liquida?: number; p_resultado_liquido?: number }
-        Returns: string
-      }
-      responder_negociacao: {
-        Args: { p_aceita: boolean; p_id: string; p_motivo?: string; p_valor_pedido?: number }
+      rotulo_tipo_carga_antt: {
+        Args: { p: Database["public"]["Enums"]["tipo_carga_antt"] }
         Returns: string
       }
       salvar_conjunto: {
@@ -2818,7 +3686,6 @@ export type Database = {
         }
         Returns: string
       }
-      so_digitos: { Args: { p: string }; Returns: string }
       salvar_rota: {
         Args: {
           p_destino: string
@@ -2830,11 +3697,26 @@ export type Database = {
         }
         Returns: string
       }
+      so_digitos: { Args: { p: string }; Returns: string }
       tem_papel: {
         Args: { p: Database["public"]["Enums"]["app_papel"][] }
         Returns: boolean
       }
       validar_conjunto: { Args: { p_conjunto: string }; Returns: undefined }
+      viagem_parcelas: {
+        Args: { p_viagem: string }
+        Returns: {
+          antecipacao_liberada: boolean
+          numero: number
+          origem: string
+          pago_em: string
+          parte_pedagio: number
+          parte_retencao: number
+          situacao: string
+          valor: number
+          vencimento: string
+        }[]
+      }
     }
     Enums: {
       app_papel: "admin" | "operacao" | "financeiro" | "leitura"
@@ -2864,6 +3746,23 @@ export type Database = {
         | "aporte_capital"
         | "devolucao_capital"
         | "transferencia"
+      fin_forma:
+        | "pix"
+        | "boleto"
+        | "transferencia"
+        | "cartao_frete"
+        | "cartao_credito"
+        | "debito_automatico"
+        | "dinheiro"
+        | "outro"
+      fin_grupo_plano:
+        | "receita"
+        | "imposto_receita"
+        | "custo_frete"
+        | "despesa_operacional"
+        | "financeiro"
+        | "ir_csll"
+        | "fora_resultado"
       fiscal_tipo_guia: "inss" | "sest_senat"
       grau_instrucao:
         | "fundamental_incompleto"
@@ -2925,6 +3824,19 @@ export type Database = {
         | "aguardando_saldo"
         | "frete_finalizado"
       tipo_assoalho: "madeira" | "ferro" | "misto"
+      tipo_carga_antt:
+        | "granel_solido"
+        | "carga_geral"
+        | "granel_liquido"
+        | "frigorificada"
+        | "conteinerizada"
+        | "neogranel"
+        | "perigosa_granel_solido"
+        | "perigosa_granel_liquido"
+        | "perigosa_frigorificada"
+        | "perigosa_conteinerizada"
+        | "perigosa_carga_geral"
+        | "granel_pressurizada"
       tipo_chave_pix: "cpf" | "cnpj" | "celular" | "email" | "aleatoria"
       tipo_conta: "corrente" | "poupanca" | "salario"
       tipo_endereco:
@@ -2948,19 +3860,6 @@ export type Database = {
         | "manutencao"
         | "problema"
         | "outro"
-      tipo_carga_antt:
-        | "granel_solido"
-        | "carga_geral"
-        | "granel_liquido"
-        | "frigorificada"
-        | "conteinerizada"
-        | "neogranel"
-        | "perigosa_granel_solido"
-        | "perigosa_granel_liquido"
-        | "perigosa_frigorificada"
-        | "perigosa_conteinerizada"
-        | "perigosa_carga_geral"
-        | "granel_pressurizada"
       tipo_pessoa: "pf" | "pj"
       tipo_rastreamento: "telemonitorado" | "rastreador" | "localizador"
       tipo_referencia: "pessoal" | "comercial"
@@ -3009,12 +3908,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3038,11 +3937,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3063,11 +3962,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3088,11 +3987,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3105,11 +4004,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3149,6 +4048,25 @@ export const Constants = {
         "aporte_capital",
         "devolucao_capital",
         "transferencia",
+      ],
+      fin_forma: [
+        "pix",
+        "boleto",
+        "transferencia",
+        "cartao_frete",
+        "cartao_credito",
+        "debito_automatico",
+        "dinheiro",
+        "outro",
+      ],
+      fin_grupo_plano: [
+        "receita",
+        "imposto_receita",
+        "custo_frete",
+        "despesa_operacional",
+        "financeiro",
+        "ir_csll",
+        "fora_resultado",
       ],
       fiscal_tipo_guia: ["inss", "sest_senat"],
       grau_instrucao: [
@@ -3217,6 +4135,20 @@ export const Constants = {
         "frete_finalizado",
       ],
       tipo_assoalho: ["madeira", "ferro", "misto"],
+      tipo_carga_antt: [
+        "granel_solido",
+        "carga_geral",
+        "granel_liquido",
+        "frigorificada",
+        "conteinerizada",
+        "neogranel",
+        "perigosa_granel_solido",
+        "perigosa_granel_liquido",
+        "perigosa_frigorificada",
+        "perigosa_conteinerizada",
+        "perigosa_carga_geral",
+        "granel_pressurizada",
+      ],
       tipo_chave_pix: ["cpf", "cnpj", "celular", "email", "aleatoria"],
       tipo_conta: ["corrente", "poupanca", "salario"],
       tipo_endereco: [
@@ -3242,20 +4174,6 @@ export const Constants = {
         "manutencao",
         "problema",
         "outro",
-      ],
-      tipo_carga_antt: [
-        "granel_solido",
-        "carga_geral",
-        "granel_liquido",
-        "frigorificada",
-        "conteinerizada",
-        "neogranel",
-        "perigosa_granel_solido",
-        "perigosa_granel_liquido",
-        "perigosa_frigorificada",
-        "perigosa_conteinerizada",
-        "perigosa_carga_geral",
-        "granel_pressurizada",
       ],
       tipo_pessoa: ["pf", "pj"],
       tipo_rastreamento: ["telemonitorado", "rastreador", "localizador"],

@@ -1,0 +1,35 @@
+/* NILT — Centros de custo (/centros-de-custo). Usa a base de proprietarios.css (`.prop`); aqui só a árvore, presa a
+   `.centros` e com nomes `centros-`. Departamento em destaque (nome 600), subdepartamento recuado; desativado em tom fraco. */
+
+.centros .centros-regra { margin: 0 0 var(--gap); color: var(--muted); max-width: 70ch; }
+.centros .aviso-topo { margin-bottom: var(--gap); }
+.centros .aviso-topo p { margin: 0; }
+
+.centros .tabela-centros { min-width: 640px; }
+.centros .tabela-centros td { vertical-align: middle; padding-top: 10px; padding-bottom: 10px; }
+.centros .tabela .col-acao { width: auto; text-align: right; white-space: nowrap; }
+.centros .centros-codigo { white-space: nowrap; }
+.centros .centros-depto .centros-nome { font-weight: 600; }
+.centros .centros-depto td { border-top: 1px solid var(--painel-borda); }
+.centros .centros-sub .centros-codigo { padding-left: 20px; }
+.centros .centros-sub .centros-nome { padding-left: 4px; }
+.centros .centros-uso { color: var(--muted); white-space: nowrap; }
+.centros .centros-desligado .centros-codigo,
+.centros .centros-desligado .centros-nome { color: var(--muted); }
+.centros .centros-acoes { display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; }
+
+.centros .centros-mini { display: none; }
+
+@media (max-width: 720px) {
+  .centros .centros-regra { max-width: none; }
+}
+
+/* celular: situação e uso vão para baixo do nome; as ações ficam uma embaixo da outra */
+@media (max-width: 640px) {
+  .centros .tabela-centros { min-width: 0; }
+  .centros .centros-mini { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 4px; }
+  .centros .centros-sub .centros-codigo { padding-left: 10px; }
+  .centros .tabela .col-acao { white-space: normal; }
+  .centros .centros-acoes { flex-direction: column; align-items: flex-end; }
+  .centros .centros-acoes .btn-pequeno { height: 44px; }
+}

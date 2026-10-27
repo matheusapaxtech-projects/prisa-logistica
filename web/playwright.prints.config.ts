@@ -13,17 +13,21 @@ try {
   // arquivo ausente: os testes se pulam
 }
 
+// Porta do servidor: 3000, ou E2E_PORTA (ex.: outro projeto já ocupa a 3000), como na suíte padrão.
+const PORTA = process.env.E2E_PORTA ?? "3000";
+const ENDERECO = `http://localhost:${PORTA}`;
+
 export default defineConfig({
   testDir: "tests/e2e",
   outputDir: "test-results/prints",
   timeout: 180_000,
   // Cada rota é um teste independente e só lê dados: roda em paralelo.
   fullyParallel: true,
-  use: { baseURL: "http://localhost:3000" },
+  use: { baseURL: ENDERECO },
   webServer: {
-    // Mesmo servidor da suíte padrão (build + start); um `next dev` aberto na 3000 é reaproveitado.
-    command: "npm run build && npm run start",
-    url: "http://localhost:3000",
+    // Mesmo servidor da suíte padrão (build + start); um `next dev` aberto na mesma porta é reaproveitado.
+    command: `npm run build && npm run start -- -p ${PORTA}`,
+    url: ENDERECO,
     reuseExistingServer: true,
     timeout: 300_000,
   },

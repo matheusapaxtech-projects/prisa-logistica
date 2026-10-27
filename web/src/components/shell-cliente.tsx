@@ -8,6 +8,7 @@ import {
   Calculator,
   ClipboardList,
   Columns3,
+  FolderTree,
   History,
   IdCard,
   KeyRound,
@@ -51,6 +52,8 @@ const CADASTROS: Item[] = [
   { href: "/veiculos", rotulo: "Veículos", Icone: Truck },
   { href: "/conjuntos", rotulo: "Conjuntos", Icone: Link2 },
 ];
+/** Configurações do financeiro (admin e financeiro): no trilho, abaixo dos cadastros. */
+const CONFIG_FINANCEIRO: Item[] = [{ href: "/centros-de-custo", rotulo: "Centros de custo", Icone: FolderTree }];
 const ADMIN: Item[] = [
   { href: "/usuarios", rotulo: "Usuários", Icone: Users },
   { href: "/auditoria", rotulo: "Auditoria", Icone: History },
@@ -178,6 +181,15 @@ export function MolduraShell({ usuario, pendencias, admin, financeiro = false, b
             {CADASTROS.map((item) => (
               <ItemTrilho key={item.href} item={item} caminho={caminho} />
             ))}
+            {financeiro && (
+              <>
+                <hr />
+                <span className="trilho-grupo">Configuração</span>
+                {CONFIG_FINANCEIRO.map((item) => (
+                  <ItemTrilho key={item.href} item={item} caminho={caminho} />
+                ))}
+              </>
+            )}
             {admin && (
               <>
                 <hr />

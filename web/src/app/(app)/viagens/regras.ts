@@ -28,13 +28,21 @@ export function proximoPasso(v: {
   pagamento_saida: boolean;
   tem_canhoto: boolean;
   saldo_pago?: boolean;
+  /** Parcela no Contas a pagar (viagem contratada depois da migration 20261101000300): quem paga é o financeiro. */
+  adiantamento_no_financeiro?: boolean;
+  saldo_no_financeiro?: boolean;
 }): string | null {
   if (v.status_campo === null) return "Iniciar trânsito";
   if (v.status_campo === "aguardando_carregamento") return "Conferir o checklist do veículo";
-  if (v.status_campo === "aguardando_nf_pagamento")
-    return v.pagamento_saida ? "Informar CT-e, MDF-e, NF-e, CIOT e averbação" : "Confirmar pagamento de saída";
+  if (v.status_campo === "aguardando_nf_pagamento") {
+    if (v.pagamento_saida) return "Informar CT-e, MDF-e, NF-e, CIOT e averbação";
+    return v.adiantamento_no_financeiro ? "Esperar o financeiro pagar o adiantamento" : "Confirmar pagamento de saída";
+  }
   if ((v.status_campo === "aguardando_descarga" || v.status_campo === "descarregando") && !v.tem_canhoto) return "Enviar canhoto";
-  if (v.status_campo === "aguardando_saldo") return v.saldo_pago ? "Encerrar MDF-e e CIOT e finalizar" : "Confirmar o pagamento do saldo";
+  if (v.status_campo === "aguardando_saldo") {
+    if (v.saldo_pago) return "Encerrar MDF-e e CIOT e finalizar";
+    return v.saldo_no_financeiro ? "Esperar o financeiro pagar o saldo" : "Confirmar o pagamento do saldo";
+  }
   return null;
 }
 
@@ -188,8 +196,14 @@ export function descreverEvento(e: EventoBanco): { titulo: string; detalhes: str
   const d = (typeof e.dados === "object" && e.dados !== null ? e.dados : {}) as Record<string, unknown>;
   const detalhes: string[] = [];
 
-  if (d.tipo === "pagamento_saida") return { titulo: "Adiantamento e vale-pedágio confirmados", detalhes };
-  if (d.tipo === "saldo_pago") return { titulo: "Saldo de 30% confirmado", detalhes };
+  // Pagamentos pelo Contas a pagar trazem o número da conta; os confirmados à mão no Quadro, não.
+  const conta = typeof d.conta_pagar === "number" || typeof d.conta_pagar === "string" ? ` (conta a pagar ${d.conta_pagar})` : "";
+  if (d.tipo === "pagamento_saida") {
+    return { titulo: conta ? `Adiantamento e vale-pedágio pagos${conta}` : "Adiantamento e vale-pedágio confirmados", detalhes };
+  }
+  if (d.tipo === "saldo_pago") return { titulo: conta ? `Saldo de 30% pago${conta}` : "Saldo de 30% confirmado", detalhes };
+  if (d.tipo === "pagamento_saida_desfeito") return { titulo: `Pagamento do adiantamento desfeito${conta}`, detalhes };
+  if (d.tipo === "saldo_pago_desfeito") return { titulo: `Pagamento do saldo desfeito${conta}`, detalhes };
 
   if (e.de === null && e.para !== null) {
     const travas = lerAptidao(d.aptidao).filter((a) => a.nivel === "trava");

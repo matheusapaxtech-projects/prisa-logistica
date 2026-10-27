@@ -19,6 +19,7 @@ import {
   destinosPermitidos,
   filtrarCartoes,
   formularioDaPassagem,
+  pagamentoNoFinanceiro,
   rotuloDe,
   type Cartao,
   type StatusCampo,
@@ -205,6 +206,7 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
 
   const podeMover = pode(perfil, "editar");
   const podePagar = pode(perfil, "editarFinanceiro");
+  const podeFinanceiro = pode(perfil, "financeiro");
   const ehAdmin = pode(perfil, "admin");
 
   /** Lê o quadro de novo. Só a recarga mais recente vale (uma resposta atrasada não apaga outra mais nova).
@@ -558,8 +560,10 @@ export function QuadroCliente({ inicial, carregadoEm, agoraInicial, perfil, unid
                       podeMover={podeMover && temPassagem}
                       podePagar={
                         podePagar &&
+                        !pagamentoNoFinanceiro(c) &&
                         ((c.status_campo === "aguardando_nf_pagamento" && !c.pagamento_saida) || (c.status_campo === "aguardando_saldo" && !c.saldo_pago))
                       }
+                      podeFinanceiro={podeFinanceiro}
                       movendo={Boolean(c.viagem_id && pendentes[c.viagem_id])}
                       aoMover={() => setMenu(c)}
                       aoPagar={() => setPagando(c)}

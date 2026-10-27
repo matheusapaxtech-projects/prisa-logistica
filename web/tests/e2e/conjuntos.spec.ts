@@ -122,7 +122,8 @@ test.describe("conjuntos", () => {
     await expect(page.locator("#total-historico")).toContainText(/encerrados?/);
     await page.locator("#lista-historico tr[data-href] td").first().click();
     await expect(page).toHaveURL(/\/conjuntos\/[0-9a-f-]{36}$/);
-    await expect(page.locator(".migalha .sinal")).toContainText("Encerrado");
+    // O selo "Encerrado" em particular: a migalha também pode ter "Aberto" e "Aguardando aprovação" até a página atualizar.
+    await expect(page.locator(".migalha .sinal", { hasText: "Encerrado" })).toBeVisible();
   });
 
   test("dolly na ponta não salva; rodotrem válido salva, troca peças e encerra", async ({ page }) => {
@@ -188,7 +189,8 @@ test.describe("conjuntos", () => {
       await expect(dlg.getByRole("heading", { name: `Encerrar o conjunto ${nome2}?` })).toBeVisible();
       await dlg.getByRole("button", { name: "Encerrar conjunto" }).click();
       await expect(page.locator(".toast", { hasText: `Conjunto ${nome2} encerrado` })).toBeVisible();
-      await expect(page.locator(".migalha .sinal")).toContainText("Encerrado");
+      // O selo "Encerrado" em particular: a migalha também pode ter "Aberto" e "Aguardando aprovação" até a página atualizar.
+      await expect(page.locator(".migalha .sinal", { hasText: "Encerrado" })).toBeVisible();
       expect(await abertoDoCavalo(db, cavalo!.id)).toBeNull();
     } catch (e) {
       falha = e;

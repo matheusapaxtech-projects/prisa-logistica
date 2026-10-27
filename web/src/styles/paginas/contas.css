@@ -1,0 +1,167 @@
+/* NILT — Contas a pagar e a receber (/financeiro/pagar, /financeiro/receber). Usa a base de proprietarios.css
+   (`.prop`) e financeiro.css (`.fin`: mês, ferramentas, indicadores); aqui só o que é das contas, preso a `.contas`
+   (a <main> das duas telas) e com nomes `contas-` para as duas reaproveitarem. Dinheiro em algarismos tabulares à
+   direita, sem cor; cor é situação e vem do <Sinal>. */
+
+/* ---------- tabela ---------- */
+.fin.contas .tabela-contas { min-width: 920px; font-variant-numeric: tabular-nums; }
+.fin.contas .tabela-contas td { vertical-align: top; padding-top: 10px; padding-bottom: 10px; }
+.fin.contas .tabela .col-acao { width: auto; text-align: right; white-space: nowrap; }
+.contas .contas-desc { display: block; font-weight: 500; overflow-wrap: anywhere; }
+.contas .contas-data { display: block; white-space: nowrap; margin-bottom: 2px; }
+.contas .contas-valor { white-space: nowrap; font-weight: 600; }
+.contas .contas-venc .sinal, .contas td .sinal { vertical-align: top; }
+.contas .contas-venc .linha2 { margin-top: 0; }
+
+/* cancelada fica na lista, sem peso: texto fraco e valor riscado (não entra nos totais) */
+.contas .contas-cancelada td { color: var(--muted); }
+.contas .contas-cancelada .contas-valor { text-decoration: line-through; font-weight: 400; }
+.contas .contas-cancelada .contas-desc { font-weight: 400; }
+
+/* ---------- ações da linha ---------- */
+.contas .contas-acoes { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.contas .contas-acoes .nota { white-space: nowrap; }
+.contas .contas-acoes .btn-icone.btn-pequeno { width: 30px; }
+
+/* menu "…": popover do navegador (fica sobre a página e não é cortado pela rolagem da tabela) */
+.contas .contas-menu {
+  position: fixed; inset: auto; margin: 0; padding: 6px; min-width: 200px;
+  border: 1px solid var(--painel-borda); border-radius: 16px; background: var(--sheet); color: var(--ink);
+  box-shadow: var(--sombra-flutua);
+}
+.contas .contas-menu:not([data-pronto]) { visibility: hidden; }
+.contas .contas-menu button {
+  display: block; width: 100%; padding: 9px 12px; border: 0; border-radius: 10px; background: none;
+  font: inherit; font-size: 14px; text-align: left; color: inherit; cursor: pointer; white-space: nowrap;
+}
+.contas .contas-menu button.perigo { color: var(--vermelho-tinta); }
+@media (hover: hover) and (pointer: fine) {
+  .contas .contas-menu button:hover { background: var(--raised); }
+  .contas .contas-menu button.perigo:hover { background: var(--vermelho-claro); }
+}
+.contas .contas-menu button:focus-visible { outline: 2px solid var(--verde); outline-offset: -2px; }
+
+/* ---------- agrupamento ---------- */
+.contas .tabela-contas tr.contas-grupo th,
+.contas .tabela-contas tr.contas-grupo td { height: 40px; padding: 6px 12px; background: var(--raised); border-top: 1px solid var(--rule); font-weight: 600; vertical-align: middle; }
+.contas .tabela-contas tr.contas-grupo th { padding-left: 12px; text-align: left; font-size: 13px; color: var(--ink); }
+.contas .tabela-contas tr.contas-grupo td.num { text-align: right; white-space: nowrap; }
+.contas .contas-grupo-qtd { margin-left: 10px; font-weight: 400; color: var(--muted); font-size: 12px; }
+.contas .tabela-contas tbody tr.contas-grupo:hover { background: none; }
+
+.contas .contas-seg { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px; background: rgba(22, 24, 24, 0.06); margin-left: auto; }
+.contas .contas-seg-rot { padding: 0 10px 0 12px; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.contas .contas-seg a { padding: 6px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 500; color: var(--muted); text-decoration: none; white-space: nowrap; transition: color 150ms ease, background-color 150ms ease, box-shadow 150ms ease; }
+.contas .contas-seg a:hover { color: var(--ink); text-decoration: none; }
+.contas .contas-seg a[aria-current] { color: var(--ink); background: #fff; box-shadow: 0 1px 3px rgba(22, 24, 24, 0.12); }
+.contas .contas-seg a:focus-visible { outline: 2px solid var(--verde); outline-offset: 2px; }
+
+/* ---------- pé da tabela ---------- */
+.contas .tabela-contas tfoot th, .contas .tabela-contas tfoot td {
+  height: 44px; padding: 6px 12px; font-weight: 600; border-top: 1px solid var(--control); text-align: left;
+}
+.contas .tabela-contas tfoot td.num { text-align: right; white-space: nowrap; }
+.contas .tabela-contas tfoot th { padding-left: 0; }
+
+/* ---------- taxa do cartão-frete ---------- */
+.contas .contas-taxa {
+  display: flex; align-items: flex-start; gap: 12px 14px; flex-wrap: wrap;
+  margin-bottom: 16px; padding: 14px 18px;
+  border: 1px solid var(--painel-borda); border-radius: var(--radius-painel); background: var(--painel); box-shadow: var(--sombra-painel);
+}
+.contas .contas-taxa > svg { flex: none; margin-top: 3px; color: var(--muted); }
+.contas .contas-taxa-texto { flex: 1 1 360px; min-width: 0; display: grid; gap: 6px; }
+.contas .contas-taxa p { margin: 0; line-height: 20px; }
+.contas .contas-taxa .contas-taxa-conta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.contas .contas-taxa > .btn { margin-left: auto; }
+.contas .contas-taxa-vazia { align-items: center; padding-top: 10px; padding-bottom: 10px; }
+.contas .contas-taxa-vazia > svg { margin-top: 0; }
+
+/* ---------- diálogos ---------- */
+dialog.dlg-conta { width: min(640px, calc(100vw - 32px)); }
+.contas-resumo { margin: 0; line-height: 20px; }
+.contas-resumo b { font-weight: 600; overflow-wrap: anywhere; }
+.contas-resumo .linha2 { display: block; font-size: 12px; line-height: 16px; color: var(--muted); margin-top: 2px; }
+.contas dialog.dialogo .campo input:disabled, .contas dialog.dialogo .campo select:disabled { background: var(--raised); color: var(--muted); cursor: not-allowed; }
+.contas dialog.dialogo .campos > .aviso { margin: 0; }
+
+@media (max-width: 640px) {
+  .contas .contas-seg { margin-left: 0; width: 100%; overflow-x: auto; }
+  .contas .contas-taxa > .btn { margin-left: 0; }
+}
+
+/* ---------- contas a receber: coluna "Antecipar" e simulador de antecipação ---------- */
+.fin.contas .tabela .contas-marcar { width: 76px; padding-right: 12px; text-align: left; }
+.contas .contas-marcar input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--verde); cursor: pointer; }
+.contas .contas-marcar input:disabled { cursor: not-allowed; opacity: 0.4; }
+.contas .contas-marcar input:focus-visible { outline: 2px solid var(--verde); outline-offset: 2px; }
+
+/* painel colado no pé da janela (desktop) enquanto houver título marcado; no celular fica abaixo da lista */
+.contas .contas-simulador {
+  position: sticky; bottom: 12px; z-index: 5; margin-top: 16px; padding: 16px 18px; display: grid; gap: 14px;
+  border: 1px solid var(--painel-borda); border-radius: var(--radius-painel); background: var(--sheet); box-shadow: var(--sombra-flutua);
+  max-height: calc(100vh - 24px); overflow-y: auto;
+}
+.contas .contas-sim-topo { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; }
+.contas .contas-sim-topo h2 { margin: 0; font-size: 16px; font-weight: 600; line-height: 22px; }
+.contas .contas-sim-qtd { color: var(--muted); font-size: 13px; }
+.contas .contas-sim-topo .btn { margin-left: auto; }
+.contas .contas-sim-params { display: grid; grid-template-columns: repeat(2, minmax(0, 200px)); gap: 12px var(--gap); }
+.contas .contas-sim-tabela { min-width: 560px; font-variant-numeric: tabular-nums; }
+.contas .contas-sim-tabela td { padding-top: 8px; padding-bottom: 8px; }
+.contas .contas-sim-tabela td.num, .contas .contas-sim-tabela th.num { white-space: nowrap; }
+.contas .contas-sim-totais { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px var(--gap); margin: 0; font-variant-numeric: tabular-nums; }
+.contas .contas-sim-totais dt { color: var(--muted); font-size: 12.5px; line-height: 16px; }
+.contas .contas-sim-totais dd { margin: 2px 0 0; font-size: 16px; font-weight: 600; line-height: 22px; }
+.contas .contas-simulador > .nota { margin: 0; }
+
+@media (max-width: 640px) {
+  .contas .contas-simulador { position: static; max-height: none; box-shadow: none; padding: 14px; }
+  .contas .contas-sim-params { grid-template-columns: 1fr; }
+  .contas .contas-sim-topo .btn { margin-left: 0; }
+}
+
+/* ---------- celular (<= 640px): a lista cabe em 390px, sem rolagem de lado ---------- */
+/* No desktop a forma, o vencimento e a aprovação têm coluna; no celular essas colunas somem (`some-celular`) e o
+   mesmo conteúdo aparece em `.contas-mini`, embaixo da descrição. Cada conta vira uma grade: descrição à esquerda;
+   valor e ação principal à direita, um embaixo do outro (no receber, a caixa "Antecipar" fica antes da descrição). */
+.contas .tabela .so-celular { display: none; }
+@media (max-width: 640px) {
+  .contas .tabela .so-celular { display: revert; }
+  .contas .tabela .contas-mini { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 4px; font-size: 12px; line-height: 16px; color: var(--muted); }
+  .contas .contas-mini-venc { min-width: 0; }
+
+  .fin.contas .tabela-contas,
+  .fin.contas .tabela-contas tbody,
+  .fin.contas .tabela-contas tfoot { display: block; min-width: 0; }
+  .fin.contas .tabela-contas thead { display: none; }
+  .fin.contas .tabela-contas tr {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 8px; align-items: start;
+    padding: 12px 0; border-top: 1px solid var(--rule);
+  }
+  .fin.contas .tabela-contas tr > * { display: block; height: auto; padding: 0; border: 0; white-space: normal; }
+  .fin.contas .tabela-contas tr > .some-celular,
+  .fin.contas .tabela-contas tr > :empty { display: none; }
+  .fin.contas .tabela-contas td.col-desc { grid-column: 1; grid-row: 1 / span 2; }
+  .fin.contas .tabela-contas td.contas-valor { grid-column: 2; grid-row: 1; text-align: right; white-space: nowrap; }
+  .fin.contas .tabela-contas td.col-acao { grid-column: 2; grid-row: 2; justify-self: end; }
+  .fin.contas .tabela-contas tr.vazio-linha > td { grid-column: 1 / -1; }
+  /* grupo (centro de custo / tipo) e total: rótulo à esquerda, valor à direita */
+  .fin.contas .tabela-contas tr.contas-grupo { padding: 8px 12px; align-items: center; background: var(--raised); }
+  .fin.contas .tabela-contas tr.contas-grupo > * { background: none; }
+  .fin.contas .tabela-contas tr.contas-grupo > .num,
+  .fin.contas .tabela-contas tr.total > .num { white-space: nowrap; text-align: right; }
+  /* receber: a caixa "Antecipar" ocupa a primeira coluna das duas linhas */
+  .fin.contas .tabela-contas tr:has(> td.contas-marcar) { grid-template-columns: 44px minmax(0, 1fr) auto; }
+  .fin.contas .tabela-contas td.contas-marcar { grid-column: 1; grid-row: 1 / span 2; width: auto; }
+  .fin.contas .tabela-contas tr:has(> td.contas-marcar) td.col-desc { grid-column: 2; }
+  .fin.contas .tabela-contas tr:has(> td.contas-marcar) td.contas-valor,
+  .fin.contas .tabela-contas tr:has(> td.contas-marcar) td.col-acao { grid-column: 3; }
+
+  .contas .contas-acoes { gap: 4px; }
+  .contas .contas-acoes .btn-pequeno { height: 44px; }
+  .contas .contas-acoes .btn-icone.btn-pequeno { width: 44px; }
+  .contas .contas-acoes .nota { white-space: normal; max-width: 84px; text-align: right; }
+  .contas .contas-marcar input { width: 24px; height: 24px; margin: 8px 0 0; }
+  .contas .contas-marcar-rot { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}

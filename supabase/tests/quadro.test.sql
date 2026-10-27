@@ -59,6 +59,8 @@ begin
   values (cliente, cliente, cliente, v_coleta, v_descarga, 'Soja', 74000, 150)
   returning id into pedido;
   -- Frete do motorista (R$ 5.000) e km (400) acima do piso ANTT de 6 eixos (migration 20261027000100).
+  -- Interruptor das parcelas do frete desligado (fin_config): confirmação manual do pagamento no Quadro.
+  update public.fin_config set parcelas_frete_ativas = false where id = 1;
   insert into public.viagem (pedido_id, conjunto_id, cavalo_id, motorista_id, peso_previsto_kg,
                              frete_motorista_valor, frete_motorista_tipo, km_viagem)
   values (pedido, conjunto, cavalo, motorista, 37000, 5000, 'total', 400)
