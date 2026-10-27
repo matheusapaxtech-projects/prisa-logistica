@@ -384,7 +384,9 @@ td.num, th.num { text-align: right; }
 .ferramentas .total { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* ---------- tabela ---------- */
-.tabela-wrap { overflow-x: auto; }
+/* position: o que é posicionado dentro da tabela (rótulos só para leitor de tela) fica preso na rolagem dela, sem
+   alargar a página no celular */
+.tabela-wrap { overflow-x: auto; position: relative; }
 
 /* ---------- rodapé de lista com páginas (components/Paginacao.tsx) ---------- */
 .paginacao { display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap; margin-top: 16px; color: var(--muted); font-variant-numeric: tabular-nums; }

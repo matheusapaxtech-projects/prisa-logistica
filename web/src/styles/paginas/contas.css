@@ -121,25 +121,47 @@ dialog.dlg-conta { width: min(640px, calc(100vw - 32px)); }
   .contas .contas-sim-topo .btn { margin-left: 0; }
 }
 
-/* ---------- celular (<= 640px): a linha cabe em 390px, sem rolagem de lado ---------- */
+/* ---------- celular (<= 640px): a lista cabe em 390px, sem rolagem de lado ---------- */
 /* No desktop a forma, o vencimento e a aprovação têm coluna; no celular essas colunas somem (`some-celular`) e o
-   mesmo conteúdo aparece em `.contas-mini`, embaixo da descrição. Valor e ação principal continuam visíveis. */
+   mesmo conteúdo aparece em `.contas-mini`, embaixo da descrição. Cada conta vira uma grade: descrição à esquerda;
+   valor e ação principal à direita, um embaixo do outro (no receber, a caixa "Antecipar" fica antes da descrição). */
 .contas .tabela .so-celular { display: none; }
 @media (max-width: 640px) {
   .contas .tabela .so-celular { display: revert; }
   .contas .tabela .contas-mini { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 4px; font-size: 12px; line-height: 16px; color: var(--muted); }
-  .contas .contas-mini-venc { white-space: nowrap; }
-  .fin.contas .tabela-contas { min-width: 0; }
-  .fin.contas .tabela-contas td, .fin.contas .tabela-contas th { padding-left: 6px; padding-right: 6px; }
-  .fin.contas .tabela-contas td:first-child, .fin.contas .tabela-contas th:first-child { padding-left: 0; }
-  .fin.contas .tabela-contas td:last-child, .fin.contas .tabela-contas th:last-child { padding-right: 0; }
-  .fin.contas .tabela-contas th[scope="row"], .fin.contas .tabela-contas th[scope="rowgroup"] { padding-left: 0; }
+  .contas .contas-mini-venc { min-width: 0; }
+
+  .fin.contas .tabela-contas,
+  .fin.contas .tabela-contas tbody,
+  .fin.contas .tabela-contas tfoot { display: block; min-width: 0; }
+  .fin.contas .tabela-contas thead { display: none; }
+  .fin.contas .tabela-contas tr {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 8px; align-items: start;
+    padding: 12px 0; border-top: 1px solid var(--rule);
+  }
+  .fin.contas .tabela-contas tr > * { display: block; height: auto; padding: 0; border: 0; white-space: normal; }
+  .fin.contas .tabela-contas tr > .some-celular,
+  .fin.contas .tabela-contas tr > :empty { display: none; }
+  .fin.contas .tabela-contas td.col-desc { grid-column: 1; grid-row: 1 / span 2; }
+  .fin.contas .tabela-contas td.contas-valor { grid-column: 2; grid-row: 1; text-align: right; white-space: nowrap; }
+  .fin.contas .tabela-contas td.col-acao { grid-column: 2; grid-row: 2; justify-self: end; }
+  .fin.contas .tabela-contas tr.vazio-linha > td { grid-column: 1 / -1; }
+  /* grupo (centro de custo / tipo) e total: rótulo à esquerda, valor à direita */
+  .fin.contas .tabela-contas tr.contas-grupo { padding: 8px 12px; align-items: center; background: var(--raised); }
+  .fin.contas .tabela-contas tr.contas-grupo > * { background: none; }
+  .fin.contas .tabela-contas tr.contas-grupo > .num,
+  .fin.contas .tabela-contas tr.total > .num { white-space: nowrap; text-align: right; }
+  /* receber: a caixa "Antecipar" ocupa a primeira coluna das duas linhas */
+  .fin.contas .tabela-contas tr:has(> td.contas-marcar) { grid-template-columns: 44px minmax(0, 1fr) auto; }
+  .fin.contas .tabela-contas td.contas-marcar { grid-column: 1; grid-row: 1 / span 2; width: auto; }
+  .fin.contas .tabela-contas tr:has(> td.contas-marcar) td.col-desc { grid-column: 2; }
+  .fin.contas .tabela-contas tr:has(> td.contas-marcar) td.contas-valor,
+  .fin.contas .tabela-contas tr:has(> td.contas-marcar) td.col-acao { grid-column: 3; }
+
   .contas .contas-acoes { gap: 4px; }
   .contas .contas-acoes .btn-pequeno { height: 44px; }
   .contas .contas-acoes .btn-icone.btn-pequeno { width: 44px; }
   .contas .contas-acoes .nota { white-space: normal; max-width: 84px; text-align: right; }
-  /* receber: coluna da caixa "Antecipar" estreita, com alvo de toque de 44px; o rótulo vira só leitura de tela */
-  .fin.contas .tabela .contas-marcar { width: 44px; padding-right: 6px; }
   .contas .contas-marcar input { width: 24px; height: 24px; margin: 8px 0 0; }
   .contas .contas-marcar-rot { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }

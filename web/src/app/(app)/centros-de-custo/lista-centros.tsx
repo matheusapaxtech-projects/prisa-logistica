@@ -35,14 +35,23 @@ export function ListaCentros({ arvore, uso, admin, vazio }: Props) {
 
   function linha(c: CentroLinha, sub: boolean) {
     const n = usos.get(c.id) ?? 0;
+    const situacao = c.ativo ? <Sinal tipo="normal" texto="Ativo" /> : <Sinal tipo="neutro" texto="Desativado" />;
+    const uso = `${n} ${n === 1 ? "conta a pagar em aberto" : "contas a pagar em aberto"}`;
     return (
       <tr key={c.id} className={`${sub ? "centros-sub" : "centros-depto"}${c.ativo ? "" : " centros-desligado"}`}>
         <td>
           <span className="cod centros-codigo">{c.codigo}</span>
         </td>
-        <td className="centros-nome">{c.nome}</td>
-        <td>{c.ativo ? <Sinal tipo="normal" texto="Ativo" /> : <Sinal tipo="neutro" texto="Desativado" />}</td>
-        <td className="centros-uso">{n > 0 ? `${n} ${n === 1 ? "conta a pagar em aberto" : "contas a pagar em aberto"}` : "—"}</td>
+        <td className="centros-nome">
+          {c.nome}
+          {/* no celular as colunas de situação e uso somem e vêm para cá */}
+          <span className="linha2 centros-mini">
+            {situacao}
+            {n > 0 && <span>{uso}</span>}
+          </span>
+        </td>
+        <td className="some-celular">{situacao}</td>
+        <td className="centros-uso some-celular">{n > 0 ? uso : "—"}</td>
         {admin && (
           <td className="col-acao">
             <div className="centros-acoes">
@@ -73,8 +82,12 @@ export function ListaCentros({ arvore, uso, admin, vazio }: Props) {
             <tr>
               <th scope="col">Código</th>
               <th scope="col">Nome</th>
-              <th scope="col">Situação</th>
-              <th scope="col">Uso</th>
+              <th scope="col" className="some-celular">
+                Situação
+              </th>
+              <th scope="col" className="some-celular">
+                Uso
+              </th>
               {admin && (
                 <th scope="col" className="col-acao">
                   <span className="sr-only">Ações</span>
