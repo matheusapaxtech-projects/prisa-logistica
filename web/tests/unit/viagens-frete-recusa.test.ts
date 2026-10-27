@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
    que grava o peso) precisam mostrar a frase como está, não o erro genérico. Cliente Supabase falso. */
 
 const FRASE =
-  "O frete da viagem 42 ficou menor que o já pago ao motorista (R$ 6.300,00). Para diminuir, o administrador desfaz o pagamento no Contas a pagar.";
+  "O frete da viagem 42 ficou menor que o já pago ao motorista (R$ 6.300,00). Confira o peso e o frete; se estiverem certos, acerte a diferença com o motorista e peça ao administrador para corrigir o pagamento no Contas a pagar.";
 
 const resposta = { current: { data: null as unknown, error: null as unknown } };
 function consulta() {

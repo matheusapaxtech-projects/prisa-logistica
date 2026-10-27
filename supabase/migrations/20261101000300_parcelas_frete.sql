@@ -163,7 +163,7 @@ begin
 
   if a.pago_em is not null and s.pago_em is not null then
     if a.valor + s.valor <> v_devido then
-      raise exception 'O frete da viagem % ficou diferente do que já foi pago ao motorista (%). Para mudar, o administrador desfaz um dos pagamentos no Contas a pagar.',
+      raise exception 'O frete da viagem % ficou diferente do que já foi pago ao motorista (%). Confira o peso e o frete; se estiverem certos, acerte a diferença com o motorista e peça ao administrador para corrigir os pagamentos no Contas a pagar.',
         v.numero, public.reais_texto(a.valor + s.valor);
     end if;
     return;
@@ -184,7 +184,7 @@ begin
   end if;
 
   if v_valor_a < 0 or v_valor_s < 0 then
-    raise exception 'O frete da viagem % ficou menor que o já pago ao motorista (%). Para diminuir, o administrador desfaz o pagamento no Contas a pagar.',
+    raise exception 'O frete da viagem % ficou menor que o já pago ao motorista (%). Confira o peso e o frete; se estiverem certos, acerte a diferença com o motorista e peça ao administrador para corrigir o pagamento no Contas a pagar.',
       v.numero, public.reais_texto(case when a.pago_em is not null then a.valor else s.valor end);
   end if;
 
@@ -215,8 +215,9 @@ begin
       end if;
     elsif c.pago_em is null and (c.cancelado_em is null or c.cancelado_automatico) then
       if v_valor = 0 then
-        -- o que já foi pago cobre o frete: cancela sozinha (volta se o frete aumentar)
-        if c.cancelado_em is null then
+        -- o que já foi pago cobre o frete: cancela sozinha (volta se o frete aumentar); se já estava cancelada
+        -- sozinha por outro motivo, fica o motivo de agora
+        if c.cancelado_em is null or c.cancelamento_motivo is distinct from 'O que já foi pago ao motorista cobre o frete.' then
           update public.fin_pagar
              set cancelado_em = now(), cancelado_por = auth.uid(), cancelado_automatico = true,
                  cancelamento_motivo = 'O que já foi pago ao motorista cobre o frete.'
