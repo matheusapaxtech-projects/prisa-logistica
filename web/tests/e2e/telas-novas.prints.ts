@@ -5,7 +5,7 @@ import { prepararPrint } from "./apoio";
 // Prints das telas novas das fases do sistema do sócio (para o PR de cada fase), em 1440 e 390.
 // `npm run test:prints -- telas-novas` (fora da suíte padrão; E2E_PORTA escolhe a porta do servidor).
 // Só lê dados da semente local: nada é criado nem apagado.
-// Saída: tests/e2e/prints/novas/<fase>-<nome>-<largura>.png (gitignored).
+// Saída: tests/e2e/prints/novas/<fase>-<nome>-<largura>.jpg (gitignored; JPEG para caber leve no PR).
 const PRINTS = path.join(__dirname, "prints", "novas");
 const TAMANHOS = [
   [1440, 900],
@@ -30,7 +30,7 @@ const TELAS: Tela[] = [
 
 async function fotografar(page: Page, fase: string, nome: string, largura: number) {
   await prepararPrint(page);
-  await page.screenshot({ path: path.join(PRINTS, `${fase}-${nome}-${largura}.png`), fullPage: true });
+  await page.screenshot({ path: path.join(PRINTS, `${fase}-${nome}-${largura}.jpg`), fullPage: true, type: "jpeg", quality: 82 });
 }
 
 test.describe("telas novas", () => {
