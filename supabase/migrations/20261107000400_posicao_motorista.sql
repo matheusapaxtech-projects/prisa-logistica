@@ -1,4 +1,4 @@
--- Migration 20261031000400: posição do motorista pelo GPS do app, o tempo todo (pedido de 2026-10-25).
+-- Migration 20261107000400: posição do motorista pelo GPS do app, o tempo todo (pedido de 2026-10-25).
 --
 -- O app manda a posição em segundo plano (serviço de localização do Android com aviso fixo). Guardamos só a
 -- última posição de cada motorista (LGPD: o mínimo para a finalidade, que é achar o caminhão mais perto da
@@ -83,7 +83,7 @@ $$;
 
 revoke execute on function public.posicao_do_motorista(uuid) from public, anon, authenticated;
 
--- fretes_do_motorista: igual à 20261031000200, com a distância pela posição atual.
+-- fretes_do_motorista: igual à 20261107000200, com a distância pela posição atual.
 create or replace function public.fretes_do_motorista(p_motorista uuid)
 returns table (
   oferta_id uuid, pedido_numero bigint, produto text,
