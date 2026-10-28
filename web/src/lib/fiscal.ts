@@ -1,5 +1,5 @@
 /* Regras puras das retenções do frete pago a autônomo PF (tela, planilha e testes). O cálculo de cada
-   viagem é do banco (`fiscal_retencoes`, migration 20261031000100); aqui só se soma, agrupa e exporta. */
+   viagem é do banco (`fiscal_retencoes`, migration 20261107000100); aqui só se soma, agrupa e exporta. */
 
 /** Uma linha de `fiscal_retencoes`: uma viagem finalizada no mês com contratado pessoa física. */
 export type LinhaRetencao = {

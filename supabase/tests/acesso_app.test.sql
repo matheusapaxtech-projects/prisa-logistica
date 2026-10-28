@@ -1,5 +1,5 @@
 -- Executar precedido de _helpers.sql (que abre a transação). Ver README.md.
--- Acesso do motorista ao app (migration 20261031000300): liberar, entrar com o celular verificado, revogar.
+-- Acesso do motorista ao app (migration 20261107000300): liberar, entrar com o celular verificado, revogar.
 -- Só documentos fictícios (CPF 11144477735) e celulares de teste.
 
 create function tests.motorista() returns uuid language plpgsql as $$

@@ -8,7 +8,7 @@ import { acharMunicipio, lerMunicipios, type Municipios } from "@/lib/calculador
 import { RE_ID } from "../_pessoa/formulario";
 import { CARROCERIA } from "../veiculos/rotulos";
 
-/* Publicar o pedido no app do motorista (migration 20261031000200, frete_oferta). A posição da coleta vem da
+/* Publicar o pedido no app do motorista (migration 20261107000200, frete_oferta). A posição da coleta vem da
    lista de municípios pela cidade do local, a mesma do despacho. RLS: só admin e operação gravam. */
 
 let municipios: Municipios | null = null;

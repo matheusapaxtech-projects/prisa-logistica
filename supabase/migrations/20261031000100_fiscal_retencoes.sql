@@ -1,4 +1,4 @@
--- Migration 20261031000100: retenções e tributos do frete pago a transportador autônomo pessoa física.
+-- Migration 20261107000100: retenções e tributos do frete pago a transportador autônomo pessoa física.
 --
 -- Quando a PRISA paga frete a um contratado pessoa física (TAC PF), retém do motorista INSS (11%),
 -- SEST (1,5%) e SENAT (1,0%) sobre a base de 20% do frete, recolhe o INSS patronal (20% da mesma base) e

@@ -1,5 +1,5 @@
 -- Executar precedido de _helpers.sql (que abre a transação). Ver README.md.
--- Retenções do frete pago a autônomo PF e guias do mês (migration 20261031000100).
+-- Retenções do frete pago a autônomo PF e guias do mês (migration 20261107000100).
 -- Só documentos fictícios (CNPJ 11222333000181, CPF 11144477735 e 52998224725) e placas TST….
 
 create sequence tests.seq_placa;

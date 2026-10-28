@@ -5,7 +5,7 @@ import { comSessao, type ResultadoAcao } from "@/lib/acao";
 import { tipado } from "@/lib/banco";
 import { RE_ID } from "../../_pessoa/formulario";
 
-/* Acesso do motorista ao app (migration 20261031000300): a operação libera o celular; ele entra com o código
+/* Acesso do motorista ao app (migration 20261107000300): a operação libera o celular; ele entra com o código
    que chega no WhatsApp desse número. O banco confere o papel e o formato do celular. */
 
 const NAO_ACHADO = "Motorista não encontrado.";
