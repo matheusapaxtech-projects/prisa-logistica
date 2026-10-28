@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Prisa Motorista",
+    "slug": "app-motorista",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "br.com.prisa.motorista"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#2C5A4D",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "br.com.prisa.motorista"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "A Prisa usa sua localização o tempo todo, mesmo com o app fechado, para achar os fretes perto de você e escolher o caminhão mais perto da coleta.",
+          "locationWhenInUsePermission": "A Prisa usa sua localização para achar os fretes perto de você.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
+          "isIosBackgroundLocationEnabled": true
+        }
+      ],
+      "expo-dev-client",
+      "expo-font"
+    ]
+  }
+}
