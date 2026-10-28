@@ -237,6 +237,12 @@ export function ListaMotoristas({ linhas, aba: abaInicial, busca: buscaInicial, 
                           <span className="id">{l.nome}</span>
                           <span className="linha2">
                             {l.apelido || "sem apelido"}
+                            {l.agregado && (
+                              <>
+                                <Ponto />
+                                agregado
+                              </>
+                            )}
                             <span className="x-tab">
                               <Ponto />
                               <span className="cod">{formato.cpf(l.cpf)}</span>

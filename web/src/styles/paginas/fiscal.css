@@ -1,0 +1,31 @@
+/* NILT — Retenções e tributos (/financeiro/retencoes). Usa a base de proprietarios.css e financeiro.css
+   (`.prop.fin`); aqui só o que é desta tela, preso a `.fiscal`. Dinheiro em algarismos tabulares à direita. */
+
+.fiscal .kpis-fiscal { margin: 0 0 24px; gap: 18px 40px; }
+.fiscal .kpis-fiscal .kpi-valor { margin: 2px 0; }
+
+.fiscal .bloco { margin-bottom: 24px; }
+.fiscal .explica { color: var(--muted); max-width: 72ch; margin-bottom: 16px; }
+.fiscal .acoes-guias { display: flex; flex-wrap: wrap; gap: 8px; }
+.fiscal .aviso { margin-top: 16px; }
+.fiscal .tabela-guias { margin-top: 16px; }
+.fiscal .tabela-guias .col-acao { text-align: right; white-space: nowrap; }
+
+.fiscal .tabela-retencoes { min-width: 980px; font-variant-numeric: tabular-nums; }
+.fiscal .tabela-retencoes td.num { white-space: nowrap; }
+.fiscal .tabela-retencoes td.data { white-space: nowrap; }
+.fiscal .tabela-retencoes tfoot th, .fiscal .tabela-retencoes tfoot td {
+  height: 44px; padding: 6px 12px; font-weight: 600; border-top: 1px solid var(--control); text-align: left;
+}
+.fiscal .tabela-retencoes tfoot td { text-align: right; white-space: nowrap; }
+.fiscal .tabela-retencoes tfoot th { padding-left: 0; }
+.fiscal .tabela-retencoes tfoot td:last-child { padding-right: 0; }
+.fiscal .tabela-wrap + .bloco { margin-top: 24px; }
+
+.fiscal .lista-irrf { list-style: none; margin: 0; padding: 0; }
+.fiscal .lista-irrf li { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--rule); }
+.fiscal .lista-irrf li:first-child { border-top: 0; padding-top: 0; }
+.fiscal .lista-irrf .linha2 { display: block; font-size: 12px; line-height: 16px; color: var(--muted); margin-top: 2px; }
+.fiscal .valor-irrf { text-align: right; white-space: nowrap; }
+
+.fiscal .nota-fiscal { max-width: 90ch; margin-top: 8px; line-height: 1.5; }

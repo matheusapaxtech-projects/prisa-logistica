@@ -179,6 +179,7 @@ export default async function FichaProprietarioPage({ params, searchParams }: Pa
           </div>
           <div className="sinais">
             <Sinal situacao={pr.situacao_cadastro} />
+            {pr.agregado && <Sinal tipo="info" texto={pr.agregado_desde ? `Agregado desde ${formato.data(pr.agregado_desde)}` : "Agregado"} />}
             {r.estado === "vencido" && <Sinal situacao="vencido" texto={`RNTRC ${formato.dias(r.dias!)}`} />}
             {r.estado === "vencendo" && <Sinal situacao="vencendo" texto={`RNTRC ${formato.dias(r.dias!)}`} />}
             {r.estado === "sem" && <Sinal situacao="pendente" texto="Sem RNTRC" />}

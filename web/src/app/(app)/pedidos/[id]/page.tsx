@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Check } from "lucide-react";
+import { Avatar } from "@/components/Avatar";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import { Placa } from "@/components/Placa";
 import { Sinal, type TipoSinal } from "@/components/Sinal";
@@ -33,29 +34,50 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 const um = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 
-function Parte({ p }: { p: ParteFicha }) {
-  return (
-    <>
-      <Link href={`/clientes/${p.id}`}>{p.nome}</Link>
-      {p.nome !== p.nomeCompleto && <span className="linha2">{p.nomeCompleto}</span>}
-    </>
-  );
+const PAPEIS = { tomador: "Tomador", remetente: "Remetente", destinatario: "Destinatário" } as const;
+
+/** As três partes do pedido, juntando os papéis de quem aparece mais de uma vez (o tomador costuma ser o remetente). */
+function partesAgrupadas(f: { tomador: ParteFicha; remetente: ParteFicha; destinatario: ParteFicha }) {
+  const grupos: { p: ParteFicha; papeis: string[] }[] = [];
+  for (const k of ["tomador", "remetente", "destinatario"] as const) {
+    const g = grupos.find((x) => x.p.id === f[k].id);
+    if (g) g.papeis.push(PAPEIS[k]);
+    else grupos.push({ p: f[k], papeis: [PAPEIS[k]] });
+  }
+  return grupos;
 }
 
-function LocalPrevisto({ l, data }: { l: LocalFicha | null; data: string | null }) {
-  if (!l) return <Dash />;
+/** Dias corridos entre duas datas "aaaa-mm-dd" (prazo entre coleta e entrega). */
+function diasEntre(de: string | null, ate: string | null): number | null {
+  if (!de || !ate) return null;
+  const n = Math.round((Date.parse(ate.slice(0, 10)) - Date.parse(de.slice(0, 10))) / 86_400_000);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+/** Uma ponta da rota: a cidade em destaque, o tipo e a data prevista, o endereço e o atendimento. */
+function Ponta({ l, tipo, data, lado }: { l: LocalFicha | null; tipo: string; data: string | null; lado: "origem" | "destino" }) {
+  const quando = data ? `${tipo} prevista para ${formato.data(data)}` : `${tipo} sem data prevista`;
+  if (!l)
+    return (
+      <div className={`ponta ${lado}`}>
+        <span className="cidade">
+          <Dash />
+        </span>
+        <span className="quando">{quando}</span>
+      </div>
+    );
   const extra = [enderecoDoLocal(l), l.ponto_referencia].filter(Boolean).join(" · ");
+  const atende = [l.janela_atendimento && `Atende ${l.janela_atendimento}`, l.contato_local].filter(Boolean).join(" · ");
   return (
-    <>
-      <b>
-        {l.cidade}/{l.uf}
-      </b>
-      {data && <> · previsto para {formato.data(data)}</>}
-      {extra && <span className="linha2">{extra}</span>}
-      {(l.janela_atendimento || l.contato_local) && (
-        <span className="linha2">{[l.janela_atendimento && `Atende ${l.janela_atendimento}`, l.contato_local].filter(Boolean).join(" · ")}</span>
-      )}
-    </>
+    <div className={`ponta ${lado}`}>
+      <span className="cidade">
+        {l.cidade}
+        <span className="uf">/{l.uf}</span>
+      </span>
+      <span className="quando">{quando}</span>
+      {extra && <span className="end">{extra}</span>}
+      {atende && <span className="end">{atende}</span>}
+    </div>
   );
 }
 
@@ -83,6 +105,11 @@ export default async function FichaPedidoPage({ params, searchParams }: Params) 
   const rotaSalva = desp?.rotaSalva ?? null;
   const vivas = f.viagens.filter((v) => !v.cancelada_em);
   const pct = f.pesoTotalKg > 0 ? Math.min(100, Math.max(0, (f.alocadoKg / f.pesoTotalKg) * 100)) : 0;
+  // Barra do carregamento: um trecho por viagem ativa (peso de saída, ou o previsto) e o saldo tracejado.
+  const trechos = vivas.map((v) => ({ id: v.id, numero: v.numero, kg: v.pesoSaidaKg ?? v.pesoPrevistoKg }));
+  const base = Math.max(f.pesoTotalKg, trechos.reduce((t, x) => t + x.kg, 0), 1);
+  const prazo = diasEntre(f.coletaPrevista, f.entregaPrevista);
+  const partes = partesAgrupadas(f);
 
   return (
     <main className="prop ped">
@@ -126,92 +153,126 @@ export default async function FichaPedidoPage({ params, searchParams }: Params) 
         )}
       </div>
 
-      <div className="resumo-pedido">
-        <section className="subsecao">
-          <CabPainel titulo="Resumo" />
-          <dl className="kv">
-            <dt>Tomador</dt>
-            <dd>
-              <Parte p={f.tomador} />
-            </dd>
-            <dt>Remetente</dt>
-            <dd>
-              <Parte p={f.remetente} />
-            </dd>
-            <dt>Destinatário</dt>
-            <dd>
-              <Parte p={f.destinatario} />
-            </dd>
-            <dt>Coleta</dt>
-            <dd>
-              <LocalPrevisto l={f.coleta} data={f.coletaPrevista} />
-            </dd>
-            <dt>Descarga</dt>
-            <dd>
-              <LocalPrevisto l={f.descarga} data={f.entregaPrevista} />
-            </dd>
-            <dt>Produto</dt>
-            <dd>
-              {f.produto}
-              <span className="linha2">{TIPOS_CARGA_ANTT[f.tipoCarga]} na tabela da ANTT</span>
-            </dd>
-            <dt>Peso total</dt>
-            <dd>{formato.kg(f.pesoTotalKg)}</dd>
-            <dt>Frete da empresa</dt>
-            <dd>
-              {formato.reais(f.freteValor)} {SUFIXO_TARIFA[f.freteTipo]}
-              <span className="linha2">{f.freteOrigem === "manual" ? "valor digitado" : "da tabela de frete"}</span>
-            </dd>
-            {f.observacao && (
-              <>
-                <dt>Observação</dt>
-                <dd className="observacao">{f.observacao}</dd>
-              </>
-            )}
-          </dl>
-        </section>
+      <div className="grade ficha-ped">
+        <div className="coluna">
+          <section className="bloco rota-ped" aria-label="Rota">
+            <div className="rota">
+              <Ponta l={f.coleta} tipo="Coleta" data={f.coletaPrevista} lado="origem" />
+              <div className="estrada" aria-hidden="true">
+                {prazo != null && <span className="prazo">{prazo === 0 ? "no mesmo dia" : prazo === 1 ? "1 dia" : `${prazo} dias`}</span>}
+                <span className="pista">
+                  <span className="faixa" />
+                </span>
+              </div>
+              <Ponta l={f.descarga} tipo="Descarga" data={f.entregaPrevista} lado="destino" />
+            </div>
+            <dl className="carga">
+              <div>
+                <dt>Produto</dt>
+                <dd>
+                  <b>{f.produto}</b>
+                  <span className="linha2">{TIPOS_CARGA_ANTT[f.tipoCarga]} na tabela da ANTT</span>
+                </dd>
+              </div>
+              <div>
+                <dt>Peso total</dt>
+                <dd>
+                  <b>{formato.kg(f.pesoTotalKg)}</b>
+                </dd>
+              </div>
+              <div>
+                <dt>Frete da empresa</dt>
+                <dd>
+                  <b>{formato.reais(f.freteValor)}</b>
+                  <span className="linha2">
+                    {SUFIXO_TARIFA[f.freteTipo]} · {f.freteOrigem === "manual" ? "valor digitado" : "da tabela de frete"}
+                  </span>
+                </dd>
+              </div>
+            </dl>
+          </section>
 
-        <aside className="saldo" aria-labelledby="h-saldo">
-          <span className="rotulo" id="h-saldo">
-            Saldo a carregar
-          </span>
-          <span className="kpi" id="saldo">
-            {formato.kg(f.saldoKg)}
-          </span>
-          <span className="trilho" role="img" aria-label={`${Math.round(pct)}% do peso já em viagens`}>
-            <i style={{ width: `${pct}%` }} />
-          </span>
-          <div className="linhas">
-            <span>Peso total</span>
-            <b>{formato.kg(f.pesoTotalKg)}</b>
-            <span>Em viagens</span>
-            <b>{formato.kg(f.alocadoKg)}</b>
-            <span>Viagens ativas</span>
-            <b>{vivas.length}</b>
-          </div>
-        </aside>
+          <section className="bloco partes-ped" aria-labelledby="h-partes">
+            <div className="bloco-cab">
+              <h2 id="h-partes">Partes</h2>
+            </div>
+            <ul className="bloco-corpo partes">
+              {partes.map(({ p, papeis }) => (
+                <li key={p.id}>
+                  <Avatar nome={p.nome} />
+                  <span className="quem">
+                    <Link href={`/clientes/${p.id}`}>{p.nome}</Link>
+                    {p.nome !== p.nomeCompleto && <span className="linha2">{p.nomeCompleto}</span>}
+                  </span>
+                  <span className="papeis">{papeis.join(" e ")}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+
+        <div className="coluna">
+          <section className="bloco saldo-ped" aria-labelledby="h-saldo">
+            <div className="bloco-cab">
+              <h2 id="h-saldo">Saldo a carregar</h2>
+            </div>
+            <div className="bloco-corpo">
+              <span className={`valor-medio${f.saldoKg < 0 ? " negativo" : ""}`}>{formato.kg(f.saldoKg)}</span>
+              <p className="nota-saldo">
+                {f.saldoKg > 0
+                  ? `de ${formato.kg(f.pesoTotalKg)} ainda sem viagem`
+                  : f.saldoKg < 0
+                    ? `As viagens passam ${formato.kg(-f.saldoKg)} do peso do pedido`
+                    : "Todo o peso já está em viagens"}
+              </p>
+              <span className="carregamento" role="img" aria-label={`${Math.round(pct)}% do peso já em viagens, em ${trechos.length} ${trechos.length === 1 ? "viagem" : "viagens"}`}>
+                {trechos.map((t) => (
+                  <i key={t.id} style={{ flexGrow: t.kg / base }} title={`Viagem #${t.numero}: ${formato.kg(t.kg)}`} />
+                ))}
+                {f.saldoKg > 0 && <i className="falta" style={{ flexGrow: f.saldoKg / base }} />}
+              </span>
+              <dl className="linhas">
+                <dt>Peso total</dt>
+                <dd>{formato.kg(f.pesoTotalKg)}</dd>
+                <dt>Em viagens</dt>
+                <dd>{formato.kg(f.alocadoKg)}</dd>
+                <dt>Viagens ativas</dt>
+                <dd>{vivas.length}</dd>
+              </dl>
+            </div>
+          </section>
+
+          {f.observacao && (
+            <section className="bloco" aria-labelledby="h-obs">
+              <div className="bloco-cab">
+                <h2 id="h-obs">Observação</h2>
+              </div>
+              <p className="bloco-corpo observacao">{f.observacao}</p>
+            </section>
+          )}
+        </div>
       </div>
 
-      {desp && (
+      {desp && f.saldoKg > 0 && (
         <section className="subsecao despacho" aria-label="Despacho">
           <CabPainel titulo="Despacho" />
           <PainelDespacho
-          dados={desp.dados}
-          tabela={desp.tabela}
-          fiscal={desp.fiscal}
-          tiposCarga={TIPOS_CARGA_ANTT}
-          podeEditar={podeEditar}
-          verResultado={pode(perfil, "financeiro")}
-          pedidoId={f.id}
-          numero={f.numero}
-          saldoKg={f.saldoKg}
-          conjuntos={conjuntos}
-          rotaSalva={rotaSalva}
+            dados={desp.dados}
+            tabela={desp.tabela}
+            fiscal={desp.fiscal}
+            tiposCarga={TIPOS_CARGA_ANTT}
+            podeEditar={podeEditar}
+            verResultado={pode(perfil, "financeiro")}
+            pedidoId={f.id}
+            numero={f.numero}
+            saldoKg={f.saldoKg}
+            conjuntos={conjuntos}
+            rotaSalva={rotaSalva}
           />
         </section>
       )}
 
-      <section className="subsecao" style={{ marginTop: 32 }}>
+      <section className="subsecao viagens-ped" aria-label="Viagens">
         <CabPainel titulo={`Viagens (${f.viagens.length})`} />
         {f.viagens.length ? (
           <div className="tabela-wrap">

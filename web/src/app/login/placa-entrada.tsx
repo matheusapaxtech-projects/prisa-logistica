@@ -1,25 +1,12 @@
 import { ArrowRight, ArrowUp, ArrowUpRight } from "lucide-react";
+import { SetaSaida } from "@/components/Logo";
 
 // Placa de orientação: o NILT se apresenta como uma placa verde de rodovia (prototipo/login.html).
 export function PlacaEntrada() {
   return (
     <section className="placa-entrada" aria-label="NILT, Núcleo Integrado de Logística e Transporte">
       <div className="cabeca">
-        <svg
-          className="sinal-nilt"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#fff"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M12 21V8" />
-          <path d="M12 8l-4 4" />
-          <path d="M12 8l4 4" />
-          <path d="M5 21h14" />
-        </svg>
+        <SetaSaida className="sinal-nilt" />
         <div>
           <p className="nome">NILT</p>
           <p className="extenso">Núcleo Integrado de Logística e Transporte</p>

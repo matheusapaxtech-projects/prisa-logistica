@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Columns3, Upload } from "lucide-react";
+import { Columns3, Truck, Upload } from "lucide-react";
+import { Avatar } from "@/components/Avatar";
 import { Documentos } from "@/components/Documentos";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import { Placa } from "@/components/Placa";
@@ -78,8 +79,43 @@ function LinhaPausa({ p }: { p: PausaDaViagem }) {
   );
 }
 
-/* Ficha da viagem: resumo, próximo passo em destaque, aptidão (travas e avisos do banco), frete e piso
-   ANTT (resultado do CT-e só para admin e financeiro), linha do tempo, pausas, canhoto, ocorrências e arquivos. Página do servidor normal (sem tempo real): as
+/** Uma ponta da rota ("APUCARANA/PR"): a cidade em destaque, a UF clara e o momento daquela ponta. */
+function Ponta({ local, quando, lado }: { local: string | undefined; quando: string; lado: "origem" | "destino" }) {
+  const i = local ? local.lastIndexOf("/") : -1;
+  return (
+    <div className={`ponta ${lado}`}>
+      <span className="cidade">
+        {!local ? (
+          <Dash />
+        ) : i > 0 ? (
+          <>
+            {local.slice(0, i)}
+            <span className="uf">{local.slice(i)}</span>
+          </>
+        ) : (
+          local
+        )}
+      </span>
+      <span className="quando">{quando}</span>
+    </div>
+  );
+}
+
+/** Chave fiscal em grupos de 4 para ler e conferir; copiar continua dando os 44 dígitos sem espaço. */
+function Chave({ v }: { v: string }) {
+  return (
+    <span className="chave">
+      {(v.match(/.{1,4}/g) ?? []).map((g, i) => (
+        <span key={i}>{g}</span>
+      ))}
+    </span>
+  );
+}
+
+/* Ficha da viagem (no padrão da ficha do pedido): próximo passo em destaque; a rota desenhada com peso,
+   frete e pedido; motorista e conjunto; documentos fiscais; a situação com os pagamentos; aptidão (travas
+   e avisos do banco); frete e piso ANTT (resultado do CT-e só para admin e financeiro); linha do tempo,
+   pausas, canhoto, ocorrências e arquivos, todos em cartões. Página do servidor normal (sem tempo real): as
    ações revalidam a rota. Leitura só vê; financeiro confirma o pagamento de saída; operação e admin
    fazem o resto. */
 export default async function FichaViagemPage({ params }: Params) {
@@ -126,6 +162,17 @@ export default async function FichaViagemPage({ params }: Params) {
   const abertas = f.ocorrencias.filter((o) => !o.resolvidaEm).length;
   const pausaAberta = f.pausas.find((p) => !p.fim);
 
+  const pecas = f.carretas.length;
+  const docsFiscais = Boolean(f.chaveCte || f.chaveMdfe || f.chaveNfe || f.ciot || f.averbacaoSeguro);
+  const saida = f.iniciadaEm ? `Iniciada em ${formato.dataHora(f.iniciadaEm)}` : cancelada ? "Não chegou a iniciar" : "Ainda não iniciada";
+  const chegada = f.finalizadaEm
+    ? `Frete finalizado em ${formato.dataHora(f.finalizadaEm)}`
+    : retorno?.previsao
+      ? `Chegada prevista para ${formato.dataHora(retorno.previsao)}`
+      : cancelada
+        ? "Viagem cancelada"
+        : "Sem previsão de chegada";
+
   return (
     <main className="prop ped via">
       <div className="cab-ficha">
@@ -140,17 +187,10 @@ export default async function FichaViagemPage({ params }: Params) {
           <div className="linha-doc">
             {f.pedido && <Link href={`/pedidos/${f.pedido.id}`}>Pedido #{f.pedido.numero}</Link>}
             {f.pedido && <span>{f.pedido.cliente}</span>}
-            {f.pedido && (
-              <span>
-                {f.pedido.origem} → {f.pedido.destino}
-              </span>
-            )}
+            {f.pedido && <span>{f.pedido.produto}</span>}
           </div>
           <div className="sinais">
             <Sinal tipo={s.tipo} texto={s.texto} />
-            {!cancelada && f.status_campo && f.status_campo !== "frete_finalizado" && f.statusDesde && (
-              <span className="desde">{duracao(f.statusDesde)} nesta coluna</span>
-            )}
             {pagamento && <Sinal tipo="normal" texto="Pagamento de saída confirmado" />}
             {abertas > 0 && <Sinal tipo="pendente" texto={abertas === 1 ? "1 ocorrência aberta" : `${abertas} ocorrências abertas`} />}
           </div>
@@ -175,7 +215,8 @@ export default async function FichaViagemPage({ params }: Params) {
       {passo && (
         <section className="proximo-passo" aria-labelledby="h-proximo">
           <div className="texto">
-            <h2 id="h-proximo">Próximo passo: {passo}</h2>
+            <span className="rotulo">Próximo passo</span>
+            <h2 id="h-proximo">{passo}</h2>
             {planejada && <p>{explicaInicio(modo)}</p>}
             {f.status_campo === "aguardando_nf_pagamento" && !pagamento && (
               <p>Confirme o adiantamento e o vale-pedágio. Depois, informe as chaves do CT-e e do MDF-e no Quadro, ao passar a viagem para “Em rota”.</p>
@@ -222,184 +263,246 @@ export default async function FichaViagemPage({ params }: Params) {
         </section>
       )}
 
-      <div className="resumo-pedido">
-        <section className="subsecao">
-          <CabPainel titulo="Resumo" />
-          <dl className="kv">
-            <dt>Pedido</dt>
-            <dd>
-              {f.pedido ? (
-                <>
-                  <Link href={`/pedidos/${f.pedido.id}`}>Pedido #{f.pedido.numero}</Link>
-                  <Ponto />
-                  {f.pedido.produto}
-                  <span className="linha2">
-                    {f.pedido.cliente}
-                    {f.pedido.situacao === "cancelado" && (
-                      <>
-                        <Ponto />
-                        pedido cancelado
-                      </>
-                    )}
-                  </span>
-                </>
-              ) : (
-                <Dash />
-              )}
-            </dd>
-            <dt>Origem e destino</dt>
-            <dd>{f.pedido ? `${f.pedido.origem} → ${f.pedido.destino}` : <Dash />}</dd>
-            <dt>Conjunto</dt>
-            <dd>
-              <span className="placas">
-                {f.cavalo ? <Placa placa={f.cavalo} /> : <Dash />}
-                {f.carretas.map((p, i) => (
-                  <Placa key={i} placa={p} />
-                ))}
-              </span>
-              <span className="linha2">
-                <Link href={`/conjuntos/${f.conjuntoId}`}>Abrir o conjunto</Link>
-              </span>
-            </dd>
-            <dt>Motorista</dt>
-            <dd>{f.motorista ? <Link href={`/motoristas/${f.motoristaId}`}>{f.motorista}</Link> : <Dash />}</dd>
-            <dt>Coluna atual</dt>
-            <dd>
-              {s.texto}
-              {!cancelada && f.statusDesde && f.status_campo && (
-                <span className="linha2">
-                  desde {formato.dataHora(f.statusDesde)} ({duracao(f.statusDesde)})
+      <div className="grade ficha-ped ficha-via">
+        <div className="coluna">
+          <section className="bloco rota-ped" aria-label="Rota">
+            <div className="rota">
+              <Ponta local={f.pedido?.origem} quando={saida} lado="origem" />
+              <div className="estrada" aria-hidden="true">
+                {f.kmViagem != null && <span className="prazo">{f.kmViagem.toLocaleString("pt-BR")} km</span>}
+                <span className="pista">
+                  <span className="faixa" />
                 </span>
-              )}
-              {pausaAberta && (
-                <span className="linha2">
-                  {TIPOS_PAUSA[pausaAberta.tipo]}, {pausaAberta.programada ? "programada" : "não programada"}
-                </span>
-              )}
-            </dd>
-            <dt>Peso</dt>
-            <dd>
-              {formato.kg(f.pesoPrevistoKg)} previsto
-              {f.pesoSaidaKg != null && <span className="linha2">saída {formato.kg(f.pesoSaidaKg)}</span>}
-              {f.pesoChegadaKg != null && <span className="linha2">chegada {formato.kg(f.pesoChegadaKg)}</span>}
-            </dd>
-            <dt>Frete do motorista</dt>
-            <dd>
-              {f.freteMotoristaValor != null && f.freteMotoristaTipo ? (
-                <>
-                  {formato.reais(f.freteMotoristaValor)} {SUFIXO_TARIFA[f.freteMotoristaTipo]}
-                </>
-              ) : (
-                <Dash />
-              )}
-            </dd>
-            <dt>Pagamento de saída</dt>
-            <dd>
-              {pagamento ? (
-                <>
-                  Adiantamento e vale-pedágio confirmados
-                  <span className="linha2">
-                    em {formato.dataHora(f.pagamentoSaidaEm!)}
-                    {f.pagamentoSaidaPor && <> por {f.pagamentoSaidaPor}</>}
-                  </span>
-                </>
-              ) : (
-                <span className="com-acao">
-                  <Dash>não confirmado</Dash>
-                  {podePagar && f.status_campo !== "aguardando_nf_pagamento" && <ConfirmarPagamento viagemId={f.id} numero={f.numero} />}
-                </span>
-              )}
-            </dd>
-            <dt>Chaves</dt>
-            <dd>
-              {f.chaveCte || f.chaveMdfe ? (
-                <>
-                  <span className="codigo">CT-e {f.chaveCte ?? "—"}</span>
-                  <span className="linha2 codigo">MDF-e {f.chaveMdfe ?? "—"}</span>
-                  {f.chaveNfe && <span className="linha2 codigo">NF-e {f.chaveNfe}</span>}
-                </>
-              ) : (
-                <Dash>não informadas</Dash>
-              )}
-            </dd>
-            <dt>CIOT e seguro</dt>
-            <dd>
-              {f.ciot || f.averbacaoSeguro ? (
-                <>
-                  <span className="codigo">CIOT {f.ciot ?? "—"}</span>
-                  <span className="linha2">Averbação {f.averbacaoSeguro ?? "—"}</span>
-                </>
-              ) : (
-                <Dash>informados ao passar para “Em rota”</Dash>
-              )}
-            </dd>
-            {(f.status_campo === "aguardando_saldo" || f.status_campo === "frete_finalizado") && (
-              <>
-                <dt>Saldo (30%)</dt>
+              </div>
+              <Ponta local={f.pedido?.destino} quando={chegada} lado="destino" />
+            </div>
+            <dl className="carga">
+              <div>
+                <dt>Peso</dt>
                 <dd>
-                  {saldoPago ? (
+                  <b>{formato.kg(f.pesoSaidaKg ?? f.pesoPrevistoKg)}</b>
+                  <span className="linha2">
+                    {f.pesoSaidaKg != null ? `na saída · previsto ${formato.kg(f.pesoPrevistoKg)}` : "previsto"}
+                  </span>
+                  {f.pesoChegadaKg != null && <span className="linha2">chegada {formato.kg(f.pesoChegadaKg)}</span>}
+                </dd>
+              </div>
+              <div>
+                <dt>Frete do motorista</dt>
+                <dd>
+                  {f.freteMotoristaValor != null && f.freteMotoristaTipo ? (
                     <>
-                      Pago
+                      <b>{formato.reais(f.freteMotoristaValor)}</b>
+                      <span className="linha2">{SUFIXO_TARIFA[f.freteMotoristaTipo]}</span>
+                    </>
+                  ) : (
+                    <Dash>não informado</Dash>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>Pedido</dt>
+                <dd>
+                  {f.pedido ? (
+                    <>
+                      <b>
+                        <Link href={`/pedidos/${f.pedido.id}`}>Pedido #{f.pedido.numero}</Link>
+                      </b>
                       <span className="linha2">
-                        confirmado em {formato.dataHora(f.saldoPagoEm!)}
-                        {f.saldoPagoPor && <> por {f.saldoPagoPor}</>}
+                        {f.pedido.produto}
+                        {f.pedido.situacao === "cancelado" && " · pedido cancelado"}
                       </span>
                     </>
                   ) : (
-                    <Dash>não confirmado</Dash>
+                    <Dash />
                   )}
                 </dd>
-              </>
-            )}
-            {f.divergencia && (
-              <>
-                <dt>Contagem</dt>
-                <dd>
-                  {RESULTADO[f.divergencia] ?? f.divergencia}
-                  {f.divergenciaDescricao && <span className="linha2">{f.divergenciaDescricao}</span>}
-                  {f.resolucao && <span className="linha2">Resolução: {f.resolucao}</span>}
-                </dd>
-              </>
-            )}
-            {f.iniciadaEm && (
-              <>
-                <dt>Início</dt>
-                <dd>
-                  {formato.dataHora(f.iniciadaEm)}
-                  {f.iniciadaPor && <span className="linha2">por {f.iniciadaPor}</span>}
-                  {f.liberacaoJustificativa && <span className="linha2">Liberada com exceção: {f.liberacaoJustificativa}</span>}
-                </dd>
-              </>
-            )}
-            {f.finalizadaEm && (
-              <>
-                <dt>Finalizada</dt>
-                <dd>{formato.dataHora(f.finalizadaEm)}</dd>
-              </>
-            )}
-            {f.observacao && (
-              <>
-                <dt>Observação</dt>
-                <dd className="observacao">{f.observacao}</dd>
-              </>
-            )}
-          </dl>
-        </section>
-
-        {planejada ? (
-          <BlocoAptidao
-            itens={f.aptidao}
-            titulo="Aptidão"
-            explica="Trava legal impede a viagem; trava só sai com exceção do administrador; aviso não impede."
-          />
-        ) : f.liberacaoAptidao ? (
-          <BlocoAptidao itens={f.liberacaoAptidao} titulo="Aptidão no início" vazio="Estava apta quando iniciou." />
-        ) : (
-          <section className="subsecao aptidao">
-            <CabPainel titulo="Aptidão" />
-            <EstadoVazio>{cancelada ? "Cancelada antes de iniciar." : "Sem conferência gravada."}</EstadoVazio>
+              </div>
+            </dl>
           </section>
-        )}
+
+          <section className="bloco partes-ped" aria-labelledby="h-equipe">
+            <div className="bloco-cab">
+              <h2 id="h-equipe">Motorista e conjunto</h2>
+              <span className="dir">
+                <Link href={`/conjuntos/${f.conjuntoId}`}>Abrir o conjunto</Link>
+              </span>
+            </div>
+            <ul className="bloco-corpo partes">
+              <li>
+                <Avatar nome={f.motorista} />
+                <span className="quem">{f.motorista ? <Link href={`/motoristas/${f.motoristaId}`}>{f.motorista}</Link> : <Dash />}</span>
+                <span className="papeis">Motorista</span>
+              </li>
+              <li>
+                <span className="avatar icone-conjunto" aria-hidden="true">
+                  <Truck size={16} strokeWidth={1.8} />
+                </span>
+                <span className="quem placas">
+                  {f.cavalo ? <Placa placa={f.cavalo} /> : <Dash />}
+                  {f.carretas.map((p, i) => (
+                    <Placa key={i} placa={p} />
+                  ))}
+                </span>
+                <span className="papeis">{pecas === 0 ? "Cavalo" : `Cavalo e ${pecas} ${pecas === 1 ? "peça" : "peças"}`}</span>
+              </li>
+            </ul>
+          </section>
+
+          <section className="bloco docs-via" aria-labelledby="h-docs">
+            <div className="bloco-cab">
+              <h2 id="h-docs">Documentos fiscais</h2>
+            </div>
+            <div className="bloco-corpo">
+              {docsFiscais ? (
+                <dl className="docs">
+                  <div>
+                    <dt>CT-e</dt>
+                    <dd>{f.chaveCte ? <Chave v={f.chaveCte} /> : <Dash>não informado</Dash>}</dd>
+                  </div>
+                  <div>
+                    <dt>MDF-e</dt>
+                    <dd>{f.chaveMdfe ? <Chave v={f.chaveMdfe} /> : <Dash>não informado</Dash>}</dd>
+                  </div>
+                  {f.chaveNfe && (
+                    <div>
+                      <dt>NF-e</dt>
+                      <dd>
+                        <Chave v={f.chaveNfe} />
+                      </dd>
+                    </div>
+                  )}
+                  <div className="par">
+                    <div>
+                      <dt>CIOT</dt>
+                      <dd>{f.ciot ? <span className="codigo">{f.ciot}</span> : <Dash>não informado</Dash>}</dd>
+                    </div>
+                    <div>
+                      <dt>Averbação do seguro</dt>
+                      <dd>{f.averbacaoSeguro ? <span className="codigo">{f.averbacaoSeguro}</span> : <Dash>não informada</Dash>}</dd>
+                    </div>
+                  </div>
+                </dl>
+              ) : (
+                <EstadoVazio>Chaves do CT-e e do MDF-e, CIOT e averbação são informados no Quadro, ao passar a viagem para “Em rota”.</EstadoVazio>
+              )}
+            </div>
+          </section>
+        </div>
+
+        <div className="coluna">
+          <section className="bloco situacao-via" aria-labelledby="h-situacao">
+            <div className="bloco-cab">
+              <h2 id="h-situacao">Situação</h2>
+            </div>
+            <div className="bloco-corpo">
+              <span className="valor-medio">{s.texto}</span>
+              <p className="nota-saldo">
+                {cancelada
+                  ? `desde ${formato.dataHora(f.canceladaEm!)}`
+                  : f.statusDesde && f.status_campo
+                    ? `desde ${formato.dataHora(f.statusDesde)} · há ${duracao(f.statusDesde)}`
+                    : `planejada em ${formato.dataHora(f.criadaEm)}`}
+              </p>
+              {pausaAberta && (
+                <Sinal tipo="pendente" texto={`${TIPOS_PAUSA[pausaAberta.tipo]}, ${pausaAberta.programada ? "programada" : "não programada"}`} />
+              )}
+              <dl className="linhas">
+                <dt>Adiantamento e vale-pedágio</dt>
+                <dd>
+                  {pagamento ? (
+                    <>
+                      Confirmados
+                      <span className="linha2">
+                        {formato.dataHora(f.pagamentoSaidaEm!)}
+                        {f.pagamentoSaidaPor && <> · {f.pagamentoSaidaPor}</>}
+                      </span>
+                    </>
+                  ) : (
+                    <Dash>não confirmados</Dash>
+                  )}
+                </dd>
+                {(f.status_campo === "aguardando_saldo" || f.status_campo === "frete_finalizado") && (
+                  <>
+                    <dt>Saldo (30%)</dt>
+                    <dd>
+                      {saldoPago ? (
+                        <>
+                          Pago
+                          <span className="linha2">
+                            {formato.dataHora(f.saldoPagoEm!)}
+                            {f.saldoPagoPor && <> · {f.saldoPagoPor}</>}
+                          </span>
+                        </>
+                      ) : (
+                        <Dash>não confirmado</Dash>
+                      )}
+                    </dd>
+                  </>
+                )}
+                {f.divergencia && (
+                  <>
+                    <dt>Contagem</dt>
+                    <dd>
+                      {RESULTADO[f.divergencia] ?? f.divergencia}
+                      {f.divergenciaDescricao && <span className="linha2">{f.divergenciaDescricao}</span>}
+                      {f.resolucao && <span className="linha2">Resolução: {f.resolucao}</span>}
+                    </dd>
+                  </>
+                )}
+                {f.iniciadaEm && (
+                  <>
+                    <dt>Início</dt>
+                    <dd>
+                      {formato.dataHora(f.iniciadaEm)}
+                      {f.iniciadaPor && <span className="linha2">por {f.iniciadaPor}</span>}
+                    </dd>
+                  </>
+                )}
+                {f.finalizadaEm && (
+                  <>
+                    <dt>Finalizada</dt>
+                    <dd>{formato.dataHora(f.finalizadaEm)}</dd>
+                  </>
+                )}
+              </dl>
+              {podePagar && f.status_campo !== "aguardando_nf_pagamento" && (
+                <div className="acao-situacao">
+                  <ConfirmarPagamento viagemId={f.id} numero={f.numero} />
+                </div>
+              )}
+              {f.liberacaoJustificativa && (
+                <p className="excecao">
+                  <b>Liberada com exceção:</b> {f.liberacaoJustificativa}
+                </p>
+              )}
+            </div>
+          </section>
+
+          {planejada ? (
+            <BlocoAptidao
+              itens={f.aptidao}
+              titulo="Aptidão"
+              explica="Trava legal impede a viagem; trava só sai com exceção do administrador; aviso não impede."
+            />
+          ) : f.liberacaoAptidao ? (
+            <BlocoAptidao itens={f.liberacaoAptidao} titulo="Aptidão no início" vazio="Estava apta quando iniciou." />
+          ) : (
+            <section className="subsecao aptidao">
+              <CabPainel titulo="Aptidão" />
+              <EstadoVazio>{cancelada ? "Cancelada antes de iniciar." : "Sem conferência gravada."}</EstadoVazio>
+            </section>
+          )}
+
+          {f.observacao && (
+            <section className="bloco" aria-labelledby="h-obs">
+              <div className="bloco-cab">
+                <h2 id="h-obs">Observação</h2>
+              </div>
+              <p className="bloco-corpo observacao">{f.observacao}</p>
+            </section>
+          )}
+        </div>
       </div>
 
       {frete.frete && (
@@ -423,8 +526,12 @@ export default async function FichaViagemPage({ params }: Params) {
         />
       )}
 
-      {retorno && <BlocoRetorno r={retorno} />}
-      {quebraEstadia && <BlocoQuebraEstadia q={quebraEstadia} />}
+      {(retorno || quebraEstadia) && (
+        <div className="par-via">
+          {retorno && <BlocoRetorno r={retorno} />}
+          {quebraEstadia && <BlocoQuebraEstadia q={quebraEstadia} />}
+        </div>
+      )}
 
       <div className="blocos-viagem">
         <LinhaDoTempo eventos={f.eventos} criadaEm={f.criadaEm} />
@@ -461,13 +568,15 @@ export default async function FichaViagemPage({ params }: Params) {
 
         <Ocorrencias viagemId={f.id} ocorrencias={f.ocorrencias} podeEditar={podeEditar} podeRegistrar={!cancelada} />
 
-        <Documentos
-          viagemId={f.id}
-          podeEditar={podeEditar && !cancelada}
-          titulo="Arquivos da viagem"
-          vazio="Nenhum arquivo. Canhoto e fotos das ocorrências aparecem aqui."
-          tipoSugerido="OUTROS"
-        />
+        <section className="bloco arquivos-via" aria-label="Arquivos da viagem">
+          <Documentos
+            viagemId={f.id}
+            podeEditar={podeEditar && !cancelada}
+            titulo="Arquivos da viagem"
+            vazio="Nenhum arquivo. Canhoto e fotos das ocorrências aparecem aqui."
+            tipoSugerido="OUTROS"
+          />
+        </section>
       </div>
     </main>
   );
