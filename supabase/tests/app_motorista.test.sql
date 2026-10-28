@@ -1,5 +1,5 @@
 -- Executar precedido de _helpers.sql (que abre a transação). Ver README.md.
--- App do motorista (migrations 20261031000100 e 20261031000200): papel motorista, oferta de frete,
+-- App do motorista (migrations 20261107000100 e 20261107000200): papel motorista, oferta de frete,
 -- check-in, fretes para o motorista, pendências e interesse.
 -- Só documentos fictícios (CNPJ 11222333000181, CPF 11144477735) e placas TST….
 

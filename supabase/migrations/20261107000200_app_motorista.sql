@@ -1,4 +1,4 @@
--- Migration 20261031000200: base do banco para o app do motorista e do agregado
+-- Migration 20261107000200: base do banco para o app do motorista e do agregado
 -- (docs/superpowers/specs/2026-10-25-app-motorista-design.md).
 --
 -- 1. perfil_usuario.motorista_id: o usuário de papel 'motorista' é ligado ao cadastro dele (e só ele tem).
