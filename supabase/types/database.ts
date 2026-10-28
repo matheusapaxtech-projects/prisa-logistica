@@ -890,6 +890,41 @@ export type Database = {
         }
         Relationships: []
       }
+      motorista_acesso_app: {
+        Row: {
+          celular: string
+          liberado_em: string
+          liberado_por: string | null
+          motorista_id: string
+          revogado_em: string | null
+          revogado_por: string | null
+        }
+        Insert: {
+          celular: string
+          liberado_em?: string
+          liberado_por?: string | null
+          motorista_id: string
+          revogado_em?: string | null
+          revogado_por?: string | null
+        }
+        Update: {
+          celular?: string
+          liberado_em?: string
+          liberado_por?: string | null
+          motorista_id?: string
+          revogado_em?: string | null
+          revogado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "motorista_acesso_app_motorista_id_fkey"
+            columns: ["motorista_id"]
+            isOneToOne: true
+            referencedRelation: "motorista"
+            referencedColumns: ["pessoa_id"]
+          },
+        ]
+      }
       motorista_disponibilidade: {
         Row: {
           cidade: string
@@ -2799,6 +2834,12 @@ export type Database = {
         }
         Returns: undefined
       }
+      ativar_acesso_app: { Args: never; Returns: string }
+      liberar_acesso_app: {
+        Args: { p_celular: string; p_motorista: string }
+        Returns: string
+      }
+      revogar_acesso_app: { Args: { p_motorista: string }; Returns: undefined }
       desistir_interesse: { Args: { p_oferta: string }; Returns: undefined }
       encerrar_checkin: { Args: never; Returns: undefined }
       fretes_para_mim: {

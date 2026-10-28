@@ -19,6 +19,7 @@ import { CancelarPedido } from "./cancelar-pedido";
 import { prepararDespacho } from "../despacho";
 import { PainelDespacho } from "../../despacho/painel-despacho";
 import { NovaViagem } from "./nova-viagem";
+import { OfertaAppPainel, type InteressadoApp, type OfertaApp } from "./oferta-app";
 import "@/styles/paginas/proprietarios.css";
 import "@/styles/paginas/pedidos.css";
 import "@/styles/paginas/despacho.css";
@@ -103,6 +104,26 @@ export default async function FichaPedidoPage({ params, searchParams }: Params) 
   const desp = aberto ? await prepararDespacho(db, f) : null;
   const conjuntos = desp?.conjuntos ?? [];
   const rotaSalva = desp?.rotaSalva ?? null;
+  // App do motorista: frete publicado (aberto) e quem disse que tem interesse.
+  const [ofertaR, interesseR] = aberto
+    ? await Promise.all([
+        db
+          .from("frete_oferta")
+          .select("frete_motorista_por_t, carrocerias, eixos_minimos, raio_km, observacao, publicada_em")
+          .eq("pedido_id", f.id)
+          .is("encerrada_em", null)
+          .maybeSingle(),
+        db.from("v_frete_interesse").select("motorista_id, motorista_nome, km_ate_embarque, created_at").eq("pedido_id", f.id).order("created_at"),
+      ])
+    : [null, null];
+  if (ofertaR?.error) throw ofertaR.error;
+  if (interesseR?.error) throw interesseR.error;
+  const oferta: OfertaApp | null = ofertaR?.data ?? null;
+  const interessados = (interesseR?.data ?? []).flatMap((i): InteressadoApp[] =>
+    i.motorista_id && i.motorista_nome && i.created_at
+      ? [{ motorista_id: i.motorista_id, motorista_nome: i.motorista_nome, km_ate_embarque: i.km_ate_embarque ?? 0, created_at: i.created_at }]
+      : [],
+  );
   const vivas = f.viagens.filter((v) => !v.cancelada_em);
   const pct = f.pesoTotalKg > 0 ? Math.min(100, Math.max(0, (f.alocadoKg / f.pesoTotalKg) * 100)) : 0;
   // Barra do carregamento: um trecho por viagem ativa (peso de saída, ou o previsto) e o saldo tracejado.
@@ -268,9 +289,12 @@ export default async function FichaPedidoPage({ params, searchParams }: Params) 
             saldoKg={f.saldoKg}
             conjuntos={conjuntos}
             rotaSalva={rotaSalva}
+            interessadosApp={oferta ? interessados.map((i) => i.motorista_id) : []}
           />
         </section>
       )}
+
+      {aberto && <OfertaAppPainel pedidoId={f.id} oferta={oferta} interessados={interessados} podeEditar={podeEditar} />}
 
       <section className="subsecao viagens-ped" aria-label="Viagens">
         <CabPainel titulo={`Viagens (${f.viagens.length})`} />
