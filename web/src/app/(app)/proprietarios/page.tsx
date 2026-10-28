@@ -13,7 +13,7 @@ import "@/styles/paginas/proprietarios.css";
 
 export const metadata: Metadata = { title: "Proprietários" };
 
-const ABAS: readonly AbaLista[] = ["todos", "pf", "pj", "pendentes", "rntrc"];
+const ABAS: readonly AbaLista[] = ["todos", "pf", "pj", "agregados", "pendentes", "rntrc"];
 const um = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 
 /** "6 proprietários · RNTRC de Rodo Norte vencido · …": o fato da lista que pede atenção (`#achado`). */

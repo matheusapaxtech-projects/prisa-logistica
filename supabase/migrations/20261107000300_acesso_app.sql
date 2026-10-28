@@ -1,4 +1,4 @@
--- Migration 20261031000300: acesso do motorista ao app (login por código no WhatsApp).
+-- Migration 20261107000300: acesso do motorista ao app (login por código no WhatsApp).
 --
 -- O app nunca usa a chave secreta, então o sistema web não cria usuário no Auth. Em vez disso:
 -- 1. A operação libera o celular do motorista na ficha dele (liberar_acesso_app).

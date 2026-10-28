@@ -72,7 +72,15 @@ const Antt = {
   rntrc_emissao: data.default(""),
   rntrc_validade: data.default(""),
   enquadramento_antt: z.union([z.literal(""), z.enum(ENQUADRAMENTOS)]).default(""),
+  agregado: z.enum(["sim", "nao"]).default("nao"),
+  agregado_desde: data.default(""),
 };
+
+/** Agregado e data de início; a data só vale para agregado (o banco recusa data sem a marcação). */
+const agregadoDe = (v: { agregado: "sim" | "nao"; agregado_desde: string }) => ({
+  agregado: v.agregado === "sim",
+  agregado_desde: v.agregado === "sim" ? vazioOuNulo(v.agregado_desde) : null,
+});
 
 /* ---------- novo proprietário ---------- */
 
@@ -175,6 +183,7 @@ export async function criarProprietario(form: FormData): Promise<ResultadoForm<C
         rntrc_emissao: vazioOuNulo(n.rntrc_emissao),
         rntrc_validade: vazioOuNulo(n.rntrc_validade),
         enquadramento_antt: vazioOuNulo(n.enquadramento_antt),
+        ...agregadoDe(n),
         situacao_cadastro: situacao,
       });
       if (pr.error) throw SEM_PAPEL(n.nome, mensagemDeErro(pr.error), "CPF");
@@ -223,6 +232,7 @@ export async function criarProprietario(form: FormData): Promise<ResultadoForm<C
       rntrc_emissao: vazioOuNulo(n.rntrc_emissao),
       rntrc_validade: vazioOuNulo(n.rntrc_validade),
       enquadramento_antt: vazioOuNulo(n.enquadramento_antt),
+      ...agregadoDe(n),
       responsavel_nome: n.responsavel_nome.replace(/\s+/g, " "),
       responsavel_telefone: so(n.responsavel_telefone),
       responsavel_whatsapp: marcado(n.responsavel_whatsapp),
@@ -268,6 +278,7 @@ async function ligarProprietario(bruto: Record<string, string>): Promise<Resulta
       rntrc_emissao: vazioOuNulo(l.rntrc_emissao),
       rntrc_validade: vazioOuNulo(l.rntrc_validade),
       enquadramento_antt: vazioOuNulo(l.enquadramento_antt),
+      ...agregadoDe(l),
       situacao_cadastro: situacao,
     });
     if (error) {
@@ -319,6 +330,8 @@ const Comum = {
   rntrc_validade: data.default(""),
   enquadramento_antt: z.union([z.literal(""), z.enum(ENQUADRAMENTOS)]).default(""),
   alto_desempenho: z.enum(["sim", "nao"]).default("nao"),
+  agregado: z.enum(["sim", "nao"]).default("nao"),
+  agregado_desde: data.default(""),
   qualificado_gmp: z.enum(["sim", "nao"]).optional(),
   dt_qualificacao_gmp: data.default(""),
   regra_pgto_frete: z.enum(REGRAS_FRETE).optional(),
@@ -405,6 +418,9 @@ export async function salvarFicha(pessoaId: string, form: FormData): Promise<Res
         rntrc_validade: n(f.rntrc_validade),
         enquadramento_antt: n(f.enquadramento_antt),
         alto_desempenho: f.alto_desempenho === "sim",
+        agregado: f.agregado === "sim",
+        // A data de início só vale para agregado (o banco recusa data sem a marcação).
+        agregado_desde: f.agregado === "sim" ? n(f.agregado_desde) : null,
         qualificado_gmp: f.qualificado_gmp ? f.qualificado_gmp === "sim" : null,
         dt_qualificacao_gmp: n(f.dt_qualificacao_gmp),
         regra_pgto_frete: f.regra_pgto_frete ?? null,

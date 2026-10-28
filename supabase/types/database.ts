@@ -555,6 +555,45 @@ export type Database = {
         }
         Relationships: []
       }
+      fiscal_guia: {
+        Row: {
+          competencia: string
+          gerada_em: string
+          gerada_por: string | null
+          id: string
+          paga_em: string | null
+          tipo: Database["public"]["Enums"]["fiscal_tipo_guia"]
+          updated_at: string
+          updated_by: string | null
+          valor: number
+          vencimento: string
+        }
+        Insert: {
+          competencia: string
+          gerada_em?: string
+          gerada_por?: string | null
+          id?: string
+          paga_em?: string | null
+          tipo: Database["public"]["Enums"]["fiscal_tipo_guia"]
+          updated_at?: string
+          updated_by?: string | null
+          valor: number
+          vencimento: string
+        }
+        Update: {
+          competencia?: string
+          gerada_em?: string
+          gerada_por?: string | null
+          id?: string
+          paga_em?: string | null
+          tipo?: Database["public"]["Enums"]["fiscal_tipo_guia"]
+          updated_at?: string
+          updated_by?: string | null
+          valor?: number
+          vencimento?: string
+        }
+        Relationships: []
+      }
       marca_veiculo: {
         Row: {
           id: number
@@ -1698,6 +1737,8 @@ export type Database = {
       }
       proprietario: {
         Row: {
+          agregado: boolean
+          agregado_desde: string | null
           alto_desempenho: boolean
           autoriza_desconto_inss: Database["public"]["Enums"]["desconto_inss"]
           created_at: string
@@ -1729,6 +1770,8 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          agregado?: boolean
+          agregado_desde?: string | null
           alto_desempenho?: boolean
           autoriza_desconto_inss?: Database["public"]["Enums"]["desconto_inss"]
           created_at?: string
@@ -1760,6 +1803,8 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          agregado?: boolean
+          agregado_desde?: string | null
           alto_desempenho?: boolean
           autoriza_desconto_inss?: Database["public"]["Enums"]["desconto_inss"]
           created_at?: string
@@ -2940,6 +2985,34 @@ export type Database = {
           saldo_em: string
         }[]
       }
+      fiscal_gerar_guias: { Args: { p_competencia: string }; Returns: number }
+      fiscal_marcar_guia: {
+        Args: { p_data: string; p_guia: string }
+        Returns: undefined
+      }
+      fiscal_retencoes: {
+        Args: { p_competencia: string }
+        Returns: {
+          base: number
+          base_irrf: number
+          contratado_cpf: string
+          contratado_id: string
+          contratado_nome: string
+          cte_numero: number
+          data: string
+          frete: number
+          inss: number
+          patronal: number
+          senat: number
+          sest: number
+          viagem_id: string
+          viagem_numero: number
+        }[]
+      }
+      fiscal_vencimento_guia: {
+        Args: { p_competencia: string }
+        Returns: string
+      }
       frete_da_viagem: { Args: { p_viagem: string }; Returns: Json }
       iniciar_viagem: {
         Args: { p_justificativa?: string; p_viagem: string }
@@ -3069,6 +3142,7 @@ export type Database = {
         | "aporte_capital"
         | "devolucao_capital"
         | "transferencia"
+      fiscal_tipo_guia: "inss" | "sest_senat"
       grau_instrucao:
         | "fundamental_incompleto"
         | "fundamental_completo"
@@ -3368,6 +3442,7 @@ export const Constants = {
         "devolucao_capital",
         "transferencia",
       ],
+      fiscal_tipo_guia: ["inss", "sest_senat"],
       grau_instrucao: [
         "fundamental_incompleto",
         "fundamental_completo",
