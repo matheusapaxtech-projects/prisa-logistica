@@ -303,6 +303,11 @@ export default async function FichaMotoristaPage({ params, searchParams }: Param
               <Sinal situacao={m.situacao_cadastro} texto={`Cadastro ${ROT.situacao_cadastro[m.situacao_cadastro].toLowerCase()}`} />
               <SinalCnh iso={m.cnh_validade} />
               <SinalGr f={f} />
+              {f.agregado && (
+                <Link href={`/proprietarios/${id}`} title="Abrir ficha de proprietário">
+                  <Sinal tipo="info" texto={f.agregado.desde ? `Agregado desde ${formato.data(f.agregado.desde)}` : "Agregado"} />
+                </Link>
+              )}
             </span>
           </div>
         </div>

@@ -680,6 +680,25 @@ function FormularioTipo({ tipo, documentoInicial }: { tipo: Tipo; documentoInici
               </span>
               {campos.enquadramento_antt && <span className="erro">{campos.enquadramento_antt}</span>}
             </div>
+            <div className="campo f4">
+              <span className="rotulo" id="r-agregado">
+                É agregado
+              </span>
+              <div className="opcoes" role="radiogroup" aria-labelledby="r-agregado" aria-describedby="agregado-ajuda">
+                <label className="opcao">
+                  <input type="radio" name="agregado" value="sim" />
+                  <span>Sim</span>
+                </label>
+                <label className="opcao">
+                  <input type="radio" name="agregado" value="nao" defaultChecked />
+                  <span>Não</span>
+                </label>
+              </div>
+              <span className="ajuda" id="agregado-ajuda">
+                Agregado trabalha com a Prisa de forma fixa. Terceiro faz uma viagem avulsa.
+              </span>
+            </div>
+            <Campo classe="f4" id="agregado_desde" name="agregado_desde" type="date" label="Agregado desde" opcional erro={campos.agregado_desde} />
           </div>
         </section>
       )}

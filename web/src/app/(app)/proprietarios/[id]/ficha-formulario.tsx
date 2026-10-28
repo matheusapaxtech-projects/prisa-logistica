@@ -68,7 +68,7 @@ function Din({ nome, rotulo, valor, tipo, erro }: { nome: string; rotulo: string
 
 /** Aba (painel) em que cada campo do servidor mora; o que não está aqui é de "dados". */
 function painelDoCampo(nome: string): string {
-  if (/^(rntrc|enquadramento_antt$|situacao_cadastro$|alto_desempenho$|qualificado_gmp$|dt_qualificacao_gmp$)/.test(nome)) return "antt";
+  if (/^(rntrc|enquadramento_antt$|situacao_cadastro$|agregado|alto_desempenho$|qualificado_gmp$|dt_qualificacao_gmp$)/.test(nome)) return "antt";
   if (nome.startsWith("responsavel_")) return "responsavel";
   if (/^(taxa_adm_|regra_pgto_frete$|limite_adiantamento_|frete_empresa_motorista_)/.test(nome)) return "pagamento";
   return "dados";
@@ -295,6 +295,12 @@ export function FichaFormulario({ pessoa: p, proprietario: pr, aba, podeEditar, 
         <Selecao classe="f4" nome="situacao_cadastro" rotulo="Situação do cadastro" valor={pr.situacao_cadastro} erro={campos.situacao_cadastro}>
           <Opcoes mapa={ROT.situacao_cadastro} />
         </Selecao>
+      </Secao>
+      <Secao id="h-vinculo" titulo="Vínculo com a Prisa" texto="Agregado trabalha com a Prisa de forma fixa. Terceiro faz uma viagem avulsa.">
+        <Grupo classe="f4" id="g-agregado" rotulo="É agregado">
+          <SimNao nome="agregado" atual={simNao(!!pr.agregado)} />
+        </Grupo>
+        <Campo classe="f4" id="agregado_desde" name="agregado_desde" type="date" label={<>Agregado desde{opc}</>} defaultValue={pr.agregado_desde ?? ""} erro={campos.agregado_desde} />
       </Secao>
       <Secao id="h-oper" titulo="Operação" texto="Exigências de clientes que alguns fretes pedem.">
         <Grupo classe="f4" id="g-alto" rotulo="Operação de alto desempenho">
