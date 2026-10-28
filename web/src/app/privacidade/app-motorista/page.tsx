@@ -98,6 +98,20 @@ export default function PoliticaAppMotorista() {
         </ul>
         <p>Sem a localização você ainda pode usar o app, mas a Prisa não consegue te achar para os fretes perto.</p>
 
+        <h2 id="excluir-conta">Como excluir a sua conta</h2>
+        <p>
+          No app, toque nas suas iniciais, no alto da tela, e depois em <b>Excluir conta</b>. Sem o app, peça ao encarregado de
+          dados da Prisa: {EMPRESA.contato}.
+        </p>
+        <ul>
+          <li>Apagamos na hora: o seu acesso ao app, a sua localização e o seu “estou livre”.</li>
+          <li>Os seus interesses em fretes ainda abertos são retirados.</li>
+          <li>
+            Ficam guardados o seu cadastro, as suas viagens e os pagamentos de frete, pelo prazo que a lei fiscal e a ANTT exigem.
+          </li>
+        </ul>
+        <p>Para voltar a usar o app, peça à operação da Prisa para liberar o seu celular de novo.</p>
+
         <h2>Seus direitos</h2>
         <p>
           Você pode pedir para confirmar, ver, corrigir ou apagar os seus dados, saber com quem eles foram compartilhados e retirar

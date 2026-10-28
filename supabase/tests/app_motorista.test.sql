@@ -310,5 +310,35 @@ begin
   perform tests.como_servico();
 end $$;
 
+-- Excluir a conta pelo app (migration 20261107000500): some o login, a posição, o "estou livre", o interesse
+-- no frete aberto e o acesso; o cadastro do motorista na Prisa fica.
+create function tests.test_excluir_minha_conta() returns setof text language plpgsql as $$
+declare
+  c record;
+begin
+  select * into c from tests.cenario();
+  insert into public.motorista_acesso_app (motorista_id, celular) values (c.motorista, '5543999998888');
+  perform tests.checkin(c.motorista, -25.43, -49.27);
+  perform tests.executar_como(c.app, 'select public.registrar_posicao(-25.43, -49.27)');
+  perform tests.executar_como(c.app, format('select public.registrar_interesse(%L)', c.oferta));
+
+  return next throws_ok(format('select tests.executar_como(%L, %L)', c.op, 'select public.excluir_minha_conta()'),
+                        '42501', 'só o motorista exclui a conta pelo app', 'usuário do sistema não se exclui pelo app');
+  perform tests.executar_como(c.app, 'select public.excluir_minha_conta()');
+
+  return next is((select count(*)::integer from auth.users where id = c.app), 0, 'o login do app é apagado');
+  return next is((select count(*)::integer from public.perfil_usuario where user_id = c.app), 0, 'o perfil some junto');
+  return next is((select count(*)::integer from public.motorista_posicao where motorista_id = c.motorista), 0,
+                 'a localização é apagada');
+  return next is((select count(*)::integer from public.motorista_disponibilidade
+                   where motorista_id = c.motorista and livre_ate > now()), 0, 'o "estou livre" é encerrado');
+  return next ok((select desistiu_em is not null from public.frete_interesse
+                   where oferta_id = c.oferta and motorista_id = c.motorista), 'o interesse no frete aberto é retirado');
+  return next ok((select revogado_em is not null from public.motorista_acesso_app where motorista_id = c.motorista),
+                 'o acesso ao app é revogado');
+  return next is((select count(*)::integer from public.motorista where pessoa_id = c.motorista), 1,
+                 'o cadastro do motorista na Prisa fica');
+end $$;
+
 select * from runtests('tests'::name, '^test_');
 rollback;

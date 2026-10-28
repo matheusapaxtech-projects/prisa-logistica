@@ -100,6 +100,26 @@ export function Principal({ localizacao, aoPedirLocalizacao, aoSair }: Props) {
       if (error) throw error;
     });
 
+  // Exclusão da conta (exigência das lojas): apaga o login, a localização e o "estou livre"; o cadastro na Prisa fica.
+  const excluirConta = () =>
+    Alert.alert(
+      "Excluir sua conta?",
+      "Vamos apagar seu acesso ao app, sua localização e o seu \"estou livre\", e tirar seus interesses nos fretes abertos.\n\nSeu cadastro e suas viagens com a Prisa continuam guardados, porque a lei obriga. Para voltar a usar o app, peça à operação para liberar seu celular de novo.",
+      [
+        { text: "Voltar" },
+        {
+          text: "Excluir",
+          style: "destructive",
+          onPress: () =>
+            acao("excluir", async () => {
+              const { error } = await supabase.rpc("excluir_minha_conta");
+              if (error) throw error;
+              aoSair();
+            }),
+        },
+      ],
+    );
+
   const travas = pend.filter((p) => p.nivel !== "aviso" && p.codigo !== "sem_checkin");
   const nome = cad?.apelido || cad?.nome?.split(" ")[0] || "motorista";
   const iniciais = (cad?.nome ?? "M").split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
@@ -127,7 +147,13 @@ export function Principal({ localizacao, aoPedirLocalizacao, aoSair }: Props) {
             )}
           </View>
           <Pressable
-            onPress={() => Alert.alert(cad?.nome ?? "Motorista", "Sair do app desliga o envio da sua localização.", [{ text: "Voltar" }, { text: "Sair", style: "destructive", onPress: aoSair }])}
+            onPress={() =>
+              Alert.alert(cad?.nome ?? "Motorista", "Sair do app desliga o envio da sua localização.", [
+                { text: "Voltar" },
+                { text: "Excluir conta", style: "destructive", onPress: excluirConta },
+                { text: "Sair", style: "destructive", onPress: aoSair },
+              ])
+            }
             style={s.avatar}
             accessibilityRole="button"
             accessibilityLabel="Sua conta e sair"

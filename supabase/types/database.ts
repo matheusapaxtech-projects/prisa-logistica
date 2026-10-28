@@ -2888,6 +2888,7 @@ export type Database = {
       revogar_acesso_app: { Args: { p_motorista: string }; Returns: undefined }
       desistir_interesse: { Args: { p_oferta: string }; Returns: undefined }
       encerrar_checkin: { Args: never; Returns: undefined }
+      excluir_minha_conta: { Args: never; Returns: undefined }
       fretes_para_mim: {
         Args: never
         Returns: {
