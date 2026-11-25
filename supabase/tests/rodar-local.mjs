@@ -1,4 +1,5 @@
-// Roda a suíte pgTAP no Supabase LOCAL (container supabase_db_nilt, de `supabase start`).
+// Roda a suíte pgTAP no Supabase LOCAL (container supabase_db_nilt, de `supabase start`; outro container local
+// com NILT_DB_CONTAINER=<nome>, ex.: uma cópia do banco para trabalhar em paralelo sem mexer no principal).
 // Cada arquivo vai como _helpers.sql + <arquivo>.test.sql, numa transação que termina em rollback.
 //
 //   node supabase/tests/rodar-local.mjs              todos os arquivos
@@ -11,7 +12,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const pasta = dirname(fileURLToPath(import.meta.url));
-const container = "supabase_db_nilt";
+const container = process.env.NILT_DB_CONTAINER || "supabase_db_nilt";
 const filtros = process.argv.slice(2);
 const helpers = readFileSync(join(pasta, "_helpers.sql"), "utf8");
 
