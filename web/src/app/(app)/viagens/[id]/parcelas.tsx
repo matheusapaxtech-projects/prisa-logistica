@@ -3,7 +3,7 @@ import { Sinal, type TipoSinal } from "@/components/Sinal";
 import { fraseRetencao } from "@/lib/contas";
 import { hojeISO } from "@/lib/datas";
 import { formato } from "@/lib/formato";
-import { rotuloDaParcela, sinalDaParcela, type ParcelaViagem } from "../parcelas";
+import { QUANDO_PAGA, rotuloDaParcela, sinalDaParcela, type ParcelaViagem } from "../parcelas";
 
 /* "Pagamento ao motorista": as duas parcelas do frete no Contas a pagar (adiantamento de 70% + pedágio e saldo de 30%).
    Só aparece para a viagem que tem parcelas; a antiga (confirmação manual no Quadro) não mostra nada. Dinheiro sem cor:
@@ -43,7 +43,7 @@ function ParcelaLinha({ p, tipo, texto }: { p: ParcelaViagem; tipo: TipoSinal; t
         {formato.reais(p.valor)}
         {p.partePedagio > 0 && <span className="linha2">inclui {formato.reais(p.partePedagio)} de pedágio</span>}
         {p.parteRetencao > 0 && <span className="linha2">{fraseRetencao(p.parteRetencao)}</span>}
-        <span className="linha2">vence {formato.data(p.vencimento)}</span>
+        <span className="linha2">{p.aguarda ? QUANDO_PAGA[p.aguarda] : `vence ${formato.data(p.vencimento)}`}</span>
         <Sinal tipo={tipo} texto={texto} />
         {p.antecipacaoLiberada && <span className="linha2">Antecipação liberada</span>}
       </dd>

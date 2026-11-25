@@ -6,7 +6,7 @@ import { EstadoVazio } from "@/components/EstadoVazio";
 import { Ponto } from "@/components/Ponto";
 import { Sinal } from "@/components/Sinal";
 import { toast } from "@/components/Toast";
-import { agrupar as agruparContas, estadoVencimento, fraseRetencao, ROTULO_ORIGEM, rotuloForma, sinalAprovacao, somarValores } from "@/lib/contas";
+import { agrupar as agruparContas, estadoVencimento, fraseRetencao, ROTULO_AGUARDA, ROTULO_ORIGEM, rotuloForma, sinalAprovacao, somarValores } from "@/lib/contas";
 import type { Conta } from "../consultas";
 import { formato } from "@/lib/formato";
 import { MenuLinha, type ItemMenu } from "../contas-comum/menu-linha";
@@ -49,7 +49,9 @@ function Linha({
   const [pendente, iniciar] = useTransition();
   const a = acoesDaConta(c, usuario);
   const cancelada = !!c.canceladoEm;
-  const { estado, dias } = estadoVencimento(c.vencimento, hoje, !c.canceladoEm && !c.pagoEm);
+  const { estado, dias } = estadoVencimento(c.vencimento, hoje, !c.canceladoEm && !c.pagoEm, c.aguardaViagem);
+  /** Parcela do frete que ainda espera a viagem: no lugar do prazo, o que falta acontecer. */
+  const espera = estado === "espera" && c.aguardaViagem ? ROTULO_AGUARDA[c.aguardaViagem] : null;
 
   /** Roda uma ação do banco e conta o resultado num aviso (a lista recarrega sozinha em caso de sucesso). */
   function rodar(acao: () => Promise<{ ok: true; dados: unknown } | { ok: false; erro: string }>, sucesso: string) {
@@ -108,7 +110,7 @@ function Linha({
           <span className="contas-mini-venc">
             {formato.data(c.vencimento)}
             <Ponto />
-            {formato.dias(dias)}
+            {espera ?? formato.dias(dias)}
           </span>
           <Sinal {...sinalAprovacao(c, estado === "vencida" ? dias : null)} />
           <span>{rotuloForma(c.forma)}</span>
@@ -120,6 +122,7 @@ function Linha({
         {estado === "vencida" && <Sinal tipo="bloqueado" texto={formato.dias(dias)} />}
         {estado === "vencendo" && <Sinal tipo="vencendo" texto={formato.dias(dias)} />}
         {estado === "normal" && <span className="linha2">{formato.dias(dias)}</span>}
+        {espera && <Sinal tipo="neutro" texto={espera} />}
       </td>
       <td className="num contas-valor">{formato.reais(c.valor)}</td>
       <td className="some-celular">

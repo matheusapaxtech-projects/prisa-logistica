@@ -12,7 +12,7 @@ export const TIPOS: readonly { id: string; rot: string; tabelas: readonly string
   { id: "arquivo", rot: "Arquivo", tabelas: ["arquivo"] },
   { id: "conta", rot: "Conta bancária e Pix", tabelas: ["pessoa_conta_bancaria", "pessoa_chave_pix"] },
   { id: "perfil", rot: "Perfil de usuário", tabelas: ["perfil_usuario"] },
-  { id: "financeiro", rot: "Financeiro", tabelas: ["fin_conta", "fin_importacao", "fin_lancamento", "fin_regra"] },
+  { id: "financeiro", rot: "Financeiro", tabelas: ["fin_conta", "fin_importacao", "fin_lancamento", "fin_regra", "fin_pagar", "fin_receber", "fin_plano_conta", "fin_config"] },
 ];
 
 export const ACOES: readonly { id: string; rot: string }[] = [

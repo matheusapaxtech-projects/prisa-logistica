@@ -30,6 +30,10 @@ const OBJETO: Record<string, string> = {
   fin_importacao: "o extrato importado",
   fin_lancamento: "o lançamento",
   fin_regra: "a regra de categoria",
+  fin_pagar: "a conta a pagar",
+  fin_receber: "a conta a receber",
+  fin_plano_conta: "o tipo de despesa ou receita",
+  fin_config: "a configuração do financeiro",
 };
 
 /** "em …" da linha de baixo. Mesmos textos de `TABELA` em prototipo/motorista.html. */
@@ -52,6 +56,10 @@ export const TABELA_ROTULO: Record<string, string> = {
   fin_importacao: "financeiro",
   fin_lancamento: "financeiro",
   fin_regra: "financeiro",
+  fin_pagar: "financeiro",
+  fin_receber: "financeiro",
+  fin_plano_conta: "financeiro",
+  fin_config: "financeiro",
 };
 
 /** Rótulo da ação. Mesmos textos de `ROT.acao` em prototipo/assets/paginas/motoristas.js. */

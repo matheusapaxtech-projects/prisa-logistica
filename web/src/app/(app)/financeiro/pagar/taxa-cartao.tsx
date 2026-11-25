@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { CreditCard } from "lucide-react";
+import { CircleAlert, CreditCard } from "lucide-react";
 import { Sinal } from "@/components/Sinal";
 import { toast } from "@/components/Toast";
 import { sinalAprovacao } from "@/lib/contas";
@@ -33,6 +33,8 @@ export function TaxaCartaoBloco({ taxa }: { taxa: TaxaCartao }) {
   const c = taxa.conta;
   const calculada = taxa.pct !== null && taxa.taxa !== null;
   const podeLancar = calculada && (!c || (!c.aprovadoEm && !c.pagoEm && !c.canceladoEm));
+  /** A conta lançada já não bate com o que foi pago pelo cartão-frete (houve pagamento depois do lançamento). */
+  const diferenca = c && taxa.taxa !== null ? (Math.round(taxa.taxa * 100) - Math.round(c.valor * 100)) / 100 : 0;
 
   function lancar() {
     iniciar(async () => {
@@ -61,10 +63,18 @@ export function TaxaCartaoBloco({ taxa }: { taxa: TaxaCartao }) {
           <p className="nota contas-taxa-conta">
             Lançada na conta {c.numero} ({ROTULO_SITUACAO_PAGAR[c.situacao] ?? c.situacao}), valor {formato.reais(c.valor)}.{" "}
             <Sinal {...sinalAprovacao({ canceladoEm: c.canceladoEm, pagoEm: c.pagoEm, aprovadoEm: c.aprovadoEm })} />
-            {podeLancar && taxa.taxa !== null && Math.round(c.valor * 100) !== Math.round(taxa.taxa * 100) && (
-              <> O valor lançado está diferente da taxa calculada agora.</>
-            )}
+            {diferenca !== 0 && podeLancar && <> O valor lançado está diferente da taxa calculada agora.</>}
           </p>
+        )}
+        {c && diferenca !== 0 && !podeLancar && (
+          <div className="aviso aviso-pendente">
+            <CircleAlert size={16} strokeWidth={1.6} aria-hidden="true" />
+            <span>
+              O que foi pago pelo cartão-frete mudou depois do lançamento: a taxa calculada agora é {formato.reais(taxa.taxa ?? 0)} (
+              {formato.reais(Math.abs(diferenca))} {diferenca > 0 ? "a mais" : "a menos"} que a conta {c.numero}).{" "}
+              {c.pagoEm ? "Lance a diferença numa conta à parte." : "Para atualizar o valor, desfaça a aprovação da conta."}
+            </span>
+          </div>
         )}
       </div>
       {podeLancar && (

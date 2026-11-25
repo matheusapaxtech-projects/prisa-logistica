@@ -30,6 +30,7 @@ import { TabelaPagar } from "@/app/(app)/financeiro/pagar/tabela-pagar";
 import { DialogoPagar } from "@/app/(app)/financeiro/pagar/dialogo-pagar";
 import type { ContaPagar } from "@/app/(app)/financeiro/pagar/consultas";
 import { InterruptorFrete } from "@/app/(app)/financeiro/pagar/interruptor-frete";
+import { TaxaCartaoBloco } from "@/app/(app)/financeiro/pagar/taxa-cartao";
 import { Toaster } from "@/components/Toast";
 
 beforeAll(() => {
@@ -94,6 +95,7 @@ function conta(c: Partial<ContaPagar> = {}): ContaPagar {
     canceladoEm: null,
     cancelamentoMotivo: null,
     canceladoAutomatico: false,
+    aguardaViagem: null,
     versao: VERSAO,
     lancadoPorNome: "Ana",
     aprovadoPorNome: null,
@@ -164,6 +166,18 @@ describe("linha da conta a pagar", () => {
   it("vencida e sem aprovação: o selo diz que falta aprovar e que venceu", () => {
     tabela([conta({ vencimento: "2000-01-01" })]);
     expect(screen.getAllByText(/^Falta aprovar · venceu há \d+ dias$/)[0]).toHaveClass("sinal-pendente");
+  });
+
+  it("parcela do frete que ainda espera a viagem: não está atrasada, diz o que falta acontecer", () => {
+    tabela([
+      conta({ id: "a", origem: "frete_adiantamento", vencimento: "2000-01-01", aguardaViagem: "embarque", viagemId: "v1", viagemNumero: 7 }),
+      conta({ id: "s", origem: "frete_saldo", vencimento: "2000-01-04", aguardaViagem: "entrega", viagemId: "v1", viagemNumero: 7 }),
+    ]);
+    expect(document.querySelectorAll(".sinal-bloqueado")).toHaveLength(0);
+    expect(screen.queryByText(/venceu há/)).not.toBeInTheDocument();
+    expect(screen.getAllByText("Aguardando o embarque").some((e) => e.classList.contains("sinal-neutro"))).toBe(true);
+    expect(screen.getAllByText("Aguardando a entrega").some((e) => e.classList.contains("sinal-neutro"))).toBe(true);
+    expect(screen.getAllByText("Falta aprovar")[0]).toHaveClass("sinal-pendente");
   });
 
   it("vencida mas aprovada: o selo é de aprovada (o vencimento aparece na outra coluna)", () => {
@@ -317,6 +331,49 @@ describe("desfazer pagamento (administrador)", () => {
     expect(desfazerPagamento).toHaveBeenCalledTimes(1);
     terminar({ ok: false, erro: "A viagem já foi finalizada." });
     expect(await screen.findByRole("alert")).toHaveTextContent("A viagem já foi finalizada.");
+  });
+});
+
+describe("taxa do cartão-frete", () => {
+  const taxa = (conta: React.ComponentProps<typeof TaxaCartaoBloco>["taxa"]["conta"]) => ({
+    mes: "2026-11",
+    totalPago: 45000,
+    pagamentos: 4,
+    pct: 0.01,
+    porTransferencia: 0.5,
+    valorPct: 450,
+    valorTransferencias: 2,
+    taxa: 452,
+    conta,
+  });
+  const lancada = { numero: 42, valor: 50.5, aprovadoEm: null, pagoEm: null, canceladoEm: null, situacao: "falta_aprovar" };
+
+  it("sem conta lançada: oferece lançar", () => {
+    render(<TaxaCartaoBloco taxa={taxa(null)} />);
+    expect(screen.getByRole("button", { name: "Lançar a taxa" })).toBeInTheDocument();
+  });
+
+  it("lançada e ainda não aprovada com valor antigo: oferece atualizar", () => {
+    render(<TaxaCartaoBloco taxa={taxa(lancada)} />);
+    expect(screen.getByRole("button", { name: "Atualizar o valor" })).toBeInTheDocument();
+    expect(screen.getByText(/O valor lançado está diferente da taxa calculada agora/)).toBeInTheDocument();
+  });
+
+  it("aprovada com valor antigo: avisa a diferença e manda desfazer a aprovação (não some em silêncio)", () => {
+    render(<TaxaCartaoBloco taxa={taxa({ ...lancada, aprovadoEm: "2026-11-21T10:00:00Z", situacao: "a_vencer" })} />);
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getByText(/a taxa calculada agora é R\$\s452,00 \(\s*R\$\s401,50 a mais que a conta 42\)/)).toBeInTheDocument();
+    expect(screen.getByText(/desfaça a aprovação da conta/)).toBeInTheDocument();
+  });
+
+  it("paga com valor antigo: manda lançar a diferença à parte", () => {
+    render(<TaxaCartaoBloco taxa={taxa({ ...lancada, aprovadoEm: "2026-11-21T10:00:00Z", pagoEm: "2026-11-22", situacao: "paga" })} />);
+    expect(screen.getByText(/Lance a diferença numa conta à parte/)).toBeInTheDocument();
+  });
+
+  it("aprovada com o valor certo: sem aviso", () => {
+    render(<TaxaCartaoBloco taxa={taxa({ ...lancada, valor: 452, aprovadoEm: "2026-11-21T10:00:00Z", situacao: "a_vencer" })} />);
+    expect(screen.queryByText(/a taxa calculada agora/)).not.toBeInTheDocument();
   });
 });
 

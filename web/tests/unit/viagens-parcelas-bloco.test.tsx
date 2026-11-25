@@ -17,6 +17,7 @@ const parcela = (extra: Partial<ParcelaViagem> = {}): ParcelaViagem => ({
   situacao: "falta_aprovar",
   pagoEm: null,
   antecipacaoLiberada: false,
+  aguarda: null,
   ...extra,
 });
 
@@ -29,6 +30,13 @@ describe("BlocoParcelas", () => {
   it("sem retenção não diz nada sobre retenção", () => {
     render(<BlocoParcelas parcelas={[parcela()]} verFinanceiro />);
     expect(screen.queryByText(/retenções/)).not.toBeInTheDocument();
+  });
+
+  it("parcela que espera a viagem: sem atraso, e diz quando é paga no lugar do vencimento", () => {
+    render(<BlocoParcelas parcelas={[parcela({ vencimento: "2000-01-01", aguarda: "entrega" })]} verFinanceiro={false} />);
+    expect(screen.getByText("Falta aprovar")).toBeInTheDocument();
+    expect(screen.getByText("paga com a entrega conferida")).toBeInTheDocument();
+    expect(screen.queryByText(/^vence /)).not.toBeInTheDocument();
   });
 
   it("falta aprovar e já venceu: o selo diz também que venceu", () => {
