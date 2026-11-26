@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { Linking, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { MapPin } from "lucide-react-native";
 import { abrirAjustes, ativarLocalizacao, type EstadoLocalizacao } from "../localizacao";
 import { POLITICA_URL } from "../supabase";
@@ -39,7 +39,13 @@ export function PermitirLocalizacao({ estado, aoTerminar }: Props) {
         <Vidro style={s.lista}>
           <Item titulo="Para quê" texto="Achar os fretes perto de você e escolher o caminhão mais perto da coleta, com os eixos e a carroceria certos." />
           <Item titulo="Quem vê" texto="Só a operação da Prisa, no despacho. Guardamos só a última posição." />
-          <Item titulo="Como parar" texto="Toque em Sair no app ou mude a permissão nos ajustes do celular. Um aviso fixo mostra quando está ligada." ultimo />
+          <Item
+            titulo="Como parar"
+            texto={`Toque em Sair no app ou mude a permissão nos ajustes do celular. ${
+              Platform.OS === "ios" ? "O iPhone mostra um sinal azul no alto da tela quando está ligada." : "Um aviso fixo mostra quando está ligada."
+            }`}
+            ultimo
+          />
         </Vidro>
         <Pressable onPress={() => Linking.openURL(POLITICA_URL)} accessibilityRole="link" style={s.politica}>
           <Text style={s.politicaTexto}>Ler a política de privacidade</Text>
@@ -51,7 +57,9 @@ export function PermitirLocalizacao({ estado, aoTerminar }: Props) {
             texto={
               atual === "gps_desligado"
                 ? "A localização do celular está desligada. Ligue nos ajustes."
-                : "Para funcionar com o app fechado, escolha “Permitir o tempo todo” nos ajustes do app."
+                : Platform.OS === "ios"
+                  ? "Para funcionar com o app fechado, toque em Localização nos ajustes do app e escolha “Sempre”."
+                  : "Para funcionar com o app fechado, escolha “Permitir o tempo todo” nos ajustes do app."
             }
           />
         )}
