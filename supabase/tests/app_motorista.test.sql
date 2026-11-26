@@ -31,6 +31,10 @@ declare
   v_descarga uuid;
   v_cavalo uuid;
 begin
+  -- Fretes já publicados no banco (ex.: o da seed local_motorista_app.sql) saem do caminho: os testes contam
+  -- só as ofertas que eles mesmos criam. A transação do teste desfaz isto no fim.
+  update public.frete_oferta set encerrada_em = now() where encerrada_em is null;
+
   insert into public.pessoa (tipo, nome, cnpj, situacao_cadastro)
   values ('pj', 'Cliente Teste', '11222333000181', 'normal') returning id into v_cliente;
   insert into public.cliente (pessoa_id) values (v_cliente);

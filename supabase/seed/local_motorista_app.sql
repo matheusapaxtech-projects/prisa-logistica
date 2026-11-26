@@ -3,13 +3,14 @@
 -- =============================================================================================
 -- Motorista de teste do app (app-motorista/): login teste.motorista@nilt.test, senha nilt-local-123 (o botão
 -- "Entrar como motorista de teste" do app só aparece com EXPO_PUBLIC_LOGIN_TESTE=1). Usa o motorista fictício
--- Marcos Fictício Pereira (dev_dados_ficticios.sql): celular liberado no app, carreta graneleira, check-in em
+-- Marcos Fictício Pereira (dev_despacho_ficticio.sql): celular liberado no app, carreta graneleira, check-in em
 -- Maringá/PR e o pedido fictício ...0021 (coleta em Mandaguari/PR) publicado no app.
--- Carregado depois de local_usuarios.sql pela ordem de `[db.seed]` em supabase/config.toml.
+-- Carregado depois de local_usuarios.sql e de dev_despacho_ficticio.sql pela ordem de `[db.seed]` em
+-- supabase/config.toml. O id do login não pode repetir os de local_usuarios.sql (…0001 a …0004).
 
 do $$
 declare
-  v_uid uuid := 'e2e00000-0000-4000-8000-000000000004';
+  v_uid uuid := 'e2e00000-0000-4000-8000-000000000005';
   v_mot uuid := '00000000-0000-4000-9000-000000000101';
   v_ped uuid := '00000000-0000-4000-9000-000000000021';
 begin
@@ -53,6 +54,6 @@ begin
      and not exists (select 1 from public.frete_oferta where pedido_id = v_ped and encerrada_em is null) then
     insert into public.frete_oferta (pedido_id, frete_motorista_por_t, coleta_latitude, coleta_longitude, coleta_uf,
                                      carrocerias, observacao)
-    values (v_ped, 135.50, -23.46, -51.83, 'PR', '{graneleiro}', 'Carregamento a partir das 7 h.');
+    values (v_ped, 135.50, -23.5446, -51.6710, 'PR', '{graneleiro}', 'Carregamento a partir das 7 h.');
   end if;
 end $$;
