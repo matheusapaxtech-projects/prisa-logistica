@@ -38,15 +38,16 @@ test.describe("shell", () => {
     await expect(lista.getByRole("option").first()).toContainText("BRA2E19");
     await expect(lista.locator(".placa").first()).toHaveAttribute("aria-label", "Placa BRA2E19");
 
+    // A seed do despacho também tem um Edson (Edson Exemplo Lopes): o teste olha o Edson Ramos.
     await busca.fill("edson");
-    await expect(lista.getByRole("option", { name: /Edson/ })).toContainText("motorista");
-    await expect(lista.getByRole("option", { name: /Edson/ })).toHaveAttribute("href", /^\/motoristas\/[0-9a-f-]{36}$/);
+    await expect(lista.getByRole("option", { name: /Edson Ramos/ })).toContainText("motorista");
+    await expect(lista.getByRole("option", { name: /Edson Ramos/ })).toHaveAttribute("href", /^\/motoristas\/[0-9a-f-]{36}$/);
 
     // Nome com espaço e dígitos do CPF (com pontuação) também acham a pessoa.
     await busca.fill("edson ramos");
     await expect(lista.getByRole("option", { name: /Edson Ramos/ })).toBeVisible();
     await busca.fill("318.265");
-    await expect(lista.getByRole("option", { name: /Edson/ })).toContainText("318.265.904-98");
+    await expect(lista.getByRole("option", { name: /Edson Ramos/ })).toContainText("318.265.904-98");
 
     // Caracteres do PostgREST não quebram nem alargam o filtro.
     await busca.fill("ed,son*)");
