@@ -357,3 +357,15 @@ export async function rotaSalvaDoPedido(db: Banco, coleta: string, descarga: str
   const pedagio = l.chave === ida && l.pedagio ? Number(l.pedagio) / (l.km * l.eixos) : null;
   return { km: l.km, pedagioEixoKm: pedagio, atualizada: l.updated_at };
 }
+
+/** Motoristas que disseram "Tenho interesse" no app do motorista, no frete publicado (ainda aberto) do pedido. */
+export async function interessadosNoApp(db: Banco, pedidoId: string): Promise<string[]> {
+  const r = await db
+    .from("frete_oferta")
+    .select("frete_interesse(motorista_id, desistiu_em)")
+    .eq("pedido_id", pedidoId)
+    .is("encerrada_em", null)
+    .maybeSingle();
+  if (r.error) throw r.error;
+  return (r.data?.frete_interesse ?? []).filter((i) => !i.desistiu_em).map((i) => i.motorista_id);
+}

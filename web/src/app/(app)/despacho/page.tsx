@@ -7,7 +7,7 @@ import { formato } from "@/lib/formato";
 import { getPerfil, pode } from "@/lib/permissoes";
 import { createClient } from "@/lib/supabase/server";
 import { RE_ID } from "../_pessoa/formulario";
-import { carregarPedido, listarPedidos, type LinhaPedido } from "../pedidos/consultas";
+import { carregarPedido, interessadosNoApp, listarPedidos, type LinhaPedido } from "../pedidos/consultas";
 import { prepararDespacho } from "../pedidos/despacho";
 import { TIPOS_CARGA_ANTT } from "../pedidos/regras";
 import { ABAS_DESPACHO } from "./abas";
@@ -42,7 +42,8 @@ export default async function DespachoPage({ searchParams }: { searchParams: Pro
   const pedido = um(sp.pedido);
   const escolhido = pedidos.find((p) => p.id === pedido) ?? pedidos[0] ?? null;
   const f = escolhido && RE_ID.test(escolhido.id) ? await carregarPedido(db, escolhido.id) : null;
-  const desp = f ? await prepararDespacho(db, f) : null;
+  // O ranking marca quem disse "Tenho interesse" no app do motorista (como na ficha do pedido).
+  const [desp, interessados] = f ? await Promise.all([prepararDespacho(db, f), interessadosNoApp(db, f.id)]) : [null, []];
 
   return (
     <main className="desp-pag">
@@ -125,6 +126,7 @@ export default async function DespachoPage({ searchParams }: { searchParams: Pro
             saldoKg={f.saldoKg}
             conjuntos={desp.conjuntos}
             rotaSalva={desp.rotaSalva}
+            interessadosApp={interessados}
           />
         </section>
       )}
