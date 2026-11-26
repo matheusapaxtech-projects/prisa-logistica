@@ -1,7 +1,7 @@
 /* Consultas do contas a pagar, sempre com o cliente do usuário (RLS: só admin e financeiro veem). */
 import type { Banco } from "@/lib/banco";
 import { sanitizarTermo } from "@/lib/busca";
-import type { FormaPagamento, OrigemPagar } from "@/lib/contas";
+import { lerAguarda, type AguardaViagem, type FormaPagamento, type OrigemPagar } from "@/lib/contas";
 import { limitesDoMes } from "@/lib/financeiro";
 import { nomesDe, todas } from "../contas-comum/consulta";
 import type { FiltroPagar, GrupoPlano } from "./regras";
@@ -40,6 +40,8 @@ export type ContaPagar = {
   cancelamentoMotivo: string | null;
   /** O NILT cancelou a parcela sozinho (o que já foi pago ao motorista cobre o frete). */
   canceladoAutomatico: boolean;
+  /** Parcela do frete que o banco ainda não deixa pagar (espera o embarque ou a entrega): não conta como vencida. */
+  aguardaViagem: AguardaViagem | null;
   /** Versão da conta (`updated_at`, texto do banco, sem mexer): vai de volta na aprovação para o banco recusar se a conta mudou. */
   versao: string;
   /** Nomes de quem lançou, aprovou e pagou (nulo quando a pessoa não tem mais cadastro). */
@@ -114,6 +116,7 @@ export async function listarContasPagar(db: Banco, p: { filtro: FiltroPagar; mes
     canceladoEm: l.cancelado_em,
     cancelamentoMotivo: l.cancelamento_motivo,
     canceladoAutomatico: l.cancelado_automatico === true,
+    aguardaViagem: lerAguarda(l.aguarda_viagem),
     versao: l.updated_at,
     lancadoPorNome: nome(l.lancado_por),
     aprovadoPorNome: nome(l.aprovado_por),

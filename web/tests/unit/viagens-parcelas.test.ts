@@ -58,6 +58,15 @@ describe("sinalDaParcela", () => {
     expect(sinalDaParcela(p, "2026-11-05")).toEqual({ tipo: "pendente", texto: "Falta aprovar" });
     expect(sinalDaParcela(p, "2026-11-01")).toEqual({ tipo: "pendente", texto: "Falta aprovar" });
   });
+  it("esperando a viagem (embarque ou entrega): a data passada não vira atraso", () => {
+    const [p] = lerParcelas([linha({ vencimento: "2026-11-05", aguarda_viagem: "embarque" })]);
+    expect(p.aguarda).toBe("embarque");
+    expect(sinalDaParcela(p, "2026-11-08")).toEqual({ tipo: "pendente", texto: "Falta aprovar" });
+    const [s] = lerParcelas([linha({ origem: "frete_saldo", situacao: "a_vencer", aguarda_viagem: "entrega" })]);
+    expect(sinalDaParcela(s, "2026-11-20")).toEqual({ tipo: "info", texto: "Aprovada" });
+    expect(lerParcelas([linha({ aguarda_viagem: "outra coisa" })])[0].aguarda).toBeNull();
+    expect(lerParcelas([linha()])[0].aguarda).toBeNull();
+  });
   it("vencida: ferrugem", () => {
     expect(sinal("vencida")).toEqual({ tipo: "bloqueado", texto: "Vencida" });
   });

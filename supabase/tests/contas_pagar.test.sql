@@ -263,6 +263,48 @@ begin
     'taxa aprovada não muda de valor');
 end $$;
 
+create function tests.test_taxa_cancelada_lanca_de_novo() returns setof text language plpgsql as $$
+declare
+  a uuid := tests.criar_usuario('a@exemplo.test', 'financeiro');
+  b uuid := tests.criar_usuario('b@exemplo.test', 'admin');
+  c1 uuid;
+  v_mes date := date_trunc('month', tests.hoje())::date;
+  v_taxa uuid;
+  v_nova uuid;
+begin
+  delete from public.fin_pagar;
+  c1 := tests.lancar(a, 1000, null, 'cartao_frete');
+  perform tests.executar_como(b, format('select public.fin_aprovar_pagar(%L)', c1));
+  perform tests.executar_como(a, format('select public.fin_pagar_conta(%L, %L)', c1, tests.hoje()));
+  perform tests.executar_como(a, format($q$select set_config('tests.id', public.fin_lancar_taxa_cartao(%L)::text, true)$q$, v_mes));
+  v_taxa := current_setting('tests.id')::uuid;
+  perform tests.executar_como(a, format('select public.fin_cancelar_pagar(%L, ''Lançada com erro'')', v_taxa));
+
+  -- Migration 20261101000400: a conta cancelada não trava o mês.
+  return next lives_ok(tests.chamar(a, format($q$select set_config('tests.id', public.fin_lancar_taxa_cartao(%L)::text, true)$q$, v_mes)),
+    'taxa cancelada: dá para lançar de novo');
+  v_nova := current_setting('tests.id')::uuid;
+  return next isnt(v_nova, v_taxa, 'nasce outra conta (a cancelada fica na lista)');
+  return next is((select count(*)::int from public.fin_pagar where origem = 'taxa_cartao' and cancelado_em is null), 1,
+    'uma taxa em aberto por mês');
+  perform tests.executar_como(a, format($q$select set_config('tests.t', (select conta_id::text from public.fin_taxa_cartao(%L)), true)$q$, v_mes));
+  return next is(current_setting('tests.t')::uuid, v_nova, 'o bloco da taxa mostra a conta nova, não a cancelada');
+end $$;
+
+create function tests.test_desaprovar_cancelada() returns setof text language plpgsql as $$
+declare
+  a uuid := tests.criar_usuario('a@exemplo.test', 'financeiro');
+  b uuid := tests.criar_usuario('b@exemplo.test', 'admin');
+  c uuid;
+begin
+  c := tests.lancar(a);
+  perform tests.executar_como(b, format('select public.fin_aprovar_pagar(%L)', c));
+  perform tests.executar_como(a, format('select public.fin_cancelar_pagar(%L, ''Lançada em dobro'')', c));
+  return next throws_ok(tests.chamar(b, format('select public.fin_desaprovar_pagar(%L)', c)), null,
+    'Esta conta foi cancelada e não muda mais.', 'conta cancelada não perde a aprovação');
+  return next is((select aprovado_por from public.fin_pagar where id = c), b, 'quem aprovou continua gravado');
+end $$;
+
 create function tests.test_auditoria() returns setof text language plpgsql as $$
 declare
   a uuid := tests.criar_usuario('a@exemplo.test', 'financeiro');

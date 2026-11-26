@@ -3175,6 +3175,7 @@ export type Database = {
       v_fin_pagar: {
         Row: {
           aberta: boolean | null
+          aguarda_viagem: string | null
           antecipacao_liberada_em: string | null
           antecipacao_liberada_por: string | null
           antecipacao_motivo: string | null
@@ -3985,6 +3986,7 @@ export type Database = {
       viagem_parcelas: {
         Args: { p_viagem: string }
         Returns: {
+          aguarda_viagem: string
           antecipacao_liberada: boolean
           numero: number
           origem: string

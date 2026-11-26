@@ -377,6 +377,77 @@ begin
   return next is(current_setting('tests.r'), 'true', 'o quadro sabe que o financeiro paga');
 end $$;
 
+-- Migration 20261101000400: parcela que o banco ainda não deixa pagar não conta como vencida.
+create function tests.test_nao_vence_antes_de_poder_pagar() returns setof text language plpgsql as $$
+declare
+  op uuid := tests.criar_usuario('op@exemplo.test', 'operacao');
+  fin uuid := tests.criar_usuario('fin@exemplo.test', 'financeiro');
+  r record;
+  v uuid;
+  a uuid;
+  s uuid;
+  v_antes bigint;
+begin
+  select * into r from tests.cenario();
+  v := tests.contratar(op, r, 10000);
+  a := (tests.parcela(v, 'frete_adiantamento')).id;
+  s := (tests.parcela(v, 'frete_saldo')).id;
+  v_antes := (select count(*) from public.v_fin_pagar where vencida);
+  update public.fin_pagar set vencimento = tests.hoje() - 10 where viagem_id = v;
+  return next is((select (aguarda_viagem, vencida) from public.v_fin_pagar where id = a), ('embarque'::text, false),
+    'adiantamento antes do embarque: espera o embarque e não vence');
+  return next is((select (aguarda_viagem, vencida) from public.v_fin_pagar where id = s), ('entrega'::text, false),
+    'saldo antes da entrega: espera a entrega e não vence');
+  perform tests.executar_como(fin, format('select public.fin_aprovar_pagar(%L)', a));
+  return next is((select situacao from public.v_fin_pagar where id = a), 'a_vencer', 'aprovada e esperando o embarque não é "vencida"');
+  perform tests.executar_como(fin, $q$select set_config('tests.t', (public.fin_indicadores_contas(current_date) -> 'pagar' ->> 'vencidas_qtd'), true)$q$);
+  return next is(current_setting('tests.t'), v_antes::text, 'o indicador de vencidas não conta as parcelas que esperam a viagem');
+  perform tests.executar_como(op, format($q$select set_config('tests.t',
+    (select string_agg(aguarda_viagem, ',' order by origem) from public.viagem_parcelas(%L)), true)$q$, v));
+  return next is(current_setting('tests.t'), 'embarque,entrega', 'a ficha da viagem recebe a mesma informação');
+
+  -- embarque: o adiantamento passa a poder ser pago (e vence de verdade); o saldo continua esperando a entrega
+  update public.viagem set status_campo = 'aguardando_nf_pagamento', status_desde = now(), peso_saida_kg = 37000 where id = v;
+  update public.fin_pagar set vencimento = tests.hoje() - 1 where viagem_id = v;
+  return next is((select (aguarda_viagem, vencida, situacao) from public.v_fin_pagar where id = a), (null::text, true, 'vencida'::text),
+    'depois do embarque o adiantamento atrasado é vencido');
+  return next is((select (aguarda_viagem, vencida) from public.v_fin_pagar where id = s), ('entrega'::text, false),
+    'o saldo segue esperando a entrega');
+  update public.viagem set status_campo = 'aguardando_saldo', status_desde = now() where id = v;
+  return next is((select (aguarda_viagem, vencida) from public.v_fin_pagar where id = s), (null::text, true),
+    'entrega conferida: o saldo atrasado é vencido');
+end $$;
+
+-- Migration 20261101000400: o gatilho só sincroniza quando o frete, o peso, o veículo… mudaram de verdade.
+create function tests.test_gatilho_so_quando_muda() returns setof text language plpgsql as $$
+declare
+  op uuid := tests.criar_usuario('op@exemplo.test', 'operacao');
+  fin uuid := tests.criar_usuario('fin@exemplo.test', 'financeiro');
+  r record;
+  v uuid;
+  a uuid;
+  s uuid;
+begin
+  select * into r from tests.cenario();
+  v := tests.contratar(op, r, 10000);
+  a := (tests.parcela(v, 'frete_adiantamento')).id;
+  s := (tests.parcela(v, 'frete_saldo')).id;
+  update public.viagem set status_campo = 'aguardando_saldo', status_desde = now(), peso_saida_kg = 37000 where id = v;
+  perform tests.executar_como(fin, format('select public.fin_aprovar_pagar(%L)', a));
+  perform tests.executar_como(fin, format('select public.fin_aprovar_pagar(%L)', s));
+  perform tests.executar_como(fin, format('select public.fin_pagar_conta(%L, %L)', a, tests.hoje()));
+  perform tests.executar_como(fin, format('select public.fin_pagar_conta(%L, %L)', s, tests.hoje()));
+  -- o pago deixa de bater com o frete (como quando o cadastro do dono do cavalo muda depois dos pagamentos)
+  update public.fin_pagar set valor = valor + 1 where id = s;
+
+  -- o que mover_viagem faz em toda passagem: peso_saida_kg no `set`, com o mesmo valor
+  return next lives_ok(format($q$update public.viagem set status_campo = 'frete_finalizado', status_desde = now(),
+                                      peso_saida_kg = peso_saida_kg, finalizada_em = now() where id = %L$q$, v),
+    'passagem do Quadro sem mudança no frete não refaz a conta das parcelas');
+  return next throws_like(format('update public.viagem set peso_previsto_kg = 36000 where id = %L', v),
+    '%ficou diferente do que já foi pago%', 'mudança de verdade continua conferindo o que já foi pago');
+end $$;
+
 create function tests.test_desfazer_pagamento_da_viagem() returns setof text language plpgsql as $$
 declare
   op uuid := tests.criar_usuario('op@exemplo.test', 'operacao');

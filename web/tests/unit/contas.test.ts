@@ -4,6 +4,7 @@ import {
   diasEntre,
   ehForma,
   estadoVencimento,
+  lerAguarda,
   rotuloForma,
   simularAntecipacao,
   fraseRetencao,
@@ -48,6 +49,16 @@ describe("datas e situações", () => {
     expect(estadoVencimento("2026-11-02", "2026-10-26", true).estado).toBe("vencendo");
     expect(estadoVencimento("2026-11-03", "2026-10-26", true).estado).toBe("normal");
     expect(estadoVencimento("2026-10-01", "2026-10-26", false).estado).toBe("neutro");
+  });
+
+  it("vencimento: parcela do frete que espera a viagem não vence, mesmo com a data passada", () => {
+    expect(estadoVencimento("2026-10-25", "2026-10-26", true, "embarque").estado).toBe("espera");
+    expect(estadoVencimento("2026-10-25", "2026-10-26", true, "entrega").estado).toBe("espera");
+    expect(estadoVencimento("2026-10-25", "2026-10-26", true, null).estado).toBe("vencida");
+    expect(estadoVencimento("2026-10-25", "2026-10-26", false, "embarque").estado).toBe("neutro");
+    expect(lerAguarda("embarque")).toBe("embarque");
+    expect(lerAguarda("vencida")).toBeNull();
+    expect(lerAguarda(null)).toBeNull();
   });
 
   it("aprovação: cancelada, paga, aprovada ou falta aprovar", () => {

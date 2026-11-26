@@ -88,15 +88,31 @@ export function diasEntre(de: string, ate: string): number {
   return Math.round((Date.parse(ate.slice(0, 10) + "T00:00:00Z") - Date.parse(de.slice(0, 10) + "T00:00:00Z")) / 864e5);
 }
 
+/** Parcela do frete em aberto que o banco ainda não deixa pagar (`v_fin_pagar.aguarda_viagem`): o adiantamento espera
+   o embarque (peso de saída) e o saldo, a entrega conferida. Enquanto espera, não conta como vencida. */
+export type AguardaViagem = "embarque" | "entrega";
+
+export const ROTULO_AGUARDA: Record<AguardaViagem, string> = {
+  embarque: "Aguardando o embarque",
+  entrega: "Aguardando a entrega",
+};
+
+export function lerAguarda(v: unknown): AguardaViagem | null {
+  return v === "embarque" || v === "entrega" ? v : null;
+}
+
 /** Vencimento de uma conta em aberto: vencida (ferrugem), vence em até 7 dias (mostarda) ou normal.
-   Conta paga, recebida ou cancelada não tem prazo (neutro). */
+   Conta paga, recebida ou cancelada não tem prazo (neutro). A parcela do frete que ainda espera a viagem
+   (`aguarda`) fica em "espera": a data já pode ter passado, mas ninguém está atrasado. */
 export function estadoVencimento(
   vencimento: string,
   hoje: string,
   aberta: boolean,
-): { estado: "vencida" | "vencendo" | "normal" | "neutro"; dias: number } {
+  aguarda: AguardaViagem | null = null,
+): { estado: "vencida" | "vencendo" | "normal" | "neutro" | "espera"; dias: number } {
   const dias = diasEntre(hoje, vencimento);
   if (!aberta) return { estado: "neutro", dias };
+  if (aguarda) return { estado: "espera", dias };
   return { estado: dias < 0 ? "vencida" : dias <= 7 ? "vencendo" : "normal", dias };
 }
 

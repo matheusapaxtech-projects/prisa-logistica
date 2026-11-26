@@ -2,7 +2,7 @@
    Puro (sem servidor, sem React). A fonte é o RPC `viagem_parcelas` (migration 20261101000300): lê quem lê
    viagens, inclusive a operação, que não enxerga o resto do financeiro. O banco é a autoridade. */
 import type { TipoSinal } from "@/components/Sinal";
-import { diasEntre } from "@/lib/contas";
+import { diasEntre, lerAguarda, type AguardaViagem } from "@/lib/contas";
 import { formato } from "@/lib/formato";
 
 export type OrigemParcela = "frete_adiantamento" | "frete_saldo";
@@ -20,6 +20,8 @@ export type ParcelaViagem = {
   situacao: SituacaoParcela;
   pagoEm: string | null;
   antecipacaoLiberada: boolean;
+  /** O banco ainda não deixa pagar: o adiantamento espera o embarque e o saldo, a entrega conferida. */
+  aguarda: AguardaViagem | null;
 };
 
 /** Linha de `viagem_parcelas` como o cliente tipado devolve. */
@@ -34,6 +36,8 @@ export type LinhaParcela = {
   situacao: string;
   pago_em: string | null;
   antecipacao_liberada: boolean | null;
+  /** Ausente em respostas antigas: conta como "não espera". */
+  aguarda_viagem?: string | null;
 };
 
 const ROTULOS: Record<OrigemParcela, string> = {
@@ -63,6 +67,7 @@ export function lerParcelas(linhas: readonly LinhaParcela[] | null | undefined):
       situacao: l.situacao as SituacaoParcela,
       pagoEm: l.pago_em,
       antecipacaoLiberada: l.antecipacao_liberada === true,
+      aguarda: lerAguarda(l.aguarda_viagem),
     });
   }
   return lidas.sort((a, b) => (a.origem === b.origem ? 0 : a.origem === "frete_adiantamento" ? -1 : 1));
@@ -70,26 +75,34 @@ export function lerParcelas(linhas: readonly LinhaParcela[] | null | undefined):
 
 /** Situação da parcela como sinal (forma + cor). "A vencer" aqui é "aprovada e ainda no prazo": o banco só
    chama de `a_vencer` a conta que já foi aprovada (antes disso é `falta_aprovar`, mesmo vencida). Com `hoje`
-   ("aaaa-mm-dd"), a parcela que falta aprovar e já venceu diz também que venceu. */
+   ("aaaa-mm-dd"), a parcela que falta aprovar e já venceu diz também que venceu. A que ainda espera a viagem
+   (`aguarda`) não está atrasada, mesmo com a data passada. */
 export function sinalDaParcela(
-  p: Pick<ParcelaViagem, "situacao" | "pagoEm" | "vencimento">,
+  p: Pick<ParcelaViagem, "situacao" | "pagoEm" | "vencimento"> & { aguarda?: AguardaViagem | null },
   hoje?: string,
 ): { tipo: TipoSinal; texto: string } {
   switch (p.situacao) {
     case "paga":
       return { tipo: "normal", texto: p.pagoEm ? `Paga em ${formato.data(p.pagoEm)}` : "Paga" };
     case "falta_aprovar": {
-      const dias = hoje ? diasEntre(hoje, p.vencimento) : 0;
+      const dias = hoje && !p.aguarda ? diasEntre(hoje, p.vencimento) : 0;
       return { tipo: "pendente", texto: dias < 0 ? `Falta aprovar · ${formato.dias(dias)}` : "Falta aprovar" };
     }
     case "vencida":
       return { tipo: "bloqueado", texto: "Vencida" };
     case "a_vencer":
+      if (p.aguarda) return { tipo: "info", texto: "Aprovada" };
       return { tipo: "info", texto: `Aprovada, vence ${formato.data(p.vencimento)}` };
     case "cancelada":
       return { tipo: "neutro", texto: "Cancelada" };
   }
 }
+
+/** Quando a parcela que espera a viagem pode ser paga (no lugar de "vence dd/mm", que já pode ter passado). */
+export const QUANDO_PAGA: Record<AguardaViagem, string> = {
+  embarque: "paga com o embarque conferido",
+  entrega: "paga com a entrega conferida",
+};
 
 /** A parcela existe e não foi cancelada: é o financeiro que paga, e o banco recusa a confirmação manual. */
 export function pagoPeloFinanceiro(parcelas: readonly ParcelaViagem[], qual: "adiantamento" | "saldo"): boolean {
