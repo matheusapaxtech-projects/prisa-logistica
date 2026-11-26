@@ -94,6 +94,8 @@ function cartao(extra: Partial<Cartao> = {}): Cartao {
     peso_saida_kg: null,
     peso_chegada_kg: null,
     tolerancia_quebra_pct: null,
+    adiantamento_no_financeiro: false,
+    saldo_no_financeiro: false,
     ...extra,
   };
 }
@@ -211,6 +213,44 @@ describe("Quadro da operação: tela", () => {
     montar([cartao({ numero: 80, status_campo: "aguardando_nf_pagamento" })], { papel: "financeiro" });
     expect(screen.queryByRole("button", { name: /Mover/ })).toBeNull();
     expect(screen.getByRole("button", { name: /Confirmar pagamento de saída/ })).toBeInTheDocument();
+  });
+
+  it("parcela no financeiro: o botão de confirmar dá lugar ao aviso (viagem antiga mantém o botão)", () => {
+    montar(
+      [
+        cartao({ numero: 160, status_campo: "aguardando_nf_pagamento", adiantamento_no_financeiro: true }),
+        cartao({ numero: 161, status_campo: "aguardando_nf_pagamento" }),
+        cartao({ numero: 162, status_campo: "aguardando_saldo", saldo_no_financeiro: true }),
+      ],
+      { papel: "operacao" },
+    );
+    expect(screen.queryByRole("button", { name: "Confirmar pagamento de saída da viagem #160" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Confirmar pagamento do saldo da viagem #162" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Confirmar pagamento de saída da viagem #161" })).toBeInTheDocument();
+    expect(screen.getByText("Adiantamento: pago pelo financeiro (Contas a pagar)")).toBeInTheDocument();
+    expect(screen.getByText("Saldo: pago pelo financeiro (Contas a pagar)")).toBeInTheDocument();
+    // O sinal de que ainda falta o pagamento de saída continua (só deixa de existir quando pagar).
+    expect(within(screen.getByRole("article", { name: /Viagem #160/ })).getByText("Falta pagamento de saída")).toBeInTheDocument();
+    // Operação não vê o resto do financeiro: texto sem link.
+    expect(screen.queryByRole("link", { name: /pago pelo financeiro/ })).toBeNull();
+  });
+
+  it("parcela no financeiro: admin e financeiro veem o aviso como link para o Contas a pagar", () => {
+    for (const papel of ["admin", "financeiro"] as const) {
+      const { unmount } = montar([cartao({ numero: 170, status_campo: "aguardando_nf_pagamento", adiantamento_no_financeiro: true })], { papel });
+      const link = screen.getByRole("link", { name: "Adiantamento: pago pelo financeiro (Contas a pagar)" });
+      expect(link).toHaveAttribute("href", "/financeiro/pagar?filtro=aberto");
+      unmount();
+    }
+  });
+
+  it("parcela no financeiro: o diálogo de documentos diz que o financeiro paga", () => {
+    montar([cartao({ numero: 171, status_campo: "aguardando_nf_pagamento", adiantamento_no_financeiro: true })]);
+    fireEvent.click(screen.getByRole("button", { name: "Mover a viagem #171" }));
+    fireEvent.click(screen.getByRole("button", { name: "Em rota" }));
+    const dlg = screen.getByRole("dialog", { name: /Documentos de saída/ });
+    expect(within(dlg).getByText(/pagos pelo financeiro \(Contas a pagar\)/)).toBeInTheDocument();
+    expect(within(dlg).queryByText(/Use “Confirmar pagamento de saída”/)).toBeNull();
   });
 
   it("recarrega quando o banco recusa por origem desatualizada", async () => {

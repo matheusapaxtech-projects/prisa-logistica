@@ -176,7 +176,7 @@ begin
   -- Identity continua depois dos ids do ATUA.
   insert into public.operadora_tag (nome) values ('OPERADORA TESTE');
   insert into public.unidade_operacional (nome) values ('UNIDADE TESTE');
-  insert into public.centro_custo (nome) values ('CENTRO TESTE');
+  insert into public.centro_custo (codigo, nome) values ('97', 'CENTRO TESTE');
   -- Sequências não são revertidas por rollback/erro (outros testes podem ter consumido valores): >= em vez de =.
   return next ok((select id from public.operadora_tag where nome = 'OPERADORA TESTE') >= 125, 'próxima operadora >= 125');
   return next ok((select id from public.unidade_operacional where nome = 'UNIDADE TESTE') >= 4, 'próxima unidade >= 4');
@@ -362,7 +362,8 @@ declare
   v_n int;
   v_qual text;
 begin
-  foreach t in array array['veiculo', 'tipo_veiculo', 'marca_veiculo', 'operadora_tag', 'unidade_operacional', 'centro_custo'] loop
+  -- centro_custo saiu da lista: desde a migration 20261101000100 não tem exclusão (desativa; ver centros_custo.test.sql).
+  foreach t in array array['veiculo', 'tipo_veiculo', 'marca_veiculo', 'operadora_tag', 'unidade_operacional'] loop
     select count(*), max(qual) into v_n, v_qual
     from pg_policies where schemaname = 'public' and tablename = t and cmd = 'DELETE';
     return next is(v_n, 1, format('%s: exatamente uma política de exclusão', t));
@@ -377,7 +378,8 @@ declare
 begin
   foreach t in array array['veiculo', 'tipo_veiculo', 'marca_veiculo', 'operadora_tag', 'unidade_operacional', 'centro_custo'] loop
     select count(*) into v_n from pg_policies where schemaname = 'public' and tablename = t;
-    return next is(v_n, 4, format('%s: quatro políticas (uma por comando)', t));
+    -- centro_custo: três (sem exclusão desde a migration 20261101000100).
+    return next is(v_n, case when t = 'centro_custo' then 3 else 4 end, format('%s: uma política por comando', t));
     return next ok((select relrowsecurity from pg_class where oid = format('public.%I', t)::regclass),
       format('%s: RLS ligada', t));
   end loop;
