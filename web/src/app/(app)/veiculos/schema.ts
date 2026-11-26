@@ -3,7 +3,7 @@
    (migration 0600). Puro: o teste de unidade chama estas funções direto. */
 import { z } from "zod";
 import { validacao } from "@/lib/validacao";
-import { ASSOALHO, RASTREAMENTO, RECEBEDOR, SITUACAO_CADASTRO, SITUACAO_OPERACIONAL, UFS, lerNum } from "./rotulos";
+import { ASSOALHO, CARROCERIA, RASTREAMENTO, RECEBEDOR, SITUACAO_CADASTRO, SITUACAO_OPERACIONAL, UFS, lerNum } from "./rotulos";
 
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Id de linha do banco (as seeds usam ids fora da RFC 9562, então só o formato 8-4-4-4-12). */
@@ -198,6 +198,7 @@ export const FichaVeiculo = z
     ultimo_motorista_id: idOpcional.optional(),
     // Características
     tipo_assoalho: opcao(ASSOALHO.map(([k]) => k)).optional(),
+    tipo_carroceria: opcao(CARROCERIA.map(([k]) => k)).optional(),
     comprimento_m: decimal(1000).optional(),
     largura_m: decimal(1000).optional(),
     altura_m: decimal(1000).optional(),

@@ -34,6 +34,8 @@ type Props = {
   saldoKg: number;
   conjuntos: OpcaoConjunto[];
   rotaSalva: RotaSalvaDoPedido | null;
+  /** Motoristas que disseram "Tenho interesse" no app do motorista (o frete está publicado). */
+  interessadosApp?: string[];
 };
 
 const ORIGEM_KM = { salva: "rota salva pela equipe", medida: "rota medida pela Prisa", estimada: "estimado entre as cidades" } as const;
@@ -47,7 +49,7 @@ function haQuanto(h: number): string {
   return `há ${Math.round(h / 24)} dias`;
 }
 
-export function PainelDespacho({ dados: d, tabela, fiscal, tiposCarga, podeEditar, verResultado, pedidoId, numero, saldoKg, conjuntos, rotaSalva }: Props) {
+export function PainelDespacho({ dados: d, tabela, fiscal, tiposCarga, podeEditar, verResultado, pedidoId, numero, saldoKg, conjuntos, rotaSalva, interessadosApp = [] }: Props) {
   const router = useRouter();
   const base = d.carga;
   const [peso, setPeso] = useState(() => (base ? campo(base.pesoT, 3) : ""));
@@ -274,6 +276,7 @@ export function PainelDespacho({ dados: d, tabela, fiscal, tiposCarga, podeEdita
                     <div className="quem">
                       <b>{c.motorista.nome}</b>
                       {noLote.has(c.motorista.conjuntoId) && <Sinal tipo="info" texto="No lote sugerido" />}
+                      {interessadosApp.includes(c.motorista.id) && <Sinal tipo="info" texto="Tem interesse (app)" />}
                       <span className="linha2">
                         {c.disponibilidade.posicao.cidade ?? "—"} · {c.motorista.eixos} eixos · {formato.t(c.motorista.capacidadeT)} ·{" "}
                         <Placa placa={c.motorista.placaCavalo} />

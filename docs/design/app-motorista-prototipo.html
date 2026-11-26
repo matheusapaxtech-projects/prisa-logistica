@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>App do motorista · protótipo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Overpass+Mono:wght@600&display=swap" rel="stylesheet">
+<style>
+  /* Tokens do DESIGN.md do NILT */
+  :root {
+    --fundo: #e8e6de; --pessego: #eddbce; --creme: #ece4cd; --salvia: #e3e8de;
+    --vidro: rgba(250, 246, 238, .72); --vidro-borda: rgba(255, 255, 255, .78);
+    --folha: #fbf8f2; --elevado: #f3eee4; --borda: #e4ddd0; --filete: #ebe5da; --meio-fio: #cdc5b6;
+    --tinta: #161818; --apagada: #55574f; --fraca: #66675f;
+    --noite: #161818;
+    --verde: #2c5a4d; --verde-claro: #e1ebe4; --verde-tinta: #1f4237;
+    --laranja: #e38b3d; --laranja-claro: #f8e7d4; --laranja-tinta: #7a3c0b;
+    --mostarda: #e7c14b; --mostarda-claro: #f7edc8; --mostarda-tinta: #574300; --mostarda-borda: #b8901a;
+    --ferrugem: #b9381a; --ferrugem-claro: #f6e1d9; --ferrugem-tinta: #8a2a12;
+    --azul: #2f5f8a; --azul-claro: #e2eaf1; --azul-tinta: #1d3f5e; --placa-azul: #1a4fa0;
+    --sombra-painel: inset 0 1px 0 rgba(255,255,255,.6), 0 18px 40px -26px rgba(60,40,20,.28);
+    --sombra-cartao: 0 10px 24px -14px rgba(22,24,24,.45);
+    --sombra-flutuante: 0 28px 60px -18px rgba(22,24,24,.45);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font-family: Outfit, "Segoe UI", system-ui, sans-serif; color: var(--tinta); font-size: 14px; line-height: 20px;
+    background: #d9d5ca; padding: 40px 24px 64px;
+  }
+  .pagina { max-width: 1500px; margin: 0 auto; }
+  .pagina > h1 { font-size: 30px; font-weight: 500; letter-spacing: -.02em; line-height: 36px; }
+  .pagina > p { color: var(--apagada); max-width: 70ch; margin-top: 6px; font-size: 15px; line-height: 22px; }
+  .grade { display: flex; flex-wrap: wrap; gap: 36px 28px; margin-top: 32px; }
+  figure { width: 360px; }
+  figcaption { margin-top: 12px; font-size: 14px; color: var(--apagada); line-height: 20px; }
+  figcaption b { color: var(--tinta); font-weight: 600; display: block; }
+
+  /* Aparelho */
+  .tel {
+    width: 360px; height: 760px; border-radius: 44px; position: relative; overflow: hidden;
+    border: 9px solid #1b1d1c; box-shadow: 0 40px 70px -30px rgba(40,30,20,.55);
+    background:
+      radial-gradient(120% 60% at 0% 0%, var(--pessego) 0%, transparent 60%),
+      radial-gradient(90% 50% at 70% 0%, var(--creme) 0%, transparent 60%),
+      radial-gradient(110% 60% at 100% 100%, var(--salvia) 0%, transparent 65%),
+      var(--fundo);
+  }
+  .tel::after { /* grão */
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .28; mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .4 0 0 0 0 .35 0 0 0 0 .3 0 0 0 .18 0'/></filter><rect width='120' height='120' filter='url(%23n)'/></svg>");
+  }
+  .barra-status { height: 34px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 13px; font-weight: 600; position: relative; z-index: 2; }
+  .barra-status .ic { display: flex; gap: 5px; align-items: center; }
+  .rolagem { position: absolute; inset: 34px 0 0; overflow: hidden; padding: 8px 16px 110px; -webkit-mask-image: linear-gradient(#000 calc(100% - 120px), transparent calc(100% - 86px)); mask-image: linear-gradient(#000 calc(100% - 120px), transparent calc(100% - 86px)); }
+
+  /* Peças */
+  .vidro { background: var(--vidro); border: 1px solid var(--vidro-borda); border-radius: 24px; box-shadow: var(--sombra-painel); }
+  .pilula { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 52px; border-radius: 999px; padding: 0 22px; font: 600 16px/1 Outfit, sans-serif; border: 0; width: 100%; cursor: pointer; }
+  .pilula.primaria { background: var(--noite); color: var(--folha); }
+  .pilula.secundaria { background: rgba(255,255,255,.62); color: var(--tinta); border: 1px solid rgba(22,24,24,.14); }
+  .pilula.no-verde { background: rgba(255,255,255,.92); color: var(--verde-tinta); }
+  .pilula.texto { background: transparent; color: var(--tinta); text-decoration: underline; text-decoration-color: rgba(22,24,24,.25); text-underline-offset: 4px; height: 44px; font-weight: 500; }
+
+  .placa { display: inline-flex; flex-direction: column; width: 92px; height: 30px; border: 1.5px solid var(--tinta); border-radius: 4px; overflow: hidden; background: #fff; vertical-align: middle; }
+  .placa i { height: 7px; background: var(--placa-azul); font: 600 5px/7px Outfit; color: #fff; text-align: center; font-style: normal; letter-spacing: .1em; }
+  .placa span { flex: 1; font: 600 14px/20px "Overpass Mono", monospace; letter-spacing: .06em; text-align: center; }
+
+  .sinal { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .sinal::before { content: ""; width: 9px; height: 9px; flex: none; }
+  .sinal.normal { background: var(--verde-claro); color: var(--verde-tinta); } .sinal.normal::before { background: var(--verde); border-radius: 2px; width: 11px; height: 7px; }
+  .sinal.pendente { background: var(--laranja-claro); color: var(--laranja-tinta); } .sinal.pendente::before { background: var(--laranja); transform: rotate(45deg) scale(.85); border-radius: 1px; }
+  .sinal.vencendo { background: var(--mostarda-claro); color: var(--mostarda-tinta); } .sinal.vencendo::before { background: var(--mostarda); outline: 1px solid #c99700; transform: rotate(45deg) scale(.85); }
+  .sinal.bloqueado { background: var(--ferrugem-claro); color: var(--ferrugem-tinta); } .sinal.bloqueado::before { border: 2px solid var(--ferrugem); border-radius: 50%; }
+  .sinal.info { background: var(--azul-claro); color: var(--azul-tinta); } .sinal.info::before { background: var(--azul); }
+
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* Menu de baixo: o menu escuro flutuante do NILT */
+  .menu { position: absolute; left: 16px; right: 16px; bottom: 18px; height: 68px; border-radius: 28px; background: var(--noite); display: flex; padding: 8px; gap: 4px; box-shadow: var(--sombra-flutuante); z-index: 3; }
+  .menu a { flex: 1; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #b9b9b1; font-size: 12px; font-weight: 500; text-decoration: none; }
+  .menu a svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .menu a.atual { background: #f5f3eb; color: var(--tinta); font-weight: 600; }
+  .menu .cont { position: absolute; transform: translate(14px, -14px); background: var(--ferrugem); color: #fff; font-size: 11px; font-weight: 700; min-width: 18px; height: 18px; border-radius: 999px; display: grid; place-items: center; padding: 0 5px; }
+
+  /* Topo do Início */
+  .topo { display: flex; justify-content: space-between; align-items: center; padding: 8px 2px 18px; }
+  .topo h2 { font-size: 30px; line-height: 34px; font-weight: 500; letter-spacing: -.02em; }
+  .topo p { color: var(--apagada); font-size: 14px; margin-top: 2px; }
+  .avatar { width: 44px; height: 44px; border-radius: 50%; background: hsl(150 45% 90%); color: hsl(150 40% 28%); display: grid; place-items: center; font-weight: 600; font-size: 16px; }
+
+  /* Cartão de situação: o elemento memorável */
+  .situacao { border-radius: 26px; padding: 20px; position: relative; box-shadow: var(--sombra-cartao); }
+  .situacao.livre { background: var(--verde); color: #fff; }
+  .situacao.parado { background: var(--noite); color: var(--folha); }
+  .situacao .forma { position: absolute; right: 20px; top: 22px; }
+  .situacao h3 { font-size: 24px; line-height: 28px; font-weight: 600; letter-spacing: -.01em; }
+  .situacao p { font-size: 15px; line-height: 21px; opacity: .86; margin: 6px 0 16px; max-width: 30ch; }
+  .situacao .ate { display: flex; align-items: baseline; gap: 8px; margin: 10px 0 16px; }
+  .situacao .ate b { font-size: 40px; line-height: 40px; font-weight: 600; letter-spacing: -.02em; }
+  .situacao .ate span { font-size: 15px; opacity: .86; }
+  .situacao .onde { display: flex; align-items: center; gap: 8px; font-size: 14px; opacity: .9; margin-bottom: 16px; }
+  .situacao .onde svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+
+  /* Pendência */
+  .falta { margin-top: 14px; border-radius: 22px; padding: 16px 18px; background: var(--laranja-claro); border: 1px solid rgba(227,139,61,.35); }
+  .falta h4 { font-size: 16px; font-weight: 600; color: var(--laranja-tinta); display: flex; gap: 8px; align-items: center; }
+  .falta h4::before { content: ""; width: 10px; height: 10px; background: var(--laranja); transform: rotate(45deg); }
+  .falta ul { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 8px; }
+  .falta li { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; color: var(--laranja-tinta); }
+  .falta li small { color: var(--apagada); font-size: 13px; }
+
+  /* Seção */
+  .secao { display: flex; justify-content: space-between; align-items: baseline; margin: 22px 4px 10px; }
+  .secao h3 { font-size: 18px; font-weight: 600; }
+  .secao span { font-size: 13px; color: var(--apagada); }
+
+  /* Cartão de frete com a rota desenhada como estrada */
+  .frete { padding: 16px 16px 14px; margin-bottom: 12px; }
+  .frete .cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .frete .valor b { font-size: 30px; line-height: 32px; font-weight: 600; letter-spacing: -.02em; }
+  .frete .valor small { font-size: 14px; color: var(--apagada); margin-left: 2px; }
+  .frete .valor div { font-size: 13px; color: var(--apagada); margin-top: 2px; }
+  .rota { display: grid; grid-template-columns: 18px 1fr; column-gap: 12px; margin: 16px 0 12px; }
+  .rota .trilho { grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; padding: 5px 0; }
+  .rota .trilho i { width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid var(--tinta); background: var(--folha); flex: none; }
+  .rota .trilho i.fim { background: var(--tinta); border-radius: 3px; }
+  .rota .trilho em { flex: 1; width: 4px; margin: 3px 0; background: repeating-linear-gradient(var(--tinta) 0 6px, transparent 6px 11px); border-radius: 2px; }
+  .rota .ponto-rota { padding-bottom: 14px; }
+  .rota .ponto-rota:last-child { padding-bottom: 0; }
+  .rota .cidade { font-size: 18px; font-weight: 600; line-height: 22px; }
+  .rota .quando { font-size: 13px; color: var(--apagada); }
+  .fatos { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .fato { background: rgba(255,255,255,.7); border: 1px solid var(--borda); border-radius: 999px; padding: 4px 11px; font-size: 13px; }
+  .recado { background: var(--azul-claro); color: var(--azul-tinta); border-radius: 14px; padding: 10px 12px; font-size: 13px; line-height: 18px; margin-bottom: 14px; display: flex; gap: 8px; }
+  .recado::before { content: ""; width: 9px; height: 9px; background: var(--azul); flex: none; margin-top: 5px; }
+  .ja { display: flex; align-items: center; gap: 10px; background: var(--verde-claro); color: var(--verde-tinta); border-radius: 16px; padding: 12px 14px; font-size: 14px; line-height: 19px; margin-bottom: 8px; }
+  .ja svg { width: 22px; height: 22px; flex: none; stroke: var(--verde); fill: none; stroke-width: 2.2; }
+
+  /* Entrar */
+  .entrar { position: absolute; inset: 34px 0 0; padding: 20px 20px 28px; display: flex; flex-direction: column; }
+  .marca-placa { margin-top: 36px; align-self: flex-start; border: 2.5px solid var(--tinta); border-radius: 12px; background: #fff; overflow: hidden; box-shadow: var(--sombra-cartao); }
+  .marca-placa i { display: flex; justify-content: space-between; align-items: center; background: var(--placa-azul); color: #fff; font: 600 10px/18px Outfit; letter-spacing: .14em; padding: 0 10px; font-style: normal; }
+  .marca-placa > span { display: block; font: 600 44px/62px "Overpass Mono", monospace; letter-spacing: .08em; padding: 0 18px; }
+  .entrar h2 { font-size: 34px; line-height: 38px; font-weight: 500; letter-spacing: -.02em; margin-top: 28px; }
+  .entrar .sub { color: var(--apagada); font-size: 16px; line-height: 23px; margin-top: 10px; max-width: 30ch; }
+  .campo { margin-top: auto; }
+  .campo label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+  .campo .caixa { height: 56px; border-radius: 18px; background: #fff; border: 1px solid var(--meio-fio); display: flex; align-items: center; padding: 0 16px; gap: 10px; font-size: 20px; font-variant-numeric: tabular-nums; }
+  .campo .caixa small { color: var(--apagada); font-size: 16px; padding-right: 10px; border-right: 1px solid var(--borda); }
+  .campo .caixa.foco { outline: 2px solid var(--noite); outline-offset: 1px; }
+  .campo .ajuda { font-size: 13px; color: var(--apagada); margin: 8px 2px 16px; }
+  .codigo { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 26px 0 10px; }
+  .codigo span { height: 60px; border-radius: 16px; background: #fff; border: 1px solid var(--meio-fio); display: grid; place-items: center; font-size: 26px; font-weight: 600; }
+  .codigo span.foco { outline: 2px solid var(--noite); outline-offset: 1px; }
+  .voltar { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,.62); border: 1px solid rgba(22,24,24,.14); display: grid; place-items: center; }
+  .voltar svg { width: 20px; height: 20px; stroke: var(--tinta); fill: none; stroke-width: 2; }
+  .wa { display: inline-flex; align-items: center; gap: 6px; }
+  .wa svg { width: 18px; height: 18px; }
+
+  /* Folha de baixo */
+  .veu { position: absolute; inset: 0; background: rgba(40,32,24,.22); backdrop-filter: blur(6px); z-index: 4; }
+  .folha-baixo { position: absolute; left: 8px; right: 8px; bottom: 8px; background: var(--folha); border-radius: 28px; padding: 10px 20px 22px; z-index: 5; box-shadow: var(--sombra-flutuante); }
+  .folha-baixo .alca { width: 40px; height: 5px; border-radius: 999px; background: var(--meio-fio); margin: 0 auto 16px; }
+  .folha-baixo h3 { font-size: 22px; line-height: 28px; font-weight: 600; }
+  .folha-baixo p { color: var(--apagada); font-size: 15px; line-height: 21px; margin: 6px 0 16px; }
+  .prazos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .prazo { height: 64px; border-radius: 18px; border: 1px solid rgba(22,24,24,.14); background: #fff; display: flex; flex-direction: column; justify-content: center; padding: 0 16px; }
+  .prazo b { font-size: 18px; font-weight: 600; }
+  .prazo small { font-size: 13px; color: var(--apagada); }
+  .prazo.marcado { background: var(--noite); color: var(--folha); border-color: var(--noite); }
+  .prazo.marcado small { color: #c9c9c1; }
+  .gps { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--apagada); margin-bottom: 16px; }
+  .gps svg { width: 18px; height: 18px; stroke: var(--apagada); fill: none; stroke-width: 1.8; flex: none; }
+
+  .notas { margin-top: 48px; max-width: 900px; }
+  .notas h2 { font-size: 20px; font-weight: 600; margin-bottom: 10px; }
+  .notas ul { padding-left: 18px; display: grid; gap: 6px; color: var(--apagada); font-size: 15px; line-height: 22px; }
+  .notas b { color: var(--tinta); font-weight: 600; }
+  @media (max-width: 420px) { body { padding: 24px 8px; } figure, .tel { width: 100%; } }
+</style>
+</head>
+<body>
+<div class="pagina">
+  <h1>App do motorista: proposta de visual</h1>
+  <p>Protótipo para aprovar antes de mexer no app. Mesma linguagem do NILT web: fundo quente, painéis de vidro, a pílula preta como ação principal e cor que vale situação (verde livre, laranja pendente, ferrugem bloqueado). Os dados são fictícios.</p>
+
+  <div class="grade">
+
+    <!-- 1. Entrar -->
+    <figure>
+      <div class="tel">
+        <div class="barra-status"><span>9:41</span><span class="ic">●●● ▮</span></div>
+        <div class="entrar">
+          <div class="marca-placa"><i><span>BRASIL</span><span>MOTORISTA</span></i><span>PRISA</span></div>
+          <h2>Fretes perto de você, direto da Prisa</h2>
+          <p class="sub">Avise quando estiver livre e veja as cargas que cabem no seu caminhão, com o valor do seu frete.</p>
+          <div class="campo">
+            <label for="cel">Seu celular com WhatsApp</label>
+            <div class="caixa foco" id="cel"><small>+55</small><span>(43) 99999-0001</span></div>
+            <div class="ajuda">O mesmo número que você passou para a operação.</div>
+            <button class="pilula primaria"><span class="wa"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7.5-.1 1.5-.6 1.8-1.2.2-.6.2-1.1.1-1.2l-.4-.2Z"/></svg>Receber código</span></button>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>1. Entrar</b>A placa da Prisa abre o app. Um campo, uma ação; o +55 já vem preenchido.</figcaption>
+    </figure>
+
+    <!-- 2. Código -->
+    <figure>
+      <div class="tel">
+        <div class="barra-status"><span>9:41</span><span class="ic">●●● ▮</span></div>
+        <div class="entrar">
+          <div class="voltar"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
+          <h2>Digite o código do WhatsApp</h2>
+          <p class="sub">Mandamos 6 números para (43) 99999-0001.</p>
+          <div class="codigo num"><span>4</span><span>8</span><span>1</span><span class="foco"></span><span></span><span></span></div>
+          <button class="pilula texto">Não chegou? Mandar de novo em 0:42</button>
+          <div class="campo">
+            <button class="pilula primaria">Entrar</button>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>2. Código</b>Seis casas grandes, o teclado de números abre sozinho e o código é lido do WhatsApp quando o Android deixar.</figcaption>
+    </figure>
+
+    <!-- 3. Início, parado e com pendência -->
+    <figure>
+      <div class="tel">
+        <div class="barra-status"><span>9:41</span><span class="ic">●●● ▮</span></div>
+        <div class="rolagem">
+          <div class="topo">
+            <div><h2>Bom dia, Marcos</h2><p><span class="placa"><i>BRASIL</i><span>DSP1A01</span></span>&nbsp; 9 eixos, graneleiro</p></div>
+            <div class="avatar">MP</div>
+          </div>
+          <div class="situacao parado">
+            <h3>Está livre para carregar?</h3>
+            <p>Avise a Prisa e veja os fretes perto de onde você está.</p>
+            <button class="pilula no-verde" style="color:var(--tinta)">Estou livre</button>
+          </div>
+          <div class="falta">
+            <h4>Falta resolver para ser contratado</h4>
+            <ul>
+              <li><span>CRLV da carreta vencido</span><small>DSP1C12</small></li>
+              <li><span>Consulta na gerenciadora de risco</span><small>pendente</small></li>
+            </ul>
+          </div>
+          <div class="secao"><h3>Fretes para você</h3></div>
+          <div class="vidro" style="padding:20px;border-style:dashed;border-color:var(--meio-fio);text-align:center;color:var(--apagada)">Avise que está livre para ver os fretes perto de você.</div>
+        </div>
+        <nav class="menu">
+          <a class="atual" href="#"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Início</a>
+          <a href="#"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="13" height="10" rx="1"/><path d="M15 10h4l3 3v4h-7"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>Minhas viagens</a>
+          <a href="#"><span class="cont">2</span><svg viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>Documentos</a>
+        </nav>
+      </div>
+      <figcaption><b>3. Início, ainda não avisou</b>O cartão escuro chama para o "Estou livre". O que impede a contratação aparece em laranja (pendente), com a placa do veículo.</figcaption>
+    </figure>
+
+    <!-- 4. Início, livre, com fretes -->
+    <figure>
+      <div class="tel">
+        <div class="barra-status"><span>9:41</span><span class="ic">●●● ▮</span></div>
+        <div class="rolagem">
+          <div class="topo">
+            <div><h2>Bom dia, Marcos</h2><p><span class="placa"><i>BRASIL</i><span>DSP1A01</span></span>&nbsp; 9 eixos, graneleiro</p></div>
+            <div class="avatar">MP</div>
+          </div>
+          <div class="situacao livre">
+            <svg class="forma" width="18" height="12" viewBox="0 0 18 12"><rect width="18" height="12" rx="2" fill="#fff"/></svg>
+            <h3>Você está livre</h3>
+            <div class="ate num"><b>2 dias</b><span>até qui., 28/10, 21 h</span></div>
+            <div class="onde"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Maringá/PR, avisado há 12 min</div>
+            <button class="pilula no-verde">Não estou mais livre</button>
+          </div>
+          <div class="secao"><h3>Fretes para você</h3><span>2 perto</span></div>
+          <article class="frete vidro">
+            <div class="cab">
+              <div class="valor"><b class="num">R$ 135,50</b><small>/t</small><div>seu frete, 150 t a carregar</div></div>
+              <span class="sinal info">15 km</span>
+            </div>
+            <div class="rota">
+              <div class="trilho"><i></i><em></em><i class="fim"></i></div>
+              <div class="ponto-rota"><div class="cidade">Mandaguari/PR</div><div class="quando">coleta amanhã, 26/10</div></div>
+              <div class="ponto-rota"><div class="cidade">Bonito/MS</div><div class="quando">entrega até 29/10</div></div>
+            </div>
+            <div class="fatos"><span class="fato">Milho a granel</span><span class="fato">Graneleiro</span><span class="fato num">755 km</span></div>
+            <button class="pilula primaria">Tenho interesse</button>
+          </article>
+        </div>
+        <nav class="menu">
+          <a class="atual" href="#"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Início</a>
+          <a href="#"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="13" height="10" rx="1"/><path d="M15 10h4l3 3v4h-7"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>Minhas viagens</a>
+          <a href="#"><svg viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>Documentos</a>
+        </nav>
+      </div>
+      <figcaption><b>4. Início, livre</b>O cartão vira verde sólido (normal) e mostra até quando. Cada frete tem o valor dele grande e a rota desenhada como estrada, da coleta à entrega.</figcaption>
+    </figure>
+
+    <!-- 5. Escolher prazo -->
+    <figure>
+      <div class="tel">
+        <div class="barra-status"><span>9:41</span><span class="ic">●●● ▮</span></div>
+        <div class="rolagem">
+          <div class="topo">
+            <div><h2>Bom dia, Marcos</h2><p><span class="placa"><i>BRASIL</i><span>DSP1A01</span></span>&nbsp; 9 eixos, graneleiro</p></div>
+            <div class="avatar">MP</div>
+          </div>
+          <div class="situacao parado"><h3>Está livre para carregar?</h3><p>Avise a Prisa e veja os fretes perto de onde você está.</p></div>
+        </div>
+        <div class="veu"></div>
+        <div class="folha-baixo">
+          <div class="alca"></div>
+          <h3>Livre por quanto tempo?</h3>
+          <p>Depois desse prazo a Prisa para de te mostrar como disponível.</p>
+          <div class="prazos num">
+            <div class="prazo"><b>12 horas</b><small>até hoje, 21 h</small></div>
+            <div class="prazo"><b>1 dia</b><small>até amanhã, 9 h</small></div>
+            <div class="prazo marcado"><b>2 dias</b><small>até qui., 9 h</small></div>
+            <div class="prazo"><b>3 dias</b><small>até sex., 9 h</small></div>
+          </div>
+          <div class="gps"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Vamos usar sua localização só agora, para achar os fretes perto.</div>
+          <button class="pilula primaria">Avisar que estou livre</button>
+        </div>
+      </div>
+      <figcaption><b>5. Estou livre</b>Folha de baixo com quatro prazos grandes, a hora exata de cada um e o aviso do GPS antes de pedir a permissão.</figcaption>
+    </figure>
+
+    <!-- 6. Interesse enviado -->
+    <figure>
+      <div class="tel">
+        <div class="barra-status"><span>9:41</span><span class="ic">●●● ▮</span></div>
+        <div class="rolagem">
+          <div class="secao" style="margin-top:12px"><h3>Fretes para você</h3><span>2 perto</span></div>
+          <article class="frete vidro">
+            <div class="cab">
+              <div class="valor"><b class="num">R$ 135,50</b><small>/t</small><div>seu frete, 150 t a carregar</div></div>
+              <span class="sinal info">15 km</span>
+            </div>
+            <div class="rota">
+              <div class="trilho"><i></i><em></em><i class="fim"></i></div>
+              <div class="ponto-rota"><div class="cidade">Mandaguari/PR</div><div class="quando">coleta amanhã, 26/10</div></div>
+              <div class="ponto-rota"><div class="cidade">Bonito/MS</div><div class="quando">entrega até 29/10</div></div>
+            </div>
+            <div class="recado">Carregamento a partir das 7 h. Levar lona.</div>
+            <div class="ja"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>A operação recebeu seu interesse e vai te chamar no WhatsApp se você for o escolhido.</span></div>
+            <button class="pilula texto">Desistir deste frete</button>
+          </article>
+          <article class="frete vidro">
+            <div class="cab">
+              <div class="valor"><b class="num">R$ 128,00</b><small>/t</small><div>seu frete, 64 t a carregar</div></div>
+              <span class="sinal info">48 km</span>
+            </div>
+            <div class="rota">
+              <div class="trilho"><i></i><em></em><i class="fim"></i></div>
+              <div class="ponto-rota"><div class="cidade">Apucarana/PR</div><div class="quando">coleta amanhã, 26/10</div></div>
+              <div class="ponto-rota"><div class="cidade">Paranaguá/PR</div><div class="quando">entrega até 28/10</div></div>
+            </div>
+            <button class="pilula primaria">Tenho interesse</button>
+          </article>
+        </div>
+        <nav class="menu">
+          <a class="atual" href="#"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Início</a>
+          <a href="#"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="13" height="10" rx="1"/><path d="M15 10h4l3 3v4h-7"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>Minhas viagens</a>
+          <a href="#"><svg viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>Documentos</a>
+        </nav>
+      </div>
+      <figcaption><b>6. Interesse enviado</b>Fica claro que é um aviso e o que acontece depois. O recado da operação vem em azul (informação).</figcaption>
+    </figure>
+
+  </div>
+
+  <div class="notas">
+    <h2>O que muda em relação ao app de hoje</h2>
+    <ul>
+      <li><b>Fundo, vidro e fonte do NILT</b> (Outfit e a placa em Overpass Mono), em vez das cores chapadas.</li>
+      <li><b>Ação principal sempre na pílula preta</b>, uma por tela, com 52 px de altura para o polegar.</li>
+      <li><b>O cartão "Estou livre" é o centro da tela</b>: escuro quando parado, verde sólido quando livre, com o prazo grande.</li>
+      <li><b>Frete com a rota desenhada</b> (coleta, estrada tracejada, entrega), o valor do motorista em destaque e a distância até a coleta.</li>
+      <li><b>Menu de baixo escuro flutuante</b>, como o menu do sistema. "Minhas viagens" e "Documentos" entram nas próximas etapas; nesta versão só o Início funciona.</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>
