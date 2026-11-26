@@ -16,12 +16,14 @@ import { createClient } from "@/lib/supabase/server";
 import { RE_ID } from "../../_pessoa/formulario";
 import { CabPainel, Dash } from "../../_pessoa/partes";
 import { SUFIXO_TARIFA } from "../../pedidos/regras";
-import { carregarFrete, carregarViagem, type FichaViagem, type PausaDaViagem } from "../consultas";
+import { carregarFrete, carregarParcelas, carregarViagem, type FichaViagem, type PausaDaViagem } from "../consultas";
+import { pagoPeloFinanceiro } from "../parcelas";
 import { duracao, modoDeInicio, podeCancelar, proximoPasso, temCanhotoEnviado, TIPOS_PAUSA, type ModoInicio } from "../regras";
 import { CancelarViagem, ConfirmarPagamento, IniciarViagem } from "./acoes-viagem";
 import { BlocoAptidao } from "./aptidao";
 import { Canhoto } from "./canhoto";
 import { BlocoFrete } from "./frete";
+import { BlocoParcelas } from "./parcelas";
 import { BlocoQuebraEstadia, lerQuebraEstadia } from "./quebra-estadia";
 import { BlocoRetorno } from "./retorno";
 import { DEPOIS_DA_SAIDA, retornoDaViagem } from "../retorno";
@@ -126,7 +128,12 @@ export default async function FichaViagemPage({ params }: Params) {
   const podeFinanceiro = pode(perfil, "editarFinanceiro");
   const verResultado = pode(perfil, "financeiro");
   const db = tipado(await createClient());
-  const [f, frete, qe] = await Promise.all([carregarViagem(db, id), carregarFrete(db, id, verResultado), db.rpc("quebra_e_estadia", { p_viagem: id })]);
+  const [f, frete, qe, parcelas] = await Promise.all([
+    carregarViagem(db, id),
+    carregarFrete(db, id, verResultado),
+    db.rpc("quebra_e_estadia", { p_viagem: id }),
+    carregarParcelas(db, id),
+  ]);
   if (qe.error) throw qe.error;
   // Previsão de chegada e frete de retorno: da saída ("Em rota") até descarregar.
   const retorno =
@@ -150,12 +157,24 @@ export default async function FichaViagemPage({ params }: Params) {
   const pagamento = Boolean(f.pagamentoSaidaEm);
   const temCanhoto = temCanhotoEnviado(f.canhotos);
   const saldoPago = Boolean(f.saldoPagoEm);
+  // Com a parcela no Contas a pagar, quem paga é o financeiro e o banco recusa a confirmação manual: some o botão.
+  const adiantamentoNoFinanceiro = pagoPeloFinanceiro(parcelas, "adiantamento");
+  const saldoNoFinanceiro = pagoPeloFinanceiro(parcelas, "saldo");
+  const verFinanceiro = pode(perfil, "financeiro");
   const passo = cancelada
     ? null
-    : proximoPasso({ status_campo: f.status_campo, pagamento_saida: pagamento, tem_canhoto: temCanhoto, saldo_pago: saldoPago });
+    : proximoPasso({
+        status_campo: f.status_campo,
+        pagamento_saida: pagamento,
+        tem_canhoto: temCanhoto,
+        saldo_pago: saldoPago,
+        adiantamento_no_financeiro: adiantamentoNoFinanceiro,
+        saldo_no_financeiro: saldoNoFinanceiro,
+      });
   // Cancelar e confirmar o pagamento valem na mesma janela (antes de "Em rota").
   const antesDeEmRota = !cancelada && podeCancelar(f.status_campo, f.origemDaPausa);
-  const podePagar = antesDeEmRota && !pagamento && podeFinanceiro;
+  const podePagar = antesDeEmRota && !pagamento && podeFinanceiro && !adiantamentoNoFinanceiro;
+  const podePagarSaldo = !saldoPago && podeFinanceiro && !saldoNoFinanceiro;
   const modo = modoDeInicio(f.aptidao, perfil?.papel);
   const travas = f.aptidao.filter((a) => a.nivel === "trava");
   const s = situacao(f);
@@ -218,8 +237,14 @@ export default async function FichaViagemPage({ params }: Params) {
             <span className="rotulo">Próximo passo</span>
             <h2 id="h-proximo">{passo}</h2>
             {planejada && <p>{explicaInicio(modo)}</p>}
-            {f.status_campo === "aguardando_nf_pagamento" && !pagamento && (
+            {f.status_campo === "aguardando_nf_pagamento" && !pagamento && !adiantamentoNoFinanceiro && (
               <p>Confirme o adiantamento e o vale-pedágio. Depois, informe as chaves do CT-e e do MDF-e no Quadro, ao passar a viagem para “Em rota”.</p>
+            )}
+            {f.status_campo === "aguardando_nf_pagamento" && !pagamento && adiantamentoNoFinanceiro && (
+              <p>
+                O adiantamento e o vale-pedágio são pagos pelo financeiro (Contas a pagar): a viagem fica paga sozinha quando ele pagar. Depois,
+                informe as chaves do CT-e e do MDF-e no Quadro, ao passar a viagem para “Em rota”.
+              </p>
             )}
             {f.status_campo === "aguardando_nf_pagamento" && pagamento && (
               <p>As chaves do CT-e e do MDF-e são pedidas no Quadro, ao passar a viagem para “Em rota”.</p>
@@ -231,7 +256,9 @@ export default async function FichaViagemPage({ params }: Params) {
               <p>
                 {saldoPago
                   ? "Com o saldo pago, encerre o MDF-e e o CIOT e finalize a viagem no Quadro."
-                  : "O saldo de 30% ao motorista vence em até 30 dias úteis da entrega (Lei 15.485/2026)."}
+                  : saldoNoFinanceiro
+                    ? "O saldo de 30% é pago pelo financeiro (Contas a pagar): a viagem fica paga sozinha quando ele pagar."
+                    : "O saldo de 30% ao motorista vence em até 30 dias úteis da entrega (Lei 15.485/2026)."}
               </p>
             )}
           </div>
@@ -244,7 +271,7 @@ export default async function FichaViagemPage({ params }: Params) {
                 Informar chaves no Quadro
               </Link>
             )}
-            {f.status_campo === "aguardando_saldo" && !saldoPago && podeFinanceiro && (
+            {f.status_campo === "aguardando_saldo" && podePagarSaldo && (
               <ConfirmarPagamento viagemId={f.id} numero={f.numero} primario saldo />
             )}
             {f.status_campo === "aguardando_saldo" && saldoPago && (
@@ -526,8 +553,9 @@ export default async function FichaViagemPage({ params }: Params) {
         />
       )}
 
-      {(retorno || quebraEstadia) && (
+      {(retorno || quebraEstadia || parcelas.length > 0) && (
         <div className="par-via">
+          <BlocoParcelas parcelas={parcelas} verFinanceiro={verFinanceiro} />
           {retorno && <BlocoRetorno r={retorno} />}
           {quebraEstadia && <BlocoQuebraEstadia q={quebraEstadia} />}
         </div>

@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { bancoAdmin, E2E_EMAIL, E2E_SENHA, entrar } from "./apoio";
+import { bancoAdmin, E2E_EMAIL, E2E_FINANCEIRO_EMAIL, E2E_FINANCEIRO_SENHA, E2E_SENHA, entrar, pagarParcelaDoFrete } from "./apoio";
 
 // Quadro da operação (Task 12): o fluxo inteiro, do pedido ao "Frete finalizado", e o tempo real entre
 // duas telas. Roda contra o banco vivo de desenvolvimento, com os clientes, locais e conjuntos da seed
@@ -102,8 +102,15 @@ async function tirarDoQuadro(db: SupabaseClient, viagemId: string) {
       const s = await db.from("viagem").select("saldo_pago_em").eq("id", viagemId).single();
       if (s.error) throw s.error;
       if (!s.data.saldo_pago_em) {
-        const c = await db.rpc("confirmar_saldo", { p_viagem: viagemId });
-        if (c.error) throw new Error(`Não foi possível confirmar o saldo da viagem #${v.data.numero}: ${c.error.message}`);
+        // Viagem com a parcela no Contas a pagar: o banco recusa a confirmação manual; paga pela parcela.
+        const parcela = await db.from("v_fin_pagar").select("id").eq("viagem_id", viagemId).eq("origem", "frete_saldo").is("cancelado_em", null);
+        if (parcela.error) throw parcela.error;
+        if (parcela.data?.length) {
+          await pagarParcelaDoFrete(db, viagemId, "frete_saldo");
+        } else {
+          const c = await db.rpc("confirmar_saldo", { p_viagem: viagemId });
+          if (c.error) throw new Error(`Não foi possível confirmar o saldo da viagem #${v.data.numero}: ${c.error.message}`);
+        }
       }
       [para, dados] = ["frete_finalizado", { mdfe_encerrado: true, ciot_encerrado: true }];
     }
@@ -196,6 +203,7 @@ test.describe("quadro da operação", () => {
 
   test("fluxo completo: pedido, viagem, iniciar e as passagens do Quadro até Frete finalizado", async ({ page }) => {
     test.setTimeout(300_000);
+    test.skip(!E2E_FINANCEIRO_EMAIL || !E2E_FINANCEIRO_SENHA, "Faltam E2E_FINANCEIRO_EMAIL/E2E_FINANCEIRO_SENHA (.env.test.local): o financeiro aprova as parcelas.");
     const db = bancoAdmin();
     const [conj] = await conjuntosLivres(db);
     test.skip(!conj, "Nenhum conjunto aberto da seed com motorista está livre de viagem ativa agora.");
@@ -253,6 +261,11 @@ test.describe("quadro da operação", () => {
     const dlgViagem = page.getByRole("dialog", { name: /^Nova viagem do pedido #\d+$/ });
     await dlgViagem.locator("label.conjunto-opcao", { hasText: conj.placa }).locator("input[type=radio]").check();
     await dlgViagem.locator("#peso_previsto_kg").fill("37.000");
+    // Com o frete do motorista a viagem nasce com as duas parcelas no Contas a pagar (adiantamento 70% + pedágio e saldo 30%):
+    // o pagamento passa a ser do financeiro, não do botão do Quadro.
+    await dlgViagem.locator("#frete_motorista_valor").fill("9.000,00");
+    await dlgViagem.locator("#frete_motorista_tipo").selectOption("total");
+    await dlgViagem.locator("#km_viagem").fill("400");
     await dlgViagem.getByRole("button", { name: "Criar viagem" }).click();
     await expect(page).toHaveURL(/\/viagens\/[0-9a-f-]{36}$/, { timeout: 30_000 });
     viagemId = page.url().match(/\/viagens\/([0-9a-f-]{36})/)![1];
@@ -289,15 +302,16 @@ test.describe("quadro da operação", () => {
     );
     await mover(page, n, "Aguardando NF e pagamento", (d) => d.locator("#passagem-peso").fill("37.050"), `Peso de saída da viagem #${n}`);
 
-    // 5) Pagamento de saída pelo cartão; depois as chaves (CT-e e MDF-e) para ir a "Em rota"
+    // 5) Pagamento de saída: a parcela está no Contas a pagar, então o cartão não tem o botão de confirmar. O financeiro
+    //    aprova e o admin paga (pelo banco, como na tela do Contas a pagar); a viagem fica paga sozinha. Depois as chaves
+    //    (CT-e e MDF-e) para ir a "Em rota".
     const noNf = cartao(coluna(page, "Aguardando NF e pagamento"), n);
     await expect(noNf.getByText("Falta pagamento de saída")).toBeVisible();
-    await noNf.getByRole("button", { name: `Confirmar pagamento de saída da viagem #${n}` }).click();
-    const dlgPag = page.getByRole("dialog", { name: `Pagamento de saída da viagem #${n}` });
-    await dlgPag.getByRole("button", { name: "Confirmar" }).click();
-    await expect(dlgPag).toBeHidden({ timeout: 15_000 });
-    await expect(page.locator(".toast", { hasText: "Adiantamento e vale-pedágio confirmados." })).toBeVisible();
-    await expect(noNf.getByText("Pagamento de saída", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(noNf.getByText("Adiantamento: pago pelo financeiro (Contas a pagar)")).toBeVisible();
+    await expect(noNf.getByRole("button", { name: `Confirmar pagamento de saída da viagem #${n}` })).toHaveCount(0);
+    await pagarParcelaDoFrete(db, viagemId, "frete_adiantamento");
+    await aoVivo(page);
+    await expect(cartao(coluna(page, "Aguardando NF e pagamento"), n).getByText("Pagamento de saída", { exact: true })).toBeVisible({ timeout: 15_000 });
 
     const cte = chaveDfe("57", n);
     const mdfe = chaveDfe("58", n);
@@ -355,15 +369,15 @@ test.describe("quadro da operação", () => {
       `Contagem da viagem #${n}`,
     );
 
-    // 8) Saldo de 30% pelo cartão; depois o encerramento (MDF-e e CIOT) para "Frete finalizado"
+    // 8) Saldo de 30%: também é parcela do Contas a pagar (liberada pela entrega conferida, a viagem em "Aguardando saldo");
+    //    depois o encerramento (MDF-e e CIOT) para "Frete finalizado"
     const noSaldo = cartao(coluna(page, "Aguardando saldo (30%)"), n);
     await expect(noSaldo.getByText("Falta pagar o saldo")).toBeVisible();
-    await noSaldo.getByRole("button", { name: `Confirmar pagamento do saldo da viagem #${n}` }).click();
-    const dlgSaldo = page.getByRole("dialog", { name: `Saldo da viagem #${n}` });
-    await dlgSaldo.getByRole("button", { name: "Confirmar" }).click();
-    await expect(dlgSaldo).toBeHidden({ timeout: 15_000 });
-    await expect(page.locator(".toast", { hasText: "Saldo de 30% confirmado." })).toBeVisible();
-    await expect(noSaldo.getByText("Saldo pago", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(noSaldo.getByText("Saldo: pago pelo financeiro (Contas a pagar)")).toBeVisible();
+    await expect(noSaldo.getByRole("button", { name: `Confirmar pagamento do saldo da viagem #${n}` })).toHaveCount(0);
+    await pagarParcelaDoFrete(db, viagemId, "frete_saldo");
+    await aoVivo(page);
+    await expect(cartao(coluna(page, "Aguardando saldo (30%)"), n).getByText("Saldo pago", { exact: true })).toBeVisible({ timeout: 15_000 });
     await mover(
       page,
       n,
@@ -399,6 +413,9 @@ test.describe("quadro da operação", () => {
     // 10) Linha do tempo na ficha: "Viagem planejada", o início, os dois pagamentos e as passagens, na ordem
     await cartao(coluna(page, "Frete finalizado"), n).getByRole("link", { name: `Abrir a viagem #${n}` }).click();
     await expect(page).toHaveURL(new RegExp(`/viagens/${viagemId}$`));
+    // O bloco "Pagamento ao motorista" mostra as duas parcelas, já pagas pelo Contas a pagar.
+    await expect(page.getByRole("heading", { name: "Pagamento ao motorista" })).toBeVisible();
+    await expect(page.locator(".parcelas-via .sinal", { hasText: /^Paga em / })).toHaveCount(2);
     const titulos = page.locator(".linha-tempo > li > span > b");
     await expect(titulos).toHaveCount(15);
     await expect(titulos).toHaveText([
@@ -407,7 +424,7 @@ test.describe("quadro da operação", () => {
       "Trânsito → Aguardando carregamento",
       "Aguardando carregamento → Em carregamento",
       "Em carregamento → Aguardando NF e pagamento",
-      "Adiantamento e vale-pedágio confirmados",
+      /^Adiantamento e vale-pedágio pagos \(conta a pagar \d+\)$/,
       "Aguardando NF e pagamento → Em rota",
       "Em rota → Pausa",
       "Pausa → Em rota",
@@ -415,7 +432,7 @@ test.describe("quadro da operação", () => {
       "Aguardando descarga → Descarregando",
       "Descarregando → Aguardando contagem de divergência",
       "Aguardando contagem de divergência → Aguardando saldo (30%)",
-      "Saldo de 30% confirmado",
+      /^Saldo de 30% pago \(conta a pagar \d+\)$/,
       "Aguardando saldo (30%) → Frete finalizado",
     ]);
   });

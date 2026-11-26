@@ -9,7 +9,7 @@ import { Placa } from "@/components/Placa";
 import { Ponto } from "@/components/Ponto";
 import { Sinal, type TipoSinal } from "@/components/Sinal";
 import { formato } from "@/lib/formato";
-import type { Cartao as DadosCartao, Nivel } from "@/lib/quadro";
+import { pagamentoNoFinanceiro, type Cartao as DadosCartao, type Nivel } from "@/lib/quadro";
 import { duracao, TIPOS_PAUSA } from "../viagens/regras";
 
 /* Cartão da viagem no Quadro, na anatomia do template: no alto o tempo na coluna (com a forma do sinal
@@ -60,8 +60,11 @@ type Props = {
   agora: number;
   /** Operação e admin (pode_editar): arrasta e vê "Mover" (só se houver para onde ir). */
   podeMover: boolean;
-  /** Financeiro, operação e admin: "Aguardando NF e pagamento" sem o pagamento de saída, ou "Aguardando saldo" sem o saldo. */
+  /** Financeiro, operação e admin: "Aguardando NF e pagamento" sem o pagamento de saída, ou "Aguardando saldo" sem o saldo.
+     Só vale para a viagem sem parcelas no financeiro: com elas, o cartão diz que o pagamento é do Contas a pagar. */
   podePagar: boolean;
+  /** Admin e financeiro: o aviso "pago pelo financeiro" vira link para o Contas a pagar. */
+  podeFinanceiro?: boolean;
   /** O cartão está indo para outra coluna (gravando). */
   movendo: boolean;
   aoMover: () => void;
@@ -71,11 +74,12 @@ type Props = {
   aoAbrir: () => void;
 };
 
-export function CartaoQuadro({ cartao: c, nivel, agora, podeMover, podePagar, movendo, aoMover, aoPagar, aoArrastar, aoAbrir }: Props) {
+export function CartaoQuadro({ cartao: c, nivel, agora, podeMover, podePagar, movendo, podeFinanceiro = false, aoMover, aoPagar, aoArrastar, aoAbrir }: Props) {
   const tempo = c.status_desde ? duracao(c.status_desde, new Date(agora)) : "—";
   const desde = c.status_desde ? `Na coluna desde ${formato.dataHora(c.status_desde)}` : undefined;
   const sinais = sinaisDoCartao(c);
   const n = c.numero ?? "—";
+  const doFinanceiro = pagamentoNoFinanceiro(c);
   /** Sendo arrastado: o lugar de origem fica apagado enquanto a imagem do arraste segue o ponteiro. */
   const [levantado, setLevantado] = useState(false);
 
@@ -142,7 +146,18 @@ export function CartaoQuadro({ cartao: c, nivel, agora, podeMover, podePagar, mo
           ))}
         </ul>
       )}
-      {podePagar && (
+      {doFinanceiro && (
+        <p className="quadro-no-financeiro">
+          {podeFinanceiro ? (
+            <Link href="/financeiro/pagar?filtro=aberto" draggable={false}>
+              <Sinal tipo="pendente" texto={doFinanceiro.texto} />
+            </Link>
+          ) : (
+            <Sinal tipo="pendente" texto={doFinanceiro.texto} />
+          )}
+        </p>
+      )}
+      {podePagar && !doFinanceiro && (
         <div className="quadro-cartao-acoes">
           <button
             className="btn btn-texto"

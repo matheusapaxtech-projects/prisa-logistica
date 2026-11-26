@@ -176,3 +176,18 @@ export function agruparPorColuna(cartoes: Cartao[]): Record<StatusCampo, Cartao[
   for (const lista of Object.values(grupos)) lista.sort((a, b) => instante(a) - instante(b));
   return grupos;
 }
+
+/** Pagamento que o cartão espera e que é do financeiro (Contas a pagar), não da confirmação manual do Quadro.
+   Só em "Aguardando NF e pagamento" sem o pagamento de saída (adiantamento) ou em "Aguardando saldo" sem o saldo pago.
+   Viagem sem parcelas (as antigas) devolve null e segue com o botão de confirmar. */
+export function pagamentoNoFinanceiro(
+  c: Pick<Cartao, "status_campo" | "pagamento_saida" | "saldo_pago" | "adiantamento_no_financeiro" | "saldo_no_financeiro">,
+): { qual: "adiantamento" | "saldo"; texto: string } | null {
+  if (c.status_campo === "aguardando_nf_pagamento" && !c.pagamento_saida && c.adiantamento_no_financeiro) {
+    return { qual: "adiantamento", texto: "Adiantamento: pago pelo financeiro (Contas a pagar)" };
+  }
+  if (c.status_campo === "aguardando_saldo" && !c.saldo_pago && c.saldo_no_financeiro) {
+    return { qual: "saldo", texto: "Saldo: pago pelo financeiro (Contas a pagar)" };
+  }
+  return null;
+}
