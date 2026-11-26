@@ -1,0 +1,39 @@
+{
+  "cli": {
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://tkfpbpqbnasabtzatojk.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_7W_UhdWeLTeeL9Ar_AKTOw_deKgqOju",
+        "EXPO_PUBLIC_POLITICA_URL": "https://logistica.grupoapax.com/privacidade/app-motorista",
+        "EXPO_PUBLIC_LOGIN_TESTE": "0"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://tkfpbpqbnasabtzatojk.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_7W_UhdWeLTeeL9Ar_AKTOw_deKgqOju",
+        "EXPO_PUBLIC_POLITICA_URL": "https://logistica.grupoapax.com/privacidade/app-motorista",
+        "EXPO_PUBLIC_LOGIN_TESTE": "0"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "track": "internal"
+      }
+    }
+  }
+}

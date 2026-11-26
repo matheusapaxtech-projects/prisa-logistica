@@ -43,6 +43,22 @@ export const ASSOALHO: [Enums["tipo_assoalho"], string][] = [
   ["ferro", "Ferro"],
   ["misto", "Misto"],
 ];
+/** Carroceria da carreta ou do caminhão: o frete publicado no app do motorista pode exigir uma delas. */
+export const CARROCERIA: [Enums["tipo_carroceria"], string][] = [
+  ["graneleiro", "Graneleiro"],
+  ["basculante", "Basculante"],
+  ["cacamba", "Caçamba"],
+  ["bau", "Baú"],
+  ["sider", "Sider"],
+  ["grade_baixa", "Grade baixa"],
+  ["prancha", "Prancha"],
+  ["tanque", "Tanque"],
+  ["frigorifico", "Frigorífico"],
+  ["porta_container", "Porta-contêiner"],
+  ["boiadeiro", "Boiadeiro"],
+  ["cegonha", "Cegonha"],
+  ["outro", "Outra"],
+];
 export const RASTREAMENTO: [Enums["tipo_rastreamento"], string][] = [
   ["telemonitorado", "Telemonitorado"],
   ["rastreador", "Rastreador"],

@@ -24,7 +24,8 @@ export const getPerfil = cache(async (): Promise<Perfil | null> => {
     .maybeSingle();
   // Falha de rede/banco não é "sem acesso": deixa o error boundary mostrar o erro.
   if (error) throw error;
-  if (!data) return null;
+  // O motorista entra só pelo app: no sistema web ele é "sem acesso" (o banco já não lhe mostra nada).
+  if (!data || data.papel === "motorista") return null;
 
   return { userId: data.user_id, nome: data.nome, papel: data.papel as Papel, ativo: data.ativo };
 });
