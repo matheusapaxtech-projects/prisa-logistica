@@ -18,6 +18,19 @@ continua sendo da operação.**
 | Agregado tem prioridade sobre terceiro? | Depende da qualificação do sistema: quem vê o frete é decidido pelas regras de aptidão, e a ordem dos interessados para a operação é a nota do ranking. |
 | Gerenciadora de risco | Ainda não definida. Por enquanto a consulta é digitada pela operação (`feat/despacho-fila`). |
 | Login | Código pelo WhatsApp (Twilio Verify, que o Supabase aceita). |
+| Localização | O tempo todo, mesmo com o app fechado, para escolher o caminhão mais perto da coleta (pedido de 2026-10-25). |
+
+## Localização o tempo todo
+
+- O app pede "usando o app" e depois "o tempo todo", sempre depois de uma tela que explica o que é coletado, que
+  vale com o app fechado, para quê, quem vê e como parar (exigência do Google Play: aviso em destaque no app,
+  formulário de declaração, vídeo e política de privacidade na loja e no app).
+- Android: serviço com aviso fixo "Prisa: localização ativa". Envio a cada 1 km rodado ou 10 minutos.
+- Banco: `motorista_posicao` guarda só a última posição (LGPD: o mínimo para a finalidade). A posição de até 2 h vale
+  para a distância até a coleta no app (`fretes_do_motorista`) e no ranking (`v_motorista_livre`); sem ela, vale o
+  último "Estou livre". O "Estou livre" continua dizendo se ele quer carga e até quando.
+- Sair do app desliga o envio. O Expo Go não roda serviço em segundo plano: o app precisa da versão própria
+  (development build, `npx expo run:android`).
 
 ## Como o frete chega ao app
 

@@ -6,7 +6,8 @@
      cadastro cancelado.
    - Pendências: `aptidao_conjuntos` (as mesmas regras que travam o início da viagem). Com trava, o motorista
      aparece no ranking como pendente e não entra no lote.
-   - Disponibilidade: a mais recente de `v_motorista_livre` (registro da operação).
+   - Disponibilidade: a mais recente de `v_motorista_livre` (registro da operação ou "Estou livre" do app); a
+     posição é a do GPS do app quando ela tem até 2 h (posicao_gps).
    - Embarque e destino: as cidades dos locais do pedido na lista de municípios; km da rota salva ou estimado. */
 import type { Banco } from "@/lib/banco";
 import { MUNICIPIOS_RAW } from "@/lib/calculadora/municipios-dados";
@@ -113,7 +114,7 @@ export async function despachoDoPedido(db: Banco, e: Entrada): Promise<DadosDesp
           )
           .in("id", conjuntoIds)
       : Promise.resolve({ data: [], error: null }),
-    db.from("v_motorista_livre").select("motorista_id, cidade, latitude, longitude, livre_desde, livre_ate, created_at, viagens_finalizadas, ocorrencias"),
+    db.from("v_motorista_livre").select("motorista_id, cidade, latitude, longitude, livre_desde, livre_ate, created_at, viagens_finalizadas, ocorrencias, posicao_gps"),
     // Viagens que ocupam o motorista: as planejadas (já contratado) e as em andamento.
     db
       .from("viagem")
@@ -195,7 +196,7 @@ export async function despachoDoPedido(db: Banco, e: Entrada): Promise<DadosDesp
       ? [
           {
             motoristaId: l.motorista_id,
-            posicao: { lat: Number(l.latitude), lon: Number(l.longitude), uf: (l.cidade ?? "").slice(-2), cidade: l.cidade ?? undefined },
+            posicao: { lat: Number(l.latitude), lon: Number(l.longitude), uf: (l.cidade ?? "").slice(-2), cidade: l.posicao_gps ? "GPS do app" : (l.cidade ?? undefined) },
             em: l.created_at,
             livreDesde: l.livre_desde ?? undefined,
             livreAte: l.livre_ate ?? undefined,

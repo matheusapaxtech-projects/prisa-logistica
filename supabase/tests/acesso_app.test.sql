@@ -64,11 +64,14 @@ begin
   perform public.liberar_acesso_app(v_m, '43999998888');
   perform tests.como(v_u);
   perform public.ativar_acesso_app();
+  perform public.registrar_posicao(-25.43, -49.27);
   perform tests.como(v_op);
   perform public.revogar_acesso_app(v_m);
   perform tests.como(v_u);
   return next is(public.meu_motorista(), null::uuid, 'revogado: o usuário deixa de ser motorista na hora');
   perform tests.como_servico();
+  return next is((select count(*)::integer from public.motorista_posicao where motorista_id = v_m), 0,
+                 'revogado: a última localização é apagada (migration 20261107000500)');
   return next throws_ok(format('select tests.executar_como(%L, %L)', v_u, 'select public.ativar_acesso_app()'),
                         '42501', null, 'revogado não reativa sozinho');
 end $$;

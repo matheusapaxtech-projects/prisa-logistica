@@ -1,0 +1,62 @@
+/* Política de privacidade do app do motorista (página pública, sem o shell do sistema). */
+.privacidade {
+  min-height: 100vh;
+  padding: 48px 16px 72px;
+  display: flex;
+  justify-content: center;
+}
+.privacidade article {
+  width: 100%;
+  max-width: 720px;
+  background: rgba(250, 246, 238, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 24px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 18px 40px -26px rgba(60, 40, 20, 0.28);
+  padding: 36px 40px 40px;
+  color: var(--tinta, #161818);
+  font-size: 16px;
+  line-height: 25px;
+}
+.privacidade .marca {
+  font-weight: 600;
+  color: var(--verde, #2c5a4d);
+}
+.privacidade h1 {
+  font-size: 32px;
+  line-height: 38px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin: 6px 0 4px;
+}
+.privacidade .atualizada {
+  color: #55574f;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+.privacidade h2 {
+  font-size: 19px;
+  line-height: 26px;
+  font-weight: 600;
+  margin: 28px 0 8px;
+}
+.privacidade p + p {
+  margin-top: 10px;
+}
+.privacidade ul {
+  padding-left: 20px;
+  margin: 8px 0;
+  display: grid;
+  gap: 6px;
+}
+@media (max-width: 640px) {
+  .privacidade {
+    padding: 16px 8px 48px;
+  }
+  .privacidade article {
+    padding: 24px 18px 28px;
+  }
+  .privacidade h1 {
+    font-size: 26px;
+    line-height: 32px;
+  }
+}
